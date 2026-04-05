@@ -1,8 +1,15 @@
+<<<<<<< HEAD
 # Nestjs specific
 /dist
 /node_modules
 /build
 /tmp
+=======
+# compiled output
+/dist
+/node_modules
+/build
+>>>>>>> master
 
 # Logs
 logs
@@ -13,12 +20,56 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
+<<<<<<< HEAD
 # dotenv environment variable files
 .env
 .env.development
 .env.test
 .env.production
+=======
+# OS
+.DS_Store
+
+# Tests
+/coverage
+/.nyc_output
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+>>>>>>> master
 
 # temp directory
 .temp
 .tmp
+<<<<<<< HEAD
+=======
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+>>>>>>> master
