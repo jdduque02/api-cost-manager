@@ -51,6 +51,6 @@ export class AppUser {
   is_active: boolean;
 
   // ── Relaciones ──────────────────────────────────────────────
-  @OneToOne(() => FinancialProfile, (profile) => profile.user)
+  @OneToOne(() => FinancialProfile, ({user}) => user, {cascade: true})
   financial_profile: FinancialProfile;
 }
