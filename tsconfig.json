@@ -18,7 +18,8 @@
       "@/*": ["./src/*"],
       "@identity/*": ["./src/modules/identity/*"],
       "@config/*": ["./src/config/*"],
-      "@common/*": ["./src/common/*"]
+      "@common/*": ["./src/common/*"],
+      "@shared/*": ["./src/shared/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # Servidor de Caché (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: cost_manager_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # Proveedor de Identidad (Keycloak)
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1.2 # Última versión estable recomendada
+    container_name: cost_manager_keycloak
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://host.docker.internal:5432/cost_manager
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: 1234
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: start-dev # Inicia keycloak en modo desarrollo
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  # Code Quality (SonarQube)
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: cost_manager_sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+    volumes:
+      - sonar_data:/opt/sonarqube/data
+      - sonar_extensions:/opt/sonarqube/extensions
+      - sonar_logs:/opt/sonarqube/logs
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  sonar_data:
+  sonar_extensions:
+  sonar_logs:
