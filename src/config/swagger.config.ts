@@ -9,6 +9,7 @@ export const getSwaggerConfig = (configService: ConfigService): Omit<OpenAPIObje
     .setDescription(`The API documentation for Cost Manager - ${environment}`)
     .setVersion(configService.get<string>('VERSION') || '1')    
     .addTag('costs')
+    .addTag('identity')
     .addBearerAuth({
         type: 'http',
         scheme: 'bearer',

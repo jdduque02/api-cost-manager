@@ -1,0 +1,42 @@
+import { Exclude, Expose } from 'class-transformer';
+
+/**
+ * DTO de respuesta para un perfil financiero.
+ * Controla qué campos se exponen al cliente.
+ */
+@Exclude()
+export class FinancialProfileResponseDto {
+  @Expose()
+  id: number;
+
+  @Expose()
+  profile_name: string;
+
+  @Expose()
+  is_custom: boolean;
+
+  @Expose()
+  needs_ratio: number;
+
+  @Expose()
+  wants_ratio: number;
+
+  @Expose()
+  savings_ratio: number;
+
+  @Expose()
+  max_debt_ratio: number;
+
+  @Expose()
+  metadata: Record<string, unknown>;
+
+  @Expose()
+  created_at: Date;
+
+  @Expose()
+  updated_at: Date;
+
+  constructor(partial: Partial<FinancialProfileResponseDto>) {
+    Object.assign(this, partial);
+  }
+}

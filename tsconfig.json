@@ -16,7 +16,7 @@
     "baseUrl": "./",
     "paths": {
       "@/*": ["./src/*"],
-      "@identity/*": ["./src/identity/*"],
+      "@identity/*": ["./src/modules/identity/*"],
       "@config/*": ["./src/config/*"],
       "@common/*": ["./src/common/*"]
     },
