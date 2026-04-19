@@ -91,7 +91,9 @@ export class UserRepository {
     return user;
   }
 
-  // ... (otros métodos de búsqueda se mantienen igual, puedes añadir logs debug si lo deseas)
+  async findByKeycloakId(keycloakId: string): Promise<AppUser | null> {
+    return this.repo.findOne({ where: { keycloak_id: keycloakId, deleted_at: IsNull() } });
+  }
 
   // ─────────────────────────────────────────────────────────────
   // UPDATE

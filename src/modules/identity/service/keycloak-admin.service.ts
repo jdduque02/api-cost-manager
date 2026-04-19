@@ -19,6 +19,9 @@ export class KeycloakAdminService {
   private readonly clientId: string;
   private readonly clientSecret: string;
 
+  private cachedAdminToken: string | null = null;
+  private adminTokenExpiresAt = 0;
+
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
@@ -34,6 +37,11 @@ export class KeycloakAdminService {
   }
 
   async getAdminToken(): Promise<string> {
+    const now = Date.now();
+    if (this.cachedAdminToken && now < this.adminTokenExpiresAt) {
+      return this.cachedAdminToken;
+    }
+
     const url = `${this.baseUrl}/realms/${this.realm}/protocol/openid-connect/token`;
     const body = new URLSearchParams({
       grant_type: 'client_credentials',
@@ -43,14 +51,18 @@ export class KeycloakAdminService {
 
     try {
       const response = await firstValueFrom(
-        this.httpService.post<{ access_token: string }>(url, body.toString(), {
+        this.httpService.post<{ access_token: string; expires_in: number }>(url, body.toString(), {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         }),
       );
-      return response.data.access_token;
+      const expiresIn = response.data.expires_in ?? 60;
+      this.cachedAdminToken = response.data.access_token;
+      // Restamos 10 segundos de buffer para evitar usar un token a punto de expirar
+      this.adminTokenExpiresAt = now + (expiresIn - 10) * 1000;
+      return this.cachedAdminToken;
     } catch (error: any) {
       this.logger.error(
-        `[getAdminToken] URL: ${url} | Status: ${error?.response?.status} | Data: ${JSON.stringify(error?.response?.data)} | Message: ${error?.message}`,
+        `[getAdminToken] Status: ${error?.response?.status} | Data: ${JSON.stringify(error?.response?.data)} | Message: ${error?.message}`,
       );
       throw new InternalServerErrorException('No se pudo obtener el token de administracion de Keycloak.');
     }

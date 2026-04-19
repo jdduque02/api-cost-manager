@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -27,6 +28,10 @@ import { CreateUserDto } from '@identity/dto/user/create-user.dto';
 import { UpdateUserDto } from '@identity/dto/user/update-user.dto';
 import { UserResponseDto } from '@identity/dto/user/user-response.dto';
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
+import { AuthGuard } from '@auth/guards/auth.guard';
+import { ApiIntrospectGuardResponse } from '@auth/decorators/api-introspect-guard-response.decorator';
+import { CurrentUser } from '@auth/decorators/current-user.decorator';
+import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 
 @ApiTags('users')
 @ApiExtraModels(UserResponseDto)
@@ -45,6 +50,8 @@ export class UserController {
   }
 
   @Get()
+  @UseGuards(AuthGuard)
+  @ApiIntrospectGuardResponse()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Listar usuarios paginados' })
   @ApiQuery({ name: 'page', required: false, example: 1, description: 'Número de página (desde 1)' })
@@ -74,6 +81,8 @@ export class UserController {
   }
 
   @Get(':id')
+  @UseGuards(AuthGuard)
+  @ApiIntrospectGuardResponse()
   @ApiOperation({ summary: 'Obtener usuario por ID' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Usuario encontrado.', type: UserResponseDto })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado.', type: ErrorResponseDto })
@@ -82,6 +91,8 @@ export class UserController {
   }
 
   @Patch(':id')
+  @UseGuards(AuthGuard)
+  @ApiIntrospectGuardResponse()
   @ApiOperation({ summary: 'Actualizar información del usuario' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Usuario actualizado exitosamente.', type: UserResponseDto })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado.', type: ErrorResponseDto })
@@ -90,7 +101,9 @@ export class UserController {
   async updateUser(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
+    @CurrentUser() currentUser: IntrospectResponse,
   ) {
+    await this.userService.assertOwnership(id, currentUser.sub);
     return this.userService.updateUser(id, updateUserDto);
   }
 

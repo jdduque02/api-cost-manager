@@ -5,6 +5,7 @@ import {
   Entity,
   Generated,
   Index,
+  JoinColumn,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -56,6 +57,7 @@ export class AppUser {
   is_active!: boolean;
 
   // ── Relaciones ──────────────────────────────────────────────
-  @OneToOne(() => FinancialProfile, ({user}) => user, {cascade: true})
+  @OneToOne(() => FinancialProfile, ({ user }) => user, { cascade: true })
+  @JoinColumn({ name: 'id', referencedColumnName: 'user_id' })
   financial_profile!: FinancialProfile;
 }

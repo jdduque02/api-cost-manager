@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { retry, catchError } from 'rxjs/operators';
-import { firstValueFrom, from, throwError } from 'rxjs';
+import { firstValueFrom, defer, throwError } from 'rxjs';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -32,7 +32,7 @@ export class LoggingService {
 
     try {
       await firstValueFrom(
-        from(axios.post(logServiceUrl, logData)).pipe(
+        defer(() => axios.post(logServiceUrl, logData)).pipe(
           retry(3),
           catchError(() => {
             return throwError(() => new Error('Error sending log'));

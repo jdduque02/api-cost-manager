@@ -1,6 +1,7 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, ForbiddenException } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
+import { ConfigService } from '@nestjs/config';
 import { UserRepository } from '@identity/repositories/app-user.repositories';
 import { KeycloakAdminService } from './keycloak-admin.service';
 import { CreateUserDto } from '@identity/dto/user/create-user.dto';
@@ -14,6 +15,7 @@ export class UserService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly keycloakAdminService: KeycloakAdminService,
+    private readonly configService: ConfigService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
@@ -52,7 +54,8 @@ export class UserService {
 
     // 3. Guarda en Redis
     if (user) {
-      await this.cacheManager.set(cacheKey, user, 60000); // 60 segundos
+      const ttl = this.configService.get<number>('USER_CACHE_TTL_MS', 60000);
+      await this.cacheManager.set(cacheKey, user, ttl);
     }
 
     return user;
@@ -67,5 +70,17 @@ export class UserService {
 
   async findAllUsers(query: UserQueryDto) {
     return this.userRepository.findAll(query);
+  }
+
+  /**
+   * Verifica que el keycloakId del token sea el propietario del userId del path.
+   * Lanza ForbiddenException si no coincide.
+   */
+  async assertOwnership(userId: number, keycloakId: string | undefined): Promise<void> {
+    if (!keycloakId) throw new ForbiddenException('No se pudo verificar la identidad del solicitante.');
+    const user = await this.userRepository.findByKeycloakId(keycloakId);
+    if (user?.id !== userId) {
+      throw new ForbiddenException('No tienes permiso para acceder a este recurso.');
+    }
   }
 }

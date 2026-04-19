@@ -15,6 +15,8 @@ describe('LoggingService', () => {
   let configService: jest.Mocked<ConfigService>;
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LoggingService,
@@ -29,8 +31,6 @@ describe('LoggingService', () => {
 
     service = module.get<LoggingService>(LoggingService);
     configService = module.get(ConfigService);
-
-    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
@@ -127,6 +127,8 @@ describe('LoggingService', () => {
 
       await service.sendLog({ message: 'test' }, 'ERROR', 'TestContext');
 
+      // retry(3) realiza 1 intento original + 3 reintentos = 4 llamadas totales
+      expect(mockedAxios.post).toHaveBeenCalledTimes(4);
       expect(mockedFs.appendFile).toHaveBeenCalled();
     });
 
@@ -147,6 +149,28 @@ describe('LoggingService', () => {
       expect(loggerErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('disk full'),
       );
+
+      loggerErrorSpy.mockRestore();
+    });
+
+    it('should log error when LOG_SERVICE_URL is not defined', async () => {
+      configService.get
+        .mockReturnValueOnce('false')
+        .mockReturnValueOnce(undefined);
+
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => { cb(null); return undefined as any; });
+
+      const loggerErrorSpy = jest
+        .spyOn((service as any).logger, 'error')
+        .mockImplementation(() => {});
+
+      await service.sendLog({ message: 'test' }, 'WARN', 'TestContext');
+
+      expect(loggerErrorSpy).toHaveBeenCalledWith('LOG_SERVICE_URL is not defined');
+
+      loggerErrorSpy.mockRestore();
     });
   });
 });
+

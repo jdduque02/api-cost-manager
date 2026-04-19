@@ -22,7 +22,10 @@ import {
 } from '@nestjs/swagger';
 import { AuthGuard } from '@auth/guards/auth.guard';
 import { ApiIntrospectGuardResponse } from '@auth/decorators/api-introspect-guard-response.decorator';
+import { CurrentUser } from '@auth/decorators/current-user.decorator';
+import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 import { FinancialProfileService } from '@identity/service/financial-profile.service';
+import { UserService } from '@identity/service/user.service';
 import { CreateFinancialProfileDto } from '@identity/dto/financial-profile/create-financial-profile.dto';
 import { UpdateFinancialProfileDto } from '@identity/dto/financial-profile/update-financial-profile.dto';
 import { FinancialProfileResponseDto } from '@identity/dto/financial-profile/financial-profile-response.dto';
@@ -33,7 +36,10 @@ import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 @ApiIntrospectGuardResponse()
 @Controller('user/:userId/financial-profile')
 export class FinancialProfileController {
-  constructor(private readonly financialProfileService: FinancialProfileService) {}
+  constructor(
+    private readonly financialProfileService: FinancialProfileService,
+    private readonly userService: UserService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -42,10 +48,12 @@ export class FinancialProfileController {
   @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
   @ApiConflictResponse({ description: 'El usuario ya tiene un perfil financiero.', type: ErrorResponseDto })
   @ApiInternalServerErrorResponse({ description: 'Error al crear el perfil.', type: ErrorResponseDto })
-  create(
+  async create(
     @Param('userId', ParseIntPipe) userId: number,
     @Body() createFinancialProfileDto: CreateFinancialProfileDto,
+    @CurrentUser() currentUser: IntrospectResponse,
   ) {
+    await this.userService.assertOwnership(userId, currentUser.sub);
     return this.financialProfileService.create(userId, createFinancialProfileDto);
   }
 
@@ -53,7 +61,11 @@ export class FinancialProfileController {
   @ApiOperation({ summary: 'Obtener perfil financiero del usuario' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Perfil financiero encontrado.', type: FinancialProfileResponseDto })
   @ApiNotFoundResponse({ description: 'El usuario no tiene perfil financiero.', type: ErrorResponseDto })
-  findOne(@Param('userId', ParseIntPipe) userId: number) {
+  async findOne(
+    @Param('userId', ParseIntPipe) userId: number,
+    @CurrentUser() currentUser: IntrospectResponse,
+  ) {
+    await this.userService.assertOwnership(userId, currentUser.sub);
     return this.financialProfileService.findByUserId(userId);
   }
 
@@ -62,10 +74,12 @@ export class FinancialProfileController {
   @ApiResponse({ status: HttpStatus.OK, description: 'Perfil financiero actualizado.', type: FinancialProfileResponseDto })
   @ApiNotFoundResponse({ description: 'El usuario no tiene perfil financiero.', type: ErrorResponseDto })
   @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
-  update(
+  async update(
     @Param('userId', ParseIntPipe) userId: number,
     @Body() updateFinancialProfileDto: UpdateFinancialProfileDto,
+    @CurrentUser() currentUser: IntrospectResponse,
   ) {
+    await this.userService.assertOwnership(userId, currentUser.sub);
     return this.financialProfileService.update(userId, updateFinancialProfileDto);
   }
 
@@ -74,13 +88,11 @@ export class FinancialProfileController {
   @ApiOperation({ summary: 'Eliminar perfil financiero del usuario' })
   @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Perfil financiero eliminado.' })
   @ApiNotFoundResponse({ description: 'El usuario no tiene perfil financiero.', type: ErrorResponseDto })
-  async remove(@Param('userId', ParseIntPipe) userId: number) {
+  async remove(
+    @Param('userId', ParseIntPipe) userId: number,
+    @CurrentUser() currentUser: IntrospectResponse,
+  ) {
+    await this.userService.assertOwnership(userId, currentUser.sub);
     await this.financialProfileService.remove(userId);
-  }
-
-  @Get('public/status')
-  @ApiOperation({ summary: 'Estado del módulo de identidad' })
-  getPublicStatus() {
-    return { status: 'Identity Module is Running', authentication: 'Bypassed' };
   }
 }
