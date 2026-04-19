@@ -21,6 +21,11 @@ export class AppUser {
   @Index('idx_user_external_id')
   external_id: string;
 
+  // ID del usuario en Keycloak (campo 'sub' del token JWT)
+  @Column({ type: 'varchar', length: 36, unique: true, nullable: true })
+  @Index('idx_user_keycloak_id')
+  keycloak_id: string;
+
   @Column({ type: 'citext', unique: true })
   username: string;
 
@@ -41,7 +46,7 @@ export class AppUser {
   created_at: Date;
 
   @UpdateDateColumn({ type: 'timestamp', nullable: true })
-  updated_at: Date;
+  updated_at!: Date;
 
   @DeleteDateColumn({ type: 'timestamp', nullable: true })
   deleted_at: Date;

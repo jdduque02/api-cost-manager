@@ -12,14 +12,17 @@
     "allowSyntheticDefaultImports": true,
     "target": "ES2023",
     "sourceMap": true,
+    
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
       "@/*": ["./src/*"],
       "@identity/*": ["./src/modules/identity/*"],
+      "@auth/*": ["./src/modules/auth/*"],
       "@config/*": ["./src/config/*"],
       "@common/*": ["./src/common/*"],
-      "@shared/*": ["./src/shared/*"]
+      "@shared/*": ["./src/shared/*"],
+
     },
     "incremental": true,
     "skipLibCheck": true,

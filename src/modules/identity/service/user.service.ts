@@ -2,6 +2,8 @@ import { Injectable, Inject, Logger } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { UserRepository } from '../repositories/app-user.repositories';
+import { KeycloakAdminService } from './keycloak-admin.service';
+import { CreateUserDto } from '../dto/user/create-user.dto';
 
 @Injectable()
 export class UserService {
@@ -9,8 +11,28 @@ export class UserService {
 
   constructor(
     private readonly userRepository: UserRepository,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly keycloakAdminService: KeycloakAdminService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
+
+  async createUser(dto: CreateUserDto) {
+    const keycloakId = await this.keycloakAdminService.createUser({
+      username: dto.username,
+      email: dto.email,
+      password: dto.password,
+    });
+
+    // 2. Persistir perfil en BD local; rollback en Keycloak si falla
+    try {
+      const { password: _pw, ...userPayload } = dto;
+      const user = await this.userRepository.create({ ...userPayload, keycloak_id: keycloakId });
+      this.logger.log(`Usuario creado y sincronizado con Keycloak: ${user.id}`);
+      return user;
+    } catch (error) {
+      await this.keycloakAdminService.deleteUser(keycloakId);
+      throw error;
+    }
+  }
 
   async findUser(id: number) {
     const cacheKey = `user_${id}`;

@@ -7,7 +7,7 @@ export const getKeycloakConfig = (configService: ConfigService): KeycloakConnect
     realm: configService.get<string>('KEYCLOAK_REALM')!,
     clientId: configService.get<string>('KEYCLOAK_CLIENT_ID')!,
     secret: configService.get<string>('KEYCLOAK_SECRET') || '',
-    policyEnforcement: PolicyEnforcementMode.ENFORCING,
+    policyEnforcement: PolicyEnforcementMode.PERMISSIVE,
     tokenValidation: TokenValidation.OFFLINE,
   };
 };

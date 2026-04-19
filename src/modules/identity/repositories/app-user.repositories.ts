@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   DataSource,
+  DeepPartial,
   FindOptionsWhere,
   IsNull,
   QueryFailedError,
@@ -34,7 +35,7 @@ export class UserRepository {
   // CREATE
   // ─────────────────────────────────────────────────────────────
 
-  async create(dto: CreateUserDto): Promise<AppUser> {
+  async create(dto: Omit<CreateUserDto, 'password'> & DeepPartial<AppUser>): Promise<AppUser> {
     try {
       const user = this.repo.create(dto);
       const savedUser = await this.repo.save(user);
@@ -42,6 +43,7 @@ export class UserRepository {
       this.logger.log(`Usuario creado exitosamente: ${savedUser.username} (ID: ${savedUser.id})`);
       return savedUser;
     } catch (error) {
+      console.log(error)
       this.handleDbError(error, 'crear usuario');
     }
   }

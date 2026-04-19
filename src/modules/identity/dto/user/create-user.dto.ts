@@ -6,6 +6,8 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  MinLength,
+  Matches,
   ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -17,10 +19,11 @@ export class CreateUserDto {
     description: 'Nombre de usuario único para acceder al sistema.',
     example: 'juan_perez',
     minLength: 3,
+    maxLength: 20,
   })
   @IsString({ message: 'El nombre de usuario debe ser una cadena de texto.' })
   @IsNotEmpty({ message: 'El nombre de usuario es obligatorio.' })
-  username: string;
+  username!: string;
 
   @ApiProperty({
     description: 'Correo electrónico de contacto.',
@@ -28,7 +31,21 @@ export class CreateUserDto {
   })
   @IsEmail({}, { message: 'El formato del correo electrónico no es válido.' })
   @IsNotEmpty({ message: 'El correo electrónico es obligatorio.' })
-  email: string;
+  email!: string;
+
+  @ApiProperty({
+    description: 'Contraseña inicial del usuario (mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial).',
+    example: 'ContraseñaSegura123!',
+    minLength: 8,
+  })
+  @IsString({ message: 'La contraseña debe ser una cadena de texto.' })
+  @IsNotEmpty({ message: 'La contraseña es obligatoria.' })
+  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres.' })
+  @Matches(
+    /((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/,
+    { message: 'La contraseña es demasiado débil. Debe contener al menos una mayúscula, una minúscula, un número y un carácter especial.' }
+  )
+  password!: string;
 
   @ApiPropertyOptional({
     description: 'Configuración regional del usuario (ej. es, en, fr).',

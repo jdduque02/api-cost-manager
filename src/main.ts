@@ -24,7 +24,7 @@ async function bootstrap() {
   
  
   
-  app.use(getCsrfProtection(configService));
+  /* app.use(getCsrfProtection(configService)); */
 
   const config = getSwaggerConfig(configService);
 

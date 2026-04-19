@@ -18,7 +18,7 @@ export class CreateFinancialProfileDto {
   })
   @IsNumber({}, { message: 'El ID del usuario debe ser un número válido.' })
   @IsNotEmpty({ message: 'El ID del usuario es obligatorio.' })
-  user_id: number;
+  user_id!: number;
 
   @ApiPropertyOptional({
     description: 'Nombre descriptivo del perfil financiero.',
@@ -41,7 +41,7 @@ export class CreateFinancialProfileDto {
 
   @ApiPropertyOptional({
     description: 'Porcentaje destinado a necesidades básicas.',
-    example: 50.00,
+    example: 50,
     minimum: 0,
     maximum: 100,
   })
@@ -53,7 +53,7 @@ export class CreateFinancialProfileDto {
 
   @ApiPropertyOptional({
     description: 'Porcentaje destinado a deseos o gastos variables.',
-    example: 30.00,
+    example: 30,
     minimum: 0,
     maximum: 100,
   })
@@ -65,7 +65,7 @@ export class CreateFinancialProfileDto {
 
   @ApiPropertyOptional({
     description: 'Porcentaje destinado a ahorros e inversión.',
-    example: 20.00,
+    example: 20,
     minimum: 0,
     maximum: 100,
   })
@@ -77,7 +77,7 @@ export class CreateFinancialProfileDto {
 
   @ApiPropertyOptional({
     description: 'Límite máximo de endeudamiento permitido.',
-    example: 35.00,
+    example: 35,
     minimum: 0,
     maximum: 100,
   })
