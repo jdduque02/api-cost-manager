@@ -8,14 +8,7 @@ import {
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
-
-interface KeycloakUserRepresentation {
-  username: string;
-  email: string;
-  enabled: boolean;
-  credentials: { type: 'password'; value: string; temporary: boolean }[];
-  attributes?: Record<string, string[]>;
-}
+import { KeycloakUserRepresentation } from '@identity/interfaces/KeycloakUserRepresentation.dto';
 
 @Injectable()
 export class KeycloakAdminService {

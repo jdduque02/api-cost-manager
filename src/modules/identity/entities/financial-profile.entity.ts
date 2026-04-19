@@ -21,41 +21,41 @@ import { AppUser } from './app-user.entity';
 )
 export class FinancialProfile {
   @PrimaryGeneratedColumn('identity', { type: 'bigint' })
-  id: number;
+  id!: number;
 
   @Column({ type: 'bigint' })
-  user_id: number;
+  user_id!: number;
 
   @Column({ type: 'varchar', length: 50, default: '50-30-20' })
-  profile_name: string;
+  profile_name!: string;
 
   @Column({ type: 'boolean', default: false })
-  is_custom: boolean;
+  is_custom!: boolean;
 
   @Column({ type: 'numeric', precision: 5, scale: 2, default: 50.0 })
-  needs_ratio: number;
+  needs_ratio!: number;
 
   @Column({ type: 'numeric', precision: 5, scale: 2, default: 30.0 })
-  wants_ratio: number;
+  wants_ratio!: number;
 
   @Column({ type: 'numeric', precision: 5, scale: 2, default: 20.0 })
-  savings_ratio: number;
+  savings_ratio!: number;
 
   @Column({ type: 'numeric', precision: 5, scale: 2, default: 40.0 })
-  max_debt_ratio: number;
+  max_debt_ratio!: number;
 
   @Column({ type: 'jsonb', default: '{}' })
-  metadata: Record<string, unknown>;
+  metadata!: Record<string, unknown>;
 
   @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn({ type: 'timestamp', nullable: true })
-  updated_at: Date;
+  updated_at!: Date;
 
   @OneToOne(() => AppUser, ({financial_profile}) => financial_profile, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'user_id' })
-  user: AppUser;
+  user!: AppUser;
 }

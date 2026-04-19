@@ -14,48 +14,48 @@ import { FinancialProfile } from './financial-profile.entity';
 @Entity({ name: 'app_user', schema: 'identity' })
 export class AppUser {
   @PrimaryGeneratedColumn('identity', { type: 'bigint' })
-  id: number;
+  id!: number;
 
   @Column({ type: 'uuid', unique: true })
   @Generated('uuid')
   @Index('idx_user_external_id')
-  external_id: string;
+  external_id!: string;
 
   // ID del usuario en Keycloak (campo 'sub' del token JWT)
   @Column({ type: 'varchar', length: 36, unique: true, nullable: true })
   @Index('idx_user_keycloak_id')
-  keycloak_id: string;
+  keycloak_id!: string;
 
   @Column({ type: 'citext', unique: true })
-  username: string;
+  username!: string;
 
   @Column({ type: 'citext', unique: true })
   @Index('idx_user_email')
-  email: string;
+  email!: string;
 
   @Column({ type: 'varchar', length: 10, default: 'es-CO' })
-  locale: string;
+  locale!: string;
 
   @Column({ type: 'varchar', length: 50, default: 'America/Bogota' })
-  timezone: string;
+  timezone!: string;
 
   @Column({ type: 'jsonb', default: '{}' })
-  metadata: Record<string, unknown>;
+  metadata!: Record<string, unknown>;
 
   @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn({ type: 'timestamp', nullable: true })
   updated_at!: Date;
 
   @DeleteDateColumn({ type: 'timestamp', nullable: true })
-  deleted_at: Date;
+  deleted_at!: Date;
 
   @Column({ type: 'boolean', default: true })
   @Index('idx_user_active')
-  is_active: boolean;
+  is_active!: boolean;
 
   // ── Relaciones ──────────────────────────────────────────────
   @OneToOne(() => FinancialProfile, ({user}) => user, {cascade: true})
-  financial_profile: FinancialProfile;
+  financial_profile!: FinancialProfile;
 }

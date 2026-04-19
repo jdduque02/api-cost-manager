@@ -11,7 +11,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CreateFinancialProfileDto } from '../financial-profile/create-financial-profile.dto';
+import { CreateFinancialProfileDto } from '@identity/dto/financial-profile/create-financial-profile.dto';
 import { Type } from 'class-transformer';
 
 export class CreateUserDto {

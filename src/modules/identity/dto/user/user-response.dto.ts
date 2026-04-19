@@ -1,5 +1,5 @@
 import { Exclude, Expose, Type } from 'class-transformer';
-import { FinancialProfileResponseDto } from '../financial-profile/financial-profile-response.dto';
+import { FinancialProfileResponseDto } from '@identity/dto/financial-profile/financial-profile-response.dto';
 
 /**
  * DTO de respuesta para un usuario.
@@ -8,38 +8,38 @@ import { FinancialProfileResponseDto } from '../financial-profile/financial-prof
 @Exclude()
 export class UserResponseDto {
   @Expose()
-  id: number;
+  id!: number;
 
   @Expose()
-  external_id: string;
+  external_id!: string;
 
   @Expose()
-  username: string;
+  username!: string;
 
   @Expose()
-  email: string;
+  email!: string;
 
   @Expose()
-  locale: string;
+  locale!: string;
 
   @Expose()
-  timezone: string;
+  timezone!: string;
 
   @Expose()
-  metadata: Record<string, unknown>;
+  metadata!: Record<string, unknown>;
 
   @Expose()
-  is_active: boolean;
+  is_active!: boolean;
 
   @Expose()
-  created_at: Date;
+  created_at!: Date;
 
   @Expose()
-  updated_at: Date;
+  updated_at!: Date;
 
   @Expose()
   @Type(() => FinancialProfileResponseDto)
-  financial_profile: FinancialProfileResponseDto;
+  financial_profile!: FinancialProfileResponseDto;
 
   constructor(partial: Partial<UserResponseDto>) {
     Object.assign(this, partial);
