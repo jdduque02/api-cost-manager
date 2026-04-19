@@ -1,9 +1,11 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
-import { UserRepository } from '../repositories/app-user.repositories';
+import { UserRepository } from '@identity/repositories/app-user.repositories';
 import { KeycloakAdminService } from './keycloak-admin.service';
-import { CreateUserDto } from '../dto/user/create-user.dto';
+import { CreateUserDto } from '@identity/dto/user/create-user.dto';
+import { UpdateUserDto } from '@identity/dto/user/update-user.dto';
+import { UserQueryDto } from '@identity/dto/user/user-query.dto';
 
 @Injectable()
 export class UserService {
@@ -54,5 +56,16 @@ export class UserService {
     }
 
     return user;
+  }
+
+  async updateUser(id: number, dto: UpdateUserDto) {
+    const user = await this.userRepository.update(id, dto);
+    await this.cacheManager.del(`user_${id}`);
+    this.logger.log(`Cache invalidado para usuario ID: ${id}`);
+    return user;
+  }
+
+  async findAllUsers(query: UserQueryDto) {
+    return this.userRepository.findAll(query);
   }
 }

@@ -4,7 +4,6 @@ import {
   InternalServerErrorException,
   ConflictException,
   NotFoundException,
-  ConsoleLogger,
 } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';

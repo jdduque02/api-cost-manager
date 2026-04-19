@@ -9,13 +9,12 @@ import { AuthService } from '@auth/service/auth.service';
 import { extractBearerToken } from '@shared/helpers/bearer-token.helper';
 
 @Injectable()
-export class IntrospectGuard implements CanActivate {
+export class AuthGuard implements CanActivate {
   constructor(private readonly authService: AuthService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
     const authorization = request.headers['authorization'];
-
     const token = extractBearerToken(authorization);
     const result = await this.authService.introspect(token);
 

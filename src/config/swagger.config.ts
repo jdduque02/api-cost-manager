@@ -14,10 +14,10 @@ export const getSwaggerConfig = (configService: ConfigService): Omit<OpenAPIObje
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
-        name: 'JWT',
-        description: 'Enter JWT token',
+        name: 'Authorization',
+        description: 'Ingresa el access_token de Keycloak (sin el prefijo Bearer)',
         in: 'header',        
-    }, 'Access-Token');
+    });  // nombre 'bearer' coincide con @ApiBearerAuth() sin argumento
 
     return builder.build();
 }

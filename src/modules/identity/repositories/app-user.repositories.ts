@@ -2,7 +2,7 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
-  Logger, // 1. Importar el Logger
+  Logger, 
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -17,6 +17,7 @@ import {
 import { AppUser } from '@identity/entities/app-user.entity';
 import { CreateUserDto } from '@identity/dto/user/create-user.dto';
 import { UpdateUserDto } from '@identity/dto/user/update-user.dto';
+import { UserQueryDto } from '@identity/dto/user/user-query.dto';
 
 const PG_UNIQUE_VIOLATION = '23505';
 
@@ -43,7 +44,7 @@ export class UserRepository {
       this.logger.log(`Usuario creado exitosamente: ${savedUser.username} (ID: ${savedUser.id})`);
       return savedUser;
     } catch (error) {
-      console.log(error)
+      this.logger.error(`Error al crear usuario: ${error.message}`, error.stack);
       this.handleDbError(error, 'crear usuario');
     }
   }
@@ -52,17 +53,28 @@ export class UserRepository {
   // READ
   // ─────────────────────────────────────────────────────────────
 
-  async findAll(page = 1, limit = 20): Promise<{ data: AppUser[]; total: number }> {
-    this.logger.debug(`Buscando usuarios paginados: Página ${page}, Límite ${limit}`);
-    
-    const [data, total] = await this.repo.findAndCount({
-      where: { is_active: true },
-      relations: { financial_profile: true },
-      order: { created_at: 'DESC' },
-      take: limit,
-      skip: (page - 1) * limit,
-    });
+  async findAll(query: UserQueryDto): Promise<{ data: AppUser[]; total: number }> {
+    const { search, sortBy = 'created_at', order = 'DESC', page = 1, limit = 20 } = query;
 
+    this.logger.debug(`Buscando usuarios: search="${search}" sortBy=${sortBy} order=${order} página=${page} límite=${limit}`);
+
+    const qb = this.repo
+      .createQueryBuilder('u')
+      .leftJoinAndSelect('u.financial_profile', 'fp')
+      .where('u.is_active = true');
+
+    if (search?.trim()) {
+      qb.andWhere(
+        '(u.username ILIKE :search OR u.email ILIKE :search)',
+        { search: `${search.trim()}%` },
+      );
+    }
+
+    qb.orderBy(`u.${sortBy}`, order)
+      .take(limit)
+      .skip((page - 1) * limit);
+
+    const [data, total] = await qb.getManyAndCount();
     return { data, total };
   }
 
@@ -85,11 +97,11 @@ export class UserRepository {
   // UPDATE
   // ─────────────────────────────────────────────────────────────
 
-  async update(id: number, dto: UpdateUserDto): Promise<AppUser> {
+  async update(id: number, updateUserDto: UpdateUserDto): Promise<AppUser> {
     const user = await this.findById(id);
 
     try {
-      const updated = this.repo.merge(user, dto);
+      const updated = this.repo.merge(user, updateUserDto);
       const result = await this.repo.save(updated);
       
       this.logger.log(`Usuario actualizado: ${result.username} (ID: ${id})`);
