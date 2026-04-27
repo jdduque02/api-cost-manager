@@ -19,8 +19,10 @@ export function getCsrfProtection(configService: ConfigService) {
      * Secret used to sign the CSRF token.
      * Falls back to a default string when CSRF_SECRET is not set (dev only).
      */
-    getSecret: () =>
-      configService.get<string>('CSRF_SECRET') || 'csrf-super-secret',
+    getSecret: () => {
+      const secret = configService.get<string>('CSRF_SECRET');
+      return secret ?? 'csrf-super-secret';
+    },
 
     /** Name of the cookie that holds the CSRF token. */
     cookieName: 'x-csrf-token',

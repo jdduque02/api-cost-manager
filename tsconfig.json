@@ -16,9 +16,16 @@
     "baseUrl": "./",
     "paths": {
       "@/*": ["./src/*"],
-      "@identity/*": ["./src/identity/*"],
+      "@identity/*": ["./src/modules/identity/*"],
+      "@catalog/*": ["./src/modules/catalog/*"],
+      "@auth/*": ["./src/modules/auth/*"],
+      "@banking/*": ["./src/modules/banking/*"],
+      "@finance/*": ["./src/modules/finance/*"],
+      "@audit/*": ["./src/modules/audit/*"],
       "@config/*": ["./src/config/*"],
-      "@common/*": ["./src/common/*"]
+      "@common/*": ["./src/common/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@notification/*": ["./src/modules/notification/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

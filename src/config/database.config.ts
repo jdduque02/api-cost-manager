@@ -13,6 +13,15 @@ export const databaseConfig: TypeOrmModuleAsyncOptions = {
         entities: [__dirname + '/**/*.entity.{js,ts}'],
         autoLoadEntities: true,
         synchronize: configService.get<string>('NODE_ENV') !== 'PROD',
+        migrationsRun: true,
+        migrations: [__dirname + '/../../migrations/*.{js,ts}'],
+        // Pool explícito: evita DeprecationWarning de pg al reutilizar
+        // el mismo cliente mientras ejecuta otra query (pg@9 lo eliminará)
+        extra: {
+          max: 10,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 5000,
+        },
       }),
       inject: [ConfigService],
     }

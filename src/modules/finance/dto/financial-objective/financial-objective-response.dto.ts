@@ -1,0 +1,64 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { FinancialObjectiveTypeEnum, FrequencyEnum } from '@shared/enums';
+
+export class FinancialObjectiveResponseDto {
+  @ApiProperty({ example: 1 })
+  id!: number;
+
+  @ApiProperty({ example: 10 })
+  user_id!: number;
+
+  @ApiPropertyOptional({ example: 1, nullable: true })
+  category_id!: number | null;
+
+  @ApiPropertyOptional({ example: 2, nullable: true })
+  subcategory_id!: number | null;
+
+  @ApiProperty({ example: 'Fondo de emergencia' })
+  name!: string;
+
+  @ApiProperty({ enum: FinancialObjectiveTypeEnum })
+  type!: FinancialObjectiveTypeEnum;
+
+  @ApiProperty({ example: 10000000 })
+  target_amount!: number;
+
+  @ApiProperty({ example: 0 })
+  current_balance!: number;
+
+  @ApiPropertyOptional({ example: 5.5, nullable: true })
+  interest_rate!: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  fees!: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  monthly_payment!: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  owner!: string | null;
+
+  @ApiPropertyOptional({ enum: FrequencyEnum, nullable: true })
+  frequency!: FrequencyEnum | null;
+
+  @ApiPropertyOptional({ example: 15, nullable: true })
+  due_day!: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  start_date!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  end_date!: Date | null;
+
+  @ApiProperty({ example: false })
+  is_completed!: boolean;
+
+  @ApiPropertyOptional({ nullable: true })
+  completed_at!: Date | null;
+
+  @ApiProperty({ example: '2026-04-25T10:00:00.000Z' })
+  created_at!: Date;
+
+  @ApiPropertyOptional({ nullable: true })
+  updated_at!: Date | null;
+}

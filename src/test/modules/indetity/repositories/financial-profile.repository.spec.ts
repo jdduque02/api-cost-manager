@@ -1,0 +1,140 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { ConflictException, NotFoundException } from '@nestjs/common';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { FinancialProfileRepository } from '@identity/repositories/financial-profile.repository';
+import { FinancialProfile } from '@identity/entities/financial-profile.entity';
+import { CreateFinancialProfileDto } from '@identity/dto/financial-profile/create-financial-profile.dto';
+import { UpdateFinancialProfileDto } from '@identity/dto/financial-profile/update-financial-profile.dto';
+
+const buildProfile = (overrides: Partial<FinancialProfile> = {}): FinancialProfile =>
+  ({
+    id: '1',
+    user_id: 2,
+    profile_name: 'Plan de Ahorro',
+    is_custom: false,
+    needs_ratio: 50,
+    wants_ratio: 30,
+    savings_ratio: 20,
+    max_debt_ratio: 35,
+    metadata: {},
+    created_at: new Date(),
+    updated_at: new Date(),
+    ...overrides,
+  }) as FinancialProfile;
+
+const mockTypeOrmRepo = {
+  findOne: jest.fn(),
+  create: jest.fn(),
+  save: jest.fn(),
+  merge: jest.fn(),
+  remove: jest.fn(),
+};
+
+describe('FinancialProfileRepository', () => {
+  let repo: FinancialProfileRepository;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        FinancialProfileRepository,
+        { provide: getRepositoryToken(FinancialProfile), useValue: mockTypeOrmRepo },
+      ],
+    }).compile();
+
+    repo = module.get<FinancialProfileRepository>(FinancialProfileRepository);
+    jest.clearAllMocks();
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // CREATE
+  // ─────────────────────────────────────────────────────────────
+  describe('create', () => {
+    const dto: Omit<CreateFinancialProfileDto, 'user_id'> = {
+      profile_name: 'Plan de Ahorro',
+      is_custom: false,
+      needs_ratio: 50,
+      wants_ratio: 30,
+      savings_ratio: 20,
+      max_debt_ratio: 35,
+    } as Omit<CreateFinancialProfileDto, 'user_id'>;
+
+    it('debe crear el perfil si el usuario no tiene uno', async () => {
+      const profile = buildProfile();
+      mockTypeOrmRepo.findOne.mockResolvedValue(null); // sin perfil previo
+      mockTypeOrmRepo.create.mockReturnValue(profile);
+      mockTypeOrmRepo.save.mockResolvedValue(profile);
+
+      const result = await repo.create(2, dto);
+      expect(result.user_id).toBe(2);
+      expect(mockTypeOrmRepo.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('debe lanzar ConflictException si ya existe un perfil para el usuario', async () => {
+      mockTypeOrmRepo.findOne.mockResolvedValue(buildProfile()); // ya existe
+
+      await expect(repo.create(2, dto)).rejects.toThrow(ConflictException);
+      expect(mockTypeOrmRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // FIND BY USER ID
+  // ─────────────────────────────────────────────────────────────
+  describe('findByUserId', () => {
+    it('debe retornar el perfil si existe', async () => {
+      const profile = buildProfile();
+      mockTypeOrmRepo.findOne.mockResolvedValue(profile);
+
+      const result = await repo.findByUserId(2);
+      expect(result.user_id).toBe(2);
+    });
+
+    it('debe lanzar NotFoundException si no existe el perfil', async () => {
+      mockTypeOrmRepo.findOne.mockResolvedValue(null);
+      await expect(repo.findByUserId(99)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // UPDATE
+  // ─────────────────────────────────────────────────────────────
+  describe('update', () => {
+    it('debe actualizar y retornar el perfil actualizado', async () => {
+      const original = buildProfile();
+      const updatedProfile = buildProfile({ needs_ratio: 60 });
+      mockTypeOrmRepo.findOne.mockResolvedValue(original);
+      mockTypeOrmRepo.merge.mockReturnValue(updatedProfile);
+      mockTypeOrmRepo.save.mockResolvedValue(updatedProfile);
+
+      const dto: UpdateFinancialProfileDto = { needs_ratio: 60 } as UpdateFinancialProfileDto;
+      const result = await repo.update(2, dto);
+      expect(result.needs_ratio).toBe(60);
+      expect(mockTypeOrmRepo.merge).toHaveBeenCalledWith(original, dto);
+    });
+
+    it('debe lanzar NotFoundException si el perfil no existe', async () => {
+      mockTypeOrmRepo.findOne.mockResolvedValue(null);
+      const dto: UpdateFinancialProfileDto = { needs_ratio: 60 } as UpdateFinancialProfileDto;
+      await expect(repo.update(99, dto)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // REMOVE
+  // ─────────────────────────────────────────────────────────────
+  describe('remove', () => {
+    it('debe eliminar el perfil correctamente', async () => {
+      const profile = buildProfile();
+      mockTypeOrmRepo.findOne.mockResolvedValue(profile);
+      mockTypeOrmRepo.remove.mockResolvedValue(undefined);
+
+      await expect(repo.remove(2)).resolves.toBeUndefined();
+      expect(mockTypeOrmRepo.remove).toHaveBeenCalledWith(profile);
+    });
+
+    it('debe lanzar NotFoundException si el perfil no existe', async () => {
+      mockTypeOrmRepo.findOne.mockResolvedValue(null);
+      await expect(repo.remove(99)).rejects.toThrow(NotFoundException);
+    });
+  });
+});
