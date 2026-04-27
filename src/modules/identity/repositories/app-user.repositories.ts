@@ -2,12 +2,11 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
-  Logger, 
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
-  DataSource,
   DeepPartial,
   FindOptionsWhere,
   IsNull,
@@ -23,13 +22,11 @@ const PG_UNIQUE_VIOLATION = '23505';
 
 @Injectable()
 export class UserRepository {
-  // 2. Instanciar el Logger con el contexto de la clase
   private readonly logger = new Logger(UserRepository.name);
 
   constructor(
     @InjectRepository(AppUser)
     private readonly repo: Repository<AppUser>,
-    private readonly dataSource: DataSource,
   ) {}
 
   // ─────────────────────────────────────────────────────────────
@@ -40,7 +37,7 @@ export class UserRepository {
     try {
       const user = this.repo.create(dto);
       const savedUser = await this.repo.save(user);
-      
+
       this.logger.log(`Usuario creado exitosamente: ${savedUser.username} (ID: ${savedUser.id})`);
       return savedUser;
     } catch (error) {
@@ -78,7 +75,7 @@ export class UserRepository {
     return { data, total };
   }
 
-  async findById(id: number): Promise<AppUser> {
+  async findById(id: string): Promise<AppUser> {
     const user = await this.repo.findOne({
       where: { id, deleted_at: IsNull() },
       relations: { financial_profile: true },
@@ -91,21 +88,21 @@ export class UserRepository {
     return user;
   }
 
-  async findByKeycloakId(keycloakId: string): Promise<AppUser | null> {
-    return this.repo.findOne({ where: { keycloak_id: keycloakId, deleted_at: IsNull() } });
+  async findByExternalId(externalId: string): Promise<AppUser | null> {
+    return this.repo.findOne({ where: { external_id: externalId, deleted_at: IsNull() } });
   }
 
   // ─────────────────────────────────────────────────────────────
   // UPDATE
   // ─────────────────────────────────────────────────────────────
 
-  async update(id: number, updateUserDto: UpdateUserDto): Promise<AppUser> {
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<AppUser> {
     const user = await this.findById(id);
 
     try {
       const updated = this.repo.merge(user, updateUserDto);
       const result = await this.repo.save(updated);
-      
+
       this.logger.log(`Usuario actualizado: ${result.username} (ID: ${id})`);
       return result;
     } catch (error) {
@@ -117,31 +114,31 @@ export class UserRepository {
   // DELETE
   // ─────────────────────────────────────────────────────────────
 
-  async softDelete(id: number): Promise<void> {
+  async softDelete(id: string): Promise<void> {
     const user = await this.findById(id);
     await this.repo.softRemove(user);
     this.logger.log(`Soft delete ejecutado para usuario ID: ${id}`);
   }
 
-  async restore(id: number): Promise<AppUser> {
+  async restore(id: string): Promise<AppUser> {
     try {
-        const user = await this.repo.findOne({
+      const user = await this.repo.findOne({
         where: { id } as FindOptionsWhere<AppUser>,
         withDeleted: true,
-        });
+      });
 
-        if (!user) throw new NotFoundException(`Usuario con id ${id} no encontrado.`);
-        
-        if (!user.deleted_at) {
+      if (!user) throw new NotFoundException(`Usuario con id ${id} no encontrado.`);
+
+      if (!user.deleted_at) {
         this.logger.warn(`Intento de restaurar usuario no eliminado ID: ${id}`);
         throw new ConflictException(`El usuario con id ${id} no está eliminado.`);
-        }
+      }
 
-        await this.repo.restore(id);
-        this.logger.log(`Usuario restaurado exitosamente ID: ${id}`);
-        return this.findById(id);
+      await this.repo.restore(id);
+      this.logger.log(`Usuario restaurado exitosamente ID: ${id}`);
+      return this.findById(id);
     } catch (error) {
-        this.handleDbError(error, `restaurar usuario ID: ${id}`);
+      this.handleDbError(error, `restaurar usuario ID: ${id}`);
     }
   }
 

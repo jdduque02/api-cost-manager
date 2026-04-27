@@ -8,7 +8,7 @@ import { FinancialProfileResponseDto } from '@identity/dto/financial-profile/fin
 @Exclude()
 export class UserResponseDto {
   @Expose()
-  id!: number;
+  id!: string;
 
   @Expose()
   external_id!: string;

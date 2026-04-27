@@ -1,14 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { FinancialProfileRepository } from '@identity/repositories/financial-profile.repositorie';
+import { FinancialProfileRepository } from '@identity/repositories/financial-profile.repository';
 import { FinancialProfile } from '@identity/entities/financial-profile.entity';
 import { CreateFinancialProfileDto } from '@identity/dto/financial-profile/create-financial-profile.dto';
 import { UpdateFinancialProfileDto } from '@identity/dto/financial-profile/update-financial-profile.dto';
 
 const buildProfile = (overrides: Partial<FinancialProfile> = {}): FinancialProfile =>
   ({
-    id: 1,
+    id: '1',
     user_id: 2,
     profile_name: 'Plan de Ahorro',
     is_custom: false,

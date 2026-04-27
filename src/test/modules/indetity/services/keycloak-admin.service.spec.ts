@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
   ConflictException,
   InternalServerErrorException,
@@ -8,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { of, throwError } from 'rxjs';
 import { AxiosResponse } from 'axios';
-import { KeycloakAdminService } from '@identity/service/keycloak-admin.service';
+import { KeycloakAdminService } from '@auth/service/keycloak-admin.service';
 
 const mockHttpService = {
   post: jest.fn(),
@@ -27,6 +28,12 @@ const mockConfigService = {
     };
     return config[key];
   }),
+};
+
+const mockCacheManager = {
+  get: jest.fn(),
+  set: jest.fn(),
+  del: jest.fn(),
 };
 
 const axiosResponse = <T>(data: T, headers: Record<string, string> = {}): AxiosResponse<T> => ({
@@ -48,6 +55,7 @@ describe('KeycloakAdminService', () => {
         KeycloakAdminService,
         { provide: HttpService, useValue: mockHttpService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: CACHE_MANAGER, useValue: mockCacheManager },
       ],
     }).compile();
 
@@ -60,16 +68,19 @@ describe('KeycloakAdminService', () => {
   // ─────────────────────────────────────────────────────────────
   describe('getAdminToken', () => {
     it('debe retornar el access_token de administración', async () => {
-      mockHttpService.post.mockReturnValue(of(axiosResponse({ access_token: ADMIN_TOKEN })));
-      const token = await service.getAdminToken();
+      mockCacheManager.get.mockResolvedValue(null);
+      mockCacheManager.set.mockResolvedValue(undefined);
+      mockHttpService.post.mockReturnValue(of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })));
+      const token = await (service as any).getAdminToken();
       expect(token).toBe(ADMIN_TOKEN);
     });
 
     it('debe lanzar InternalServerErrorException si Keycloak falla', async () => {
+      mockCacheManager.get.mockResolvedValue(null);
       mockHttpService.post.mockReturnValue(
         throwError(() => ({ response: { status: 500, data: {} }, message: 'Network error' })),
       );
-      await expect(service.getAdminToken()).rejects.toThrow(InternalServerErrorException);
+      await expect((service as any).getAdminToken()).rejects.toThrow(InternalServerErrorException);
     });
   });
 
@@ -82,7 +93,9 @@ describe('KeycloakAdminService', () => {
 
     beforeEach(() => {
       // getAdminToken siempre exitoso
-      mockHttpService.post.mockReturnValueOnce(of(axiosResponse({ access_token: ADMIN_TOKEN })));
+      mockCacheManager.get.mockResolvedValue(null);
+      mockCacheManager.set.mockResolvedValue(undefined);
+      mockHttpService.post.mockReturnValueOnce(of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })));
     });
 
     it('debe crear el usuario y retornar su keycloakId', async () => {
@@ -111,7 +124,9 @@ describe('KeycloakAdminService', () => {
   // ─────────────────────────────────────────────────────────────
   describe('deleteUser', () => {
     beforeEach(() => {
-      mockHttpService.post.mockReturnValueOnce(of(axiosResponse({ access_token: ADMIN_TOKEN })));
+      mockCacheManager.get.mockResolvedValue(null);
+      mockCacheManager.set.mockResolvedValue(undefined);
+      mockHttpService.post.mockReturnValueOnce(of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })));
     });
 
     it('debe eliminar el usuario de Keycloak sin lanzar excepción', async () => {
@@ -134,7 +149,9 @@ describe('KeycloakAdminService', () => {
   // ─────────────────────────────────────────────────────────────
   describe('findKeycloakIdByEmail', () => {
     beforeEach(() => {
-      mockHttpService.post.mockReturnValueOnce(of(axiosResponse({ access_token: ADMIN_TOKEN })));
+      mockCacheManager.get.mockResolvedValue(null);
+      mockCacheManager.set.mockResolvedValue(undefined);
+      mockHttpService.post.mockReturnValueOnce(of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })));
     });
 
     it('debe retornar el keycloakId del usuario encontrado', async () => {
@@ -167,7 +184,9 @@ describe('KeycloakAdminService', () => {
   // ─────────────────────────────────────────────────────────────
   describe('sendResetPasswordEmail', () => {
     beforeEach(() => {
-      mockHttpService.post.mockReturnValueOnce(of(axiosResponse({ access_token: ADMIN_TOKEN })));
+      mockCacheManager.get.mockResolvedValue(null);
+      mockCacheManager.set.mockResolvedValue(undefined);
+      mockHttpService.post.mockReturnValueOnce(of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })));
     });
 
     it('debe enviar el email de reset sin lanzar excepción', async () => {

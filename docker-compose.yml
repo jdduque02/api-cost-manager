@@ -1,6 +1,20 @@
 version: '3.8'
 
 services:
+  # Broker de Mensajeria (RabbitMQ)
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: cost_manager_rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+
   # Servidor de Caché (Redis)
   redis:
     image: redis:7-alpine
@@ -42,6 +56,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  rabbitmq_data:
   redis_data:
   sonar_data:
   sonar_extensions:

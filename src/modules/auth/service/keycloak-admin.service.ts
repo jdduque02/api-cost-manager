@@ -1,10 +1,13 @@
 import {
   Injectable,
+  Inject,
   Logger,
   InternalServerErrorException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
@@ -19,12 +22,12 @@ export class KeycloakAdminService {
   private readonly clientId: string;
   private readonly clientSecret: string;
 
-  private cachedAdminToken: string | null = null;
-  private adminTokenExpiresAt = 0;
+  private static readonly ADMIN_TOKEN_CACHE_KEY = 'keycloak:admin_token';
 
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {
     this.baseUrl = this.configService.get<string>('KEYCLOAK_URL')!;
     this.realm = this.configService.get<string>('KEYCLOAK_REALM')!;
@@ -36,11 +39,9 @@ export class KeycloakAdminService {
     return `${this.baseUrl}/admin/realms/${this.realm}`;
   }
 
-  async getAdminToken(): Promise<string> {
-    const now = Date.now();
-    if (this.cachedAdminToken && now < this.adminTokenExpiresAt) {
-      return this.cachedAdminToken;
-    }
+  private async getAdminToken(): Promise<string> {
+    const cached = await this.cacheManager.get<string>(KeycloakAdminService.ADMIN_TOKEN_CACHE_KEY);
+    if (cached) return cached;
 
     const url = `${this.baseUrl}/realms/${this.realm}/protocol/openid-connect/token`;
     const body = new URLSearchParams({
@@ -56,10 +57,14 @@ export class KeycloakAdminService {
         }),
       );
       const expiresIn = response.data.expires_in ?? 60;
-      this.cachedAdminToken = response.data.access_token;
-      // Restamos 10 segundos de buffer para evitar usar un token a punto de expirar
-      this.adminTokenExpiresAt = now + (expiresIn - 10) * 1000;
-      return this.cachedAdminToken;
+      const token = response.data.access_token;
+      // Guarda en Redis con TTL = expires_in - 10s de buffer
+      await this.cacheManager.set(
+        KeycloakAdminService.ADMIN_TOKEN_CACHE_KEY,
+        token,
+        (expiresIn - 10) * 1000,
+      );
+      return token;
     } catch (error: any) {
       this.logger.error(
         `[getAdminToken] Status: ${error?.response?.status} | Data: ${JSON.stringify(error?.response?.data)} | Message: ${error?.message}`,

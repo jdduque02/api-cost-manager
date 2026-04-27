@@ -6,15 +6,18 @@ import { databaseConfig } from '@config/database.config';
 import { IdentityModule } from '@identity/identity.module';
 import { SharedModule } from '@shared/shared.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { NotificationModule } from './modules/notification/notification.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { BankingModule } from './modules/banking/banking.module';
+import { CatalogModule } from './modules/catalog/catalog.module';
+import { FinanceModule } from './modules/finance/finance.module';
 import { ResponseInterceptor } from '@shared/interceptors/response.interceptor';
 import { ErrorsInterceptor } from '@shared/interceptors/error.interceptor';
 import { HttpExceptionFilter } from '@shared/filters/http-exception.filter';
 
-// Keycloak y Cache (Redis)
+// Keycloak
 import { KeycloakConnectModule } from 'nest-keycloak-connect';
 import { getKeycloakConfig } from '@config/keycloak.config';
-import { CacheModule } from '@nestjs/cache-manager';
-import { redisConfig } from '@config/redis.config';
 
 @Module({
   imports: [
@@ -27,11 +30,15 @@ import { redisConfig } from '@config/redis.config';
     SharedModule,
     IdentityModule,
     AuthModule,
+    NotificationModule,
+    AuditModule,
+    BankingModule,
+    CatalogModule,
+    FinanceModule,
     KeycloakConnectModule.registerAsync({
       useFactory: getKeycloakConfig,
       inject: [ConfigService],
     }),
-    CacheModule.registerAsync(redisConfig),
   ],
   providers: [
     {

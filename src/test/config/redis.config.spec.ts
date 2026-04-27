@@ -1,5 +1,4 @@
-import { ConfigService } from '@nestjs/config';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { redisConfig } from '@config/redis.config';
 
 // Mockear redisStore para evitar conexiones reales a Redis

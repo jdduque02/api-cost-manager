@@ -5,9 +5,9 @@ import {
   Patch,
   Body,
   Param,
-  ParseIntPipe,
   HttpCode,
   HttpStatus,
+  ParseIntPipe,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -49,6 +49,12 @@ export class UserController {
     return this.userService.createUser(createUserDto);
   }
 
+  @Get('public/status')
+  @ApiOperation({ summary: 'Estado del módulo de identidad' })
+  getPublicStatus() {
+    return { status: 'Identity Module is Running', authentication: 'Bypassed' };
+  }
+
   @Get()
   @UseGuards(AuthGuard)
   @ApiIntrospectGuardResponse()
@@ -86,7 +92,11 @@ export class UserController {
   @ApiOperation({ summary: 'Obtener usuario por ID' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Usuario encontrado.', type: UserResponseDto })
   @ApiNotFoundResponse({ description: 'Usuario no encontrado.', type: ErrorResponseDto })
-  async getUser(@Param('id', ParseIntPipe) id: number) {
+  async getUser(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: IntrospectResponse,
+  ) {
+    await this.userService.assertOwnership(id, currentUser.sub);
     return this.userService.findUser(id);
   }
 
@@ -99,18 +109,11 @@ export class UserController {
   @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
   @ApiInternalServerErrorResponse({ description: 'Error al actualizar el usuario.', type: ErrorResponseDto })
   async updateUser(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
     @CurrentUser() currentUser: IntrospectResponse,
   ) {
     await this.userService.assertOwnership(id, currentUser.sub);
     return this.userService.updateUser(id, updateUserDto);
   }
-
-  @Get('public/status')
-  @ApiOperation({ summary: 'Estado del módulo de identidad' })
-  getPublicStatus() {
-    return { status: 'Identity Module is Running', authentication: 'Bypassed' };
-  }
 }
-

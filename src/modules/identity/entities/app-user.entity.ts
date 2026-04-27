@@ -3,7 +3,6 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
-  Generated,
   Index,
   JoinColumn,
   OneToOne,
@@ -15,17 +14,12 @@ import { FinancialProfile } from './financial-profile.entity';
 @Entity({ name: 'app_user', schema: 'identity' })
 export class AppUser {
   @PrimaryGeneratedColumn('identity', { type: 'bigint' })
-  id!: number;
+  id!: string;
 
-  @Column({ type: 'uuid', unique: true })
-  @Generated('uuid')
+  // UUID del usuario en Keycloak (campo 'sub' del JWT — nunca generado internamente)
+  @Column({ type: 'varchar', length: 36, unique: true, nullable: true })
   @Index('idx_user_external_id')
   external_id!: string;
-
-  // ID del usuario en Keycloak (campo 'sub' del token JWT)
-  @Column({ type: 'varchar', length: 36, unique: true, nullable: true })
-  @Index('idx_user_keycloak_id')
-  keycloak_id!: string;
 
   @Column({ type: 'citext', unique: true })
   username!: string;

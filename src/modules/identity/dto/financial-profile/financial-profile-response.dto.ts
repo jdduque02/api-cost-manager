@@ -7,7 +7,7 @@ import { Exclude, Expose } from 'class-transformer';
 @Exclude()
 export class FinancialProfileResponseDto {
   @Expose()
-  id: number;
+  id: string;
 
   @Expose()
   profile_name!: string;

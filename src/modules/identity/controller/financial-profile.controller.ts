@@ -6,7 +6,6 @@ import {
   Delete,
   Body,
   Param,
-  ParseIntPipe,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -49,7 +48,7 @@ export class FinancialProfileController {
   @ApiConflictResponse({ description: 'El usuario ya tiene un perfil financiero.', type: ErrorResponseDto })
   @ApiInternalServerErrorResponse({ description: 'Error al crear el perfil.', type: ErrorResponseDto })
   async create(
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param('userId') userId: string,
     @Body() createFinancialProfileDto: CreateFinancialProfileDto,
     @CurrentUser() currentUser: IntrospectResponse,
   ) {
@@ -62,7 +61,7 @@ export class FinancialProfileController {
   @ApiResponse({ status: HttpStatus.OK, description: 'Perfil financiero encontrado.', type: FinancialProfileResponseDto })
   @ApiNotFoundResponse({ description: 'El usuario no tiene perfil financiero.', type: ErrorResponseDto })
   async findOne(
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param('userId') userId: string,
     @CurrentUser() currentUser: IntrospectResponse,
   ) {
     await this.userService.assertOwnership(userId, currentUser.sub);
@@ -75,7 +74,7 @@ export class FinancialProfileController {
   @ApiNotFoundResponse({ description: 'El usuario no tiene perfil financiero.', type: ErrorResponseDto })
   @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
   async update(
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param('userId') userId: string,
     @Body() updateFinancialProfileDto: UpdateFinancialProfileDto,
     @CurrentUser() currentUser: IntrospectResponse,
   ) {
@@ -89,7 +88,7 @@ export class FinancialProfileController {
   @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Perfil financiero eliminado.' })
   @ApiNotFoundResponse({ description: 'El usuario no tiene perfil financiero.', type: ErrorResponseDto })
   async remove(
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param('userId') userId: string,
     @CurrentUser() currentUser: IntrospectResponse,
   ) {
     await this.userService.assertOwnership(userId, currentUser.sub);

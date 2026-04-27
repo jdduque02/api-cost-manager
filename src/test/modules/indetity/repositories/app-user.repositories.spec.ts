@@ -4,16 +4,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, QueryFailedError } from 'typeorm';
+import { QueryFailedError } from 'typeorm';
 import { UserRepository } from '@identity/repositories/app-user.repositories';
 import { AppUser } from '@identity/entities/app-user.entity';
 import { UserQueryDto } from '@identity/dto/user/user-query.dto';
 
 const buildUser = (overrides: Partial<AppUser> = {}): AppUser =>
   ({
-    id: 1,
-    external_id: 'ext-uuid',
-    keycloak_id: 'kc-uuid',
+    id: '1',
+    external_id: 'kc-uuid',
     username: 'testuser',
     email: 'test@test.com',
     locale: 'es-CO',
@@ -50,8 +49,6 @@ const mockTypeOrmRepo = {
   createQueryBuilder: jest.fn(),
 };
 
-const mockDataSource = {};
-
 describe('UserRepository', () => {
   let repo: UserRepository;
 
@@ -60,7 +57,6 @@ describe('UserRepository', () => {
       providers: [
         UserRepository,
         { provide: getRepositoryToken(AppUser), useValue: mockTypeOrmRepo },
-        { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
 
@@ -77,7 +73,7 @@ describe('UserRepository', () => {
       mockTypeOrmRepo.create.mockReturnValue(user);
       mockTypeOrmRepo.save.mockResolvedValue(user);
 
-      const result = await repo.create({ username: 'testuser', email: 'test@test.com', keycloak_id: 'kc-uuid' });
+      const result = await repo.create({ username: 'testuser', email: 'test@test.com', external_id: 'kc-uuid' });
       expect(mockTypeOrmRepo.create).toHaveBeenCalledTimes(1);
       expect(mockTypeOrmRepo.save).toHaveBeenCalledTimes(1);
       expect(result.username).toBe('testuser');
@@ -96,7 +92,7 @@ describe('UserRepository', () => {
       mockTypeOrmRepo.save.mockRejectedValue(pgError);
 
       await expect(
-        repo.create({ username: 'testuser', email: 'test@test.com', keycloak_id: 'kc-uuid' }),
+        repo.create({ username: 'testuser', email: 'test@test.com', external_id: 'kc-uuid' }),
       ).rejects.toThrow(ConflictException);
     });
   });
@@ -109,13 +105,13 @@ describe('UserRepository', () => {
       const user = buildUser();
       mockTypeOrmRepo.findOne.mockResolvedValue(user);
 
-      const result = await repo.findById(1);
-      expect(result.id).toBe(1);
+      const result = await repo.findById('1');
+      expect(result.id).toBe('1');
     });
 
     it('debe lanzar NotFoundException si el usuario no existe', async () => {
       mockTypeOrmRepo.findOne.mockResolvedValue(null);
-      await expect(repo.findById(99)).rejects.toThrow(NotFoundException);
+      await expect(repo.findById('99')).rejects.toThrow(NotFoundException);
     });
   });
 

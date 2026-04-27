@@ -8,7 +8,7 @@ import {
 import { of, throwError } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { AuthService } from '@auth/service/auth.service';
-import { KeycloakAdminService } from '@identity/service/keycloak-admin.service';
+import { KeycloakAdminService } from '@auth/service/keycloak-admin.service';
 import { LoginDto } from '@auth/dto/login.dto';
 import { RefreshTokenDto } from '@auth/dto/refresh-token.dto';
 

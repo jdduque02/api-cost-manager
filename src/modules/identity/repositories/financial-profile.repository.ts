@@ -19,7 +19,7 @@ export class FinancialProfileRepository {
     private readonly repo: Repository<FinancialProfile>,
   ) {}
 
-  async create(userId: number, dto: Omit<CreateFinancialProfileDto, 'user_id'>): Promise<FinancialProfile> {
+  async create(userId: string, dto: Omit<CreateFinancialProfileDto, 'user_id'>): Promise<FinancialProfile> {
     const existing = await this.repo.findOne({ where: { user_id: userId } });
     if (existing) {
       throw new ConflictException(`El usuario ${userId} ya tiene un perfil financiero.`);
@@ -31,7 +31,7 @@ export class FinancialProfileRepository {
     return saved;
   }
 
-  async findByUserId(userId: number): Promise<FinancialProfile> {
+  async findByUserId(userId: string): Promise<FinancialProfile> {
     const profile = await this.repo.findOne({ where: { user_id: userId } });
     if (!profile) {
       throw new NotFoundException(`El usuario ${userId} no tiene perfil financiero.`);
@@ -39,7 +39,7 @@ export class FinancialProfileRepository {
     return profile;
   }
 
-  async update(userId: number, dto: UpdateFinancialProfileDto): Promise<FinancialProfile> {
+  async update(userId: string, dto: UpdateFinancialProfileDto): Promise<FinancialProfile> {
     const profile = await this.findByUserId(userId);
     const updated = this.repo.merge(profile, dto);
     const result = await this.repo.save(updated);
@@ -47,7 +47,7 @@ export class FinancialProfileRepository {
     return result;
   }
 
-  async remove(userId: number): Promise<void> {
+  async remove(userId: string): Promise<void> {
     const profile = await this.findByUserId(userId);
     await this.repo.remove(profile);
     this.logger.log(`Perfil financiero eliminado para usuario ID: ${userId}`);

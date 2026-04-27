@@ -3,7 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { UserRepository } from '@identity/repositories/app-user.repositories';
-import { KeycloakAdminService } from './keycloak-admin.service';
+import { KeycloakAdminService } from '@auth/service/keycloak-admin.service';
 import { CreateUserDto } from '@identity/dto/user/create-user.dto';
 import { UpdateUserDto } from '@identity/dto/user/update-user.dto';
 import { UserQueryDto } from '@identity/dto/user/user-query.dto';
@@ -29,7 +29,7 @@ export class UserService {
     // 2. Persistir perfil en BD local; rollback en Keycloak si falla
     try {
       const { password: _pw, ...userPayload } = dto;
-      const user = await this.userRepository.create({ ...userPayload, keycloak_id: keycloakId });
+      const user = await this.userRepository.create({ ...userPayload, external_id: keycloakId });
       this.logger.log(`Usuario creado y sincronizado con Keycloak: ${user.id}`);
       return user;
     } catch (error) {
@@ -38,9 +38,9 @@ export class UserService {
     }
   }
 
-  async findUser(id: number) {
+  async findUser(id: string) {
     const cacheKey = `user_${id}`;
-    
+
     // 1. Intenta obtener de Redis (caché)
     const cachedUser = await this.cacheManager.get(cacheKey);
     if (cachedUser) {
@@ -61,7 +61,7 @@ export class UserService {
     return user;
   }
 
-  async updateUser(id: number, dto: UpdateUserDto) {
+  async updateUser(id: string, dto: UpdateUserDto) {
     const user = await this.userRepository.update(id, dto);
     await this.cacheManager.del(`user_${id}`);
     this.logger.log(`Cache invalidado para usuario ID: ${id}`);
@@ -76,9 +76,9 @@ export class UserService {
    * Verifica que el keycloakId del token sea el propietario del userId del path.
    * Lanza ForbiddenException si no coincide.
    */
-  async assertOwnership(userId: number, keycloakId: string | undefined): Promise<void> {
-    if (!keycloakId) throw new ForbiddenException('No se pudo verificar la identidad del solicitante.');
-    const user = await this.userRepository.findByKeycloakId(keycloakId);
+  async assertOwnership(userId: string, externalId: string | undefined): Promise<void> {
+    if (!externalId) throw new ForbiddenException('No se pudo verificar la identidad del solicitante.');
+    const user = await this.userRepository.findByExternalId(externalId);
     if (user?.id !== userId) {
       throw new ForbiddenException('No tienes permiso para acceder a este recurso.');
     }

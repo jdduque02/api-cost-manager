@@ -14,11 +14,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class CreateFinancialProfileDto {
   @ApiProperty({
     description: 'Identificador único del usuario asociado al perfil.',
-    example: 1,
+    example: '1',
   })
-  @IsNumber({}, { message: 'El ID del usuario debe ser un número válido.' })
+  @IsString({ message: 'El ID del usuario debe ser un texto.' })
   @IsNotEmpty({ message: 'El ID del usuario es obligatorio.' })
-  user_id!: number;
+  user_id!: string;
 
   @ApiPropertyOptional({
     description: 'Nombre descriptivo del perfil financiero.',

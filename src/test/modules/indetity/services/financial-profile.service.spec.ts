@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { FinancialProfileService } from '../../../../modules/identity/service/financial-profile.service';
-import { FinancialProfileRepository } from '@identity/repositories/financial-profile.repositorie';
+import { FinancialProfileRepository } from '@identity/repositories/financial-profile.repository';
 import { CreateFinancialProfileDto } from '@identity/dto/financial-profile/create-financial-profile.dto';
 import { UpdateFinancialProfileDto } from '@identity/dto/financial-profile/update-financial-profile.dto';
 import { FinancialProfile } from '@identity/entities/financial-profile.entity';
@@ -15,7 +15,7 @@ const mockRepo = {
 
 const buildProfile = (overrides: Partial<FinancialProfile> = {}): FinancialProfile =>
   ({
-    id: 1,
+    id: '1',
     user_id: 2,
     profile_name: 'Plan de Ahorro',
     is_custom: false,

@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { LoginDto } from '@auth/dto/login.dto';
 import { RefreshTokenDto } from '@auth/dto/refresh-token.dto';
-import { KeycloakAdminService } from '@identity/service/keycloak-admin.service';
+import { KeycloakAdminService } from '@auth/service/keycloak-admin.service';
 import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 import { KeycloakTokenResponse } from '@auth/interfaces/KeycloakTokenResponse.dto';
 

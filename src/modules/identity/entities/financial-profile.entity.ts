@@ -21,10 +21,10 @@ import { AppUser } from './app-user.entity';
 )
 export class FinancialProfile {
   @PrimaryGeneratedColumn('identity', { type: 'bigint' })
-  id!: number;
+  id!: string;
 
   @Column({ type: 'bigint' })
-  user_id!: number;
+  user_id!: string;
 
   @Column({ type: 'varchar', length: 50, default: '50-30-20' })
   profile_name!: string;
@@ -32,16 +32,16 @@ export class FinancialProfile {
   @Column({ type: 'boolean', default: false })
   is_custom!: boolean;
 
-  @Column({ type: 'numeric', precision: 5, scale: 2, default: 50.0 })
+  @Column({ type: 'numeric', precision: 5, scale: 2, default: 50 })
   needs_ratio!: number;
 
-  @Column({ type: 'numeric', precision: 5, scale: 2, default: 30.0 })
+  @Column({ type: 'numeric', precision: 5, scale: 2, default: 30 })
   wants_ratio!: number;
 
-  @Column({ type: 'numeric', precision: 5, scale: 2, default: 20.0 })
+  @Column({ type: 'numeric', precision: 5, scale: 2, default: 20 })
   savings_ratio!: number;
 
-  @Column({ type: 'numeric', precision: 5, scale: 2, default: 40.0 })
+  @Column({ type: 'numeric', precision: 5, scale: 2, default: 40 })
   max_debt_ratio!: number;
 
   @Column({ type: 'jsonb', default: '{}' })
