@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HttpModule } from '@nestjs/axios';
 import { FinancialProfileController } from '@identity/controller/financial-profile.controller';
@@ -15,7 +15,7 @@ import { AuthModule } from '../auth/auth.module';
   imports: [
     TypeOrmModule.forFeature([AppUser, FinancialProfile]),
     HttpModule,
-    AuthModule,
+    forwardRef(() => AuthModule),
   ],
   controllers: [FinancialProfileController, UserController],
   providers: [
@@ -24,5 +24,6 @@ import { AuthModule } from '../auth/auth.module';
     FinancialProfileService,
     UserService,
   ],
+  exports: [UserRepository],
 })
 export class IdentityModule {}

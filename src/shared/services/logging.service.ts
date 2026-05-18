@@ -7,12 +7,13 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 @Injectable()
-export class LoggingService { 
+export class LoggingService {
   private readonly logger = new Logger(LoggingService.name);
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) { }
 
   async sendLog(data: unknown, severity: string = 'INFO', context: string) {
+    console.log('log data', data);
     const logData = {
       severity,
       data,

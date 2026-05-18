@@ -15,8 +15,6 @@ import { FinancialProfile } from './financial-profile.entity';
 export class AppUser {
   @PrimaryGeneratedColumn('identity', { type: 'bigint' })
   id!: string;
-
-  // UUID del usuario en Keycloak (campo 'sub' del JWT — nunca generado internamente)
   @Column({ type: 'varchar', length: 36, unique: true, nullable: true })
   @Index('idx_user_external_id')
   external_id!: string;
@@ -52,6 +50,6 @@ export class AppUser {
 
   // ── Relaciones ──────────────────────────────────────────────
   @OneToOne(() => FinancialProfile, ({ user }) => user, { cascade: true })
-  @JoinColumn({ name: 'id', referencedColumnName: 'user_id' })
+  @JoinColumn({ name: 'financial_profile_id' })
   financial_profile!: FinancialProfile;
 }

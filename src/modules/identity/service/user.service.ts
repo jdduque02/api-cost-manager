@@ -26,13 +26,13 @@ export class UserService {
       password: dto.password,
     });
 
-    // 2. Persistir perfil en BD local; rollback en Keycloak si falla
     try {
       const { password: _pw, ...userPayload } = dto;
       const user = await this.userRepository.create({ ...userPayload, external_id: keycloakId });
       this.logger.log(`Usuario creado y sincronizado con Keycloak: ${user.id}`);
       return user;
     } catch (error) {
+      console.error(error);
       await this.keycloakAdminService.deleteUser(keycloakId);
       throw error;
     }
@@ -79,6 +79,7 @@ export class UserService {
   async assertOwnership(userId: string, externalId: string | undefined): Promise<void> {
     if (!externalId) throw new ForbiddenException('No se pudo verificar la identidad del solicitante.');
     const user = await this.userRepository.findByExternalId(externalId);
+    console.log(user?.id, userId);
     if (user?.id !== userId) {
       throw new ForbiddenException('No tienes permiso para acceder a este recurso.');
     }

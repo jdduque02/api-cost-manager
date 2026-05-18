@@ -29,4 +29,7 @@ export class IntrospectResponse {
 
   @ApiPropertyOptional({ example: 245, description: 'Segundos restantes de vigencia del token' })
   expires_in_seconds?: number;
+
+  @ApiPropertyOptional({ example: 1234567890, description: 'ID del usuario en PostgreSQL' })
+  userId?: number;
 }

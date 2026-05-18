@@ -92,6 +92,18 @@ export class UserRepository {
     return this.repo.findOne({ where: { external_id: externalId, deleted_at: IsNull() } });
   }
 
+  async findByUsername(username: string): Promise<AppUser> {
+    const user = await this.repo.findOne({
+      where: { username, deleted_at: IsNull() },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`Usuario con username "${username}" no encontrado.`);
+    }
+
+    return user;
+  }
+
   // ─────────────────────────────────────────────────────────────
   // UPDATE
   // ─────────────────────────────────────────────────────────────

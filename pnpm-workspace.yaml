@@ -1,0 +1,6 @@
+allowBuilds:
+  '@nestjs/core': true
+  '@scarf/scarf': true
+  bcrypt: true
+  chromedriver: true
+  unrs-resolver: true

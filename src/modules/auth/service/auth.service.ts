@@ -3,6 +3,8 @@ import {
   Logger,
   UnauthorizedException,
   InternalServerErrorException,
+  forwardRef,
+  Inject,
 } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
@@ -12,6 +14,7 @@ import { RefreshTokenDto } from '@auth/dto/refresh-token.dto';
 import { KeycloakAdminService } from '@auth/service/keycloak-admin.service';
 import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 import { KeycloakTokenResponse } from '@auth/interfaces/KeycloakTokenResponse.dto';
+import { UserRepository } from '@identity/repositories/app-user.repositories';
 
 
 
@@ -28,6 +31,8 @@ export class AuthService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
     private readonly keycloakAdminService: KeycloakAdminService,
+    @Inject(forwardRef(() => UserRepository))
+    private readonly userRepository: UserRepository,
   ) {
     this.baseUrl = this.configService.get<string>('KEYCLOAK_URL')!;
     this.realm = this.configService.get<string>('KEYCLOAK_REALM')!;
@@ -159,6 +164,8 @@ export class AuthService {
       const now = Math.floor(Date.now() / 1000);
       const expiresInSeconds = data.exp ? data.exp - now : undefined;
 
+      const {id:userId} = await this.userRepository.findByUsername(data.preferred_username);
+
       return {
         active: true,
         exp: data.exp,
@@ -168,6 +175,7 @@ export class AuthService {
         email: data.email,
         realm_access: data.realm_access,
         expires_in_seconds: expiresInSeconds,
+        userId: Number.parseInt(userId, 10),
       };
     } catch (error: any) {
       if (error instanceof UnauthorizedException) throw error;

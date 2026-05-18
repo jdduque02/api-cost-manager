@@ -40,6 +40,11 @@ async function bootstrap() {
   if (!cookieSecret) throw new Error('COOKIE_SECRET env var no está definida.');
   app.use(cookieParser(cookieSecret));
 
+  // Global Prefix for all routes (e.g., /api/v1)
+  const apiVersion = configService.get<string>('VERSION') ?? '1';
+  const globalPrefix = `api/v${apiVersion}`;
+  app.setGlobalPrefix(globalPrefix);
+
   const config = getSwaggerConfig(configService);
 
   const documentFactory = () => SwaggerModule.createDocument(app, config);
