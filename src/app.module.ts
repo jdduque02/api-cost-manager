@@ -11,6 +11,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { BankingModule } from './modules/banking/banking.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { FinanceModule } from './modules/finance/finance.module';
+import { IntelligenceModule } from './modules/intelligence/intelligence.module';
 import { ResponseInterceptor } from '@shared/interceptors/response.interceptor';
 import { ErrorsInterceptor } from '@shared/interceptors/error.interceptor';
 import { HttpExceptionFilter } from '@shared/filters/http-exception.filter';
@@ -35,6 +36,7 @@ import { getKeycloakConfig } from '@config/keycloak.config';
     BankingModule,
     CatalogModule,
     FinanceModule,
+    IntelligenceModule,
     KeycloakConnectModule.registerAsync({
       useFactory: getKeycloakConfig,
       inject: [ConfigService],
