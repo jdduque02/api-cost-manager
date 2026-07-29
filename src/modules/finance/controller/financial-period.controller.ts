@@ -28,20 +28,35 @@ import { CreateFinancialPeriodDto } from '@finance/dto/financial-period/create-f
 import { FinancialPeriodResponseDto } from '@finance/dto/financial-period/financial-period-response.dto';
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 
-@ApiTags('finance / periods')
+@ApiTags('finance')
 @UseGuards(AuthGuard)
 @ApiIntrospectGuardResponse()
 @Controller('users/:userId/financial-periods')
 export class FinancialPeriodController {
-  constructor(private readonly financialPeriodService: FinancialPeriodService) {}
+  constructor(
+    private readonly financialPeriodService: FinancialPeriodService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Crear período financiero mensual' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'Período creado.', type: FinancialPeriodResponseDto })
-  @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
-  @ApiConflictResponse({ description: 'Ya existe un período para ese mes/año.', type: ErrorResponseDto })
-  @ApiInternalServerErrorResponse({ description: 'Error al crear el período.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Período creado.',
+    type: FinancialPeriodResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Datos de entrada inválidos.',
+    type: ErrorResponseDto,
+  })
+  @ApiConflictResponse({
+    description: 'Ya existe un período para ese mes/año.',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Error al crear el período.',
+    type: ErrorResponseDto,
+  })
   async create(
     @Param('userId', ParseIntPipe) userId: number,
     @Body() dto: CreateFinancialPeriodDto,
@@ -53,7 +68,11 @@ export class FinancialPeriodController {
   @Get()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Listar períodos financieros del usuario' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Períodos del usuario.', type: [FinancialPeriodResponseDto] })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Períodos del usuario.',
+    type: [FinancialPeriodResponseDto],
+  })
   async findAll(
     @Param('userId', ParseIntPipe) userId: number,
     @CurrentUser() _currentUser: IntrospectResponse,
@@ -64,8 +83,15 @@ export class FinancialPeriodController {
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Obtener período financiero por ID' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Período encontrado.', type: FinancialPeriodResponseDto })
-  @ApiNotFoundResponse({ description: 'Período no encontrado.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Período encontrado.',
+    type: FinancialPeriodResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Período no encontrado.',
+    type: ErrorResponseDto,
+  })
   async findOne(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,
@@ -77,9 +103,19 @@ export class FinancialPeriodController {
   @Patch(':id/close')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cerrar período financiero' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Período cerrado.', type: FinancialPeriodResponseDto })
-  @ApiNotFoundResponse({ description: 'Período no encontrado.', type: ErrorResponseDto })
-  @ApiConflictResponse({ description: 'El período ya está cerrado.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Período cerrado.',
+    type: FinancialPeriodResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Período no encontrado.',
+    type: ErrorResponseDto,
+  })
+  @ApiConflictResponse({
+    description: 'El período ya está cerrado.',
+    type: ErrorResponseDto,
+  })
   async close(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,

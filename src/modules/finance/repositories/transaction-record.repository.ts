@@ -1,5 +1,6 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { Between, IsNull, Repository } from 'typeorm';
 import { TransactionRecord } from '@finance/entities/transaction-record.entity';
 import { CreateTransactionRecordDto } from '@finance/dto/transaction-record/create-transaction-record.dto';
@@ -13,6 +14,7 @@ export class TransactionRecordRepository {
   constructor(
     @InjectRepository(TransactionRecord)
     private readonly repo: Repository<TransactionRecord>,
+    @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
   async create(userId: number, dto: CreateTransactionRecordDto): Promise<TransactionRecord> {
@@ -46,7 +48,7 @@ export class TransactionRecordRepository {
 
   async findById(id: number, userId: number): Promise<TransactionRecord> {
     const record = await this.repo.findOne({ where: { id, user_id: userId, deleted_at: IsNull() } });
-    if (!record) throw new NotFoundException(`Transacción con id ${id} no encontrada.`);
+    if (!record) throw new NotFoundException(this.i18n.t('finance.TRANSACTION_NOT_FOUND', { args: { id } }));
     return record;
   }
 

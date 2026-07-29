@@ -29,19 +29,31 @@ import { UpdateFinancialLiabilityDto } from '@banking/dto/financial-liability/up
 import { FinancialLiabilityResponseDto } from '@banking/dto/financial-liability/financial-liability-response.dto';
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 
-@ApiTags('banking / financial-liabilities')
+@ApiTags('banking')
 @UseGuards(AuthGuard)
 @ApiIntrospectGuardResponse()
 @Controller('users/:userId/financial-liabilities')
 export class FinancialLiabilityController {
-  constructor(private readonly financialLiabilityService: FinancialLiabilityService) {}
+  constructor(
+    private readonly financialLiabilityService: FinancialLiabilityService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Registrar nuevo pasivo financiero' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'Pasivo creado exitosamente.', type: FinancialLiabilityResponseDto })
-  @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
-  @ApiInternalServerErrorResponse({ description: 'Error al crear el pasivo.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Pasivo creado exitosamente.',
+    type: FinancialLiabilityResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Datos de entrada inválidos.',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Error al crear el pasivo.',
+    type: ErrorResponseDto,
+  })
   async create(
     @Param('userId', ParseIntPipe) userId: number,
     @Body() dto: CreateFinancialLiabilityDto,
@@ -53,7 +65,11 @@ export class FinancialLiabilityController {
   @Get()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Listar pasivos financieros del usuario' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Pasivos del usuario.', type: [FinancialLiabilityResponseDto] })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Pasivos del usuario.',
+    type: [FinancialLiabilityResponseDto],
+  })
   async findAll(
     @Param('userId', ParseIntPipe) userId: number,
     @CurrentUser() _currentUser: IntrospectResponse,
@@ -64,8 +80,15 @@ export class FinancialLiabilityController {
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Obtener pasivo financiero por ID' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Pasivo encontrado.', type: FinancialLiabilityResponseDto })
-  @ApiNotFoundResponse({ description: 'Pasivo no encontrado.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Pasivo encontrado.',
+    type: FinancialLiabilityResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Pasivo no encontrado.',
+    type: ErrorResponseDto,
+  })
   async findOne(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,
@@ -77,9 +100,19 @@ export class FinancialLiabilityController {
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Actualizar pasivo financiero' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Pasivo actualizado.', type: FinancialLiabilityResponseDto })
-  @ApiNotFoundResponse({ description: 'Pasivo no encontrado.', type: ErrorResponseDto })
-  @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Pasivo actualizado.',
+    type: FinancialLiabilityResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Pasivo no encontrado.',
+    type: ErrorResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Datos de entrada inválidos.',
+    type: ErrorResponseDto,
+  })
   async update(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,
@@ -92,8 +125,14 @@ export class FinancialLiabilityController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Eliminar pasivo financiero (soft delete)' })
-  @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Pasivo eliminado.' })
-  @ApiNotFoundResponse({ description: 'Pasivo no encontrado.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Pasivo eliminado.',
+  })
+  @ApiNotFoundResponse({
+    description: 'Pasivo no encontrado.',
+    type: ErrorResponseDto,
+  })
   async remove(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,

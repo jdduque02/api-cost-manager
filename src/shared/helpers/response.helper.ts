@@ -80,8 +80,8 @@ interface ErrorOptions<TBody = unknown> {
  * ```
  */
 export class ResponseHelper {
-  private static readonly DEFAULT_SUCCESS_MESSAGE = 'Operación exitosa';
-  private static readonly DEFAULT_ERROR_MESSAGE = 'Error interno del servidor';
+  static readonly DEFAULT_SUCCESS_MESSAGE = 'shared.SUCCESS';
+  static readonly DEFAULT_ERROR_MESSAGE = 'shared.INTERNAL_ERROR';
 
   /**
    * Crea una respuesta exitosa estructurada y tipada
@@ -136,7 +136,7 @@ export class ResponseHelper {
    */
   static validationError(
     validationErrors: string[] | Record<string, string[]>,
-    message: string = 'Errores de validación',
+    message: string = 'shared.VALIDATION_ERRORS',
   ): ErrorApiResponse<{ validationErrors: string[] | Record<string, string[]> }> {
     return this.error(message, {
       status: HttpStatus.BAD_REQUEST,
@@ -171,7 +171,7 @@ export class ResponseHelper {
    * @param message - Mensaje personalizado (opcional)
    * @returns Respuesta de error 401
    */
-  static unauthorized(message: string = 'No autorizado'): ErrorApiResponse<null> {
+  static unauthorized(message: string = 'shared.UNAUTHORIZED'): ErrorApiResponse<null> {
     return this.error(message, {
       status: HttpStatus.UNAUTHORIZED,
     });
@@ -183,7 +183,7 @@ export class ResponseHelper {
    * @param message - Mensaje personalizado (opcional)
    * @returns Respuesta de error 403
    */
-  static forbidden(message: string = 'Acceso prohibido'): ErrorApiResponse<null> {
+  static forbidden(message: string = 'shared.FORBIDDEN'): ErrorApiResponse<null> {
     return this.error(message, {
       status: HttpStatus.FORBIDDEN,
     });

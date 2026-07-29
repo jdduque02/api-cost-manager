@@ -1,5 +1,6 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { Repository } from 'typeorm';
 import { FinancialPeriod } from '@finance/entities/financial-period.entity';
 import { CreateFinancialPeriodDto } from '@finance/dto/financial-period/create-financial-period.dto';
@@ -11,11 +12,12 @@ export class FinancialPeriodRepository {
   constructor(
     @InjectRepository(FinancialPeriod)
     private readonly repo: Repository<FinancialPeriod>,
+    @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
   async create(userId: number, dto: CreateFinancialPeriodDto): Promise<FinancialPeriod> {
     const existing = await this.repo.findOne({ where: { user_id: userId, year: dto.year, month: dto.month } });
-    if (existing) throw new ConflictException(`Ya existe un período ${dto.year}-${dto.month} para este usuario.`);
+    if (existing) throw new ConflictException(this.i18n.t('finance.PERIOD_DUPLICATE', { args: { year: dto.year, month: dto.month } }));
 
     const period = this.repo.create({ ...dto, user_id: userId });
     const saved = await this.repo.save(period);
@@ -29,13 +31,13 @@ export class FinancialPeriodRepository {
 
   async findById(id: number, userId: number): Promise<FinancialPeriod> {
     const period = await this.repo.findOne({ where: { id, user_id: userId } });
-    if (!period) throw new NotFoundException(`Período financiero con id ${id} no encontrado.`);
+    if (!period) throw new NotFoundException(this.i18n.t('finance.PERIOD_NOT_FOUND', { args: { id } }));
     return period;
   }
 
   async close(id: number, userId: number): Promise<FinancialPeriod> {
     const period = await this.findById(id, userId);
-    if (period.is_closed) throw new ConflictException(`El período ${period.year}-${period.month} ya está cerrado.`);
+    if (period.is_closed) throw new ConflictException(this.i18n.t('finance.PERIOD_CLOSED', { args: { year: period.year, month: period.month } }));
     period.is_closed = true;
     period.closed_at = new Date();
     const saved = await this.repo.save(period);

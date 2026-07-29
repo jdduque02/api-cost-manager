@@ -1,5 +1,6 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { IsNull, Repository } from 'typeorm';
 import { FinancialAsset } from '@banking/entities/financial-asset.entity';
 import { CreateFinancialAssetDto } from '@banking/dto/financial-asset/create-financial-asset.dto';
@@ -12,6 +13,7 @@ export class FinancialAssetRepository {
   constructor(
     @InjectRepository(FinancialAsset)
     private readonly repo: Repository<FinancialAsset>,
+    @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
   async create(userId: number, dto: CreateFinancialAssetDto): Promise<FinancialAsset> {
@@ -27,7 +29,7 @@ export class FinancialAssetRepository {
 
   async findById(id: number, userId: number): Promise<FinancialAsset> {
     const asset = await this.repo.findOne({ where: { id, user_id: userId, deleted_at: IsNull() } });
-    if (!asset) throw new NotFoundException(`Activo financiero con id ${id} no encontrado.`);
+    if (!asset) throw new NotFoundException(this.i18n.t('banking.ASSET_NOT_FOUND', { args: { id } }));
     return asset;
   }
 

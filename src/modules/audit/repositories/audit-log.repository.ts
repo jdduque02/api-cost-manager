@@ -31,12 +31,25 @@ export class AuditLogRepository {
     }
   }
 
-  async findAll(query: AuditLogQueryDto): Promise<{ data: AuditLog[]; total: number }> {
-    const { schema_name, table_name, record_id, changed_by, action, page = 1, limit = 20 } = query;
+  async findAll(
+    query: AuditLogQueryDto,
+  ): Promise<{ data: AuditLog[]; total: number }> {
+    const {
+      schema_name,
+      table_name,
+      record_id,
+      changed_by,
+      action,
+      page = 1,
+      limit = 20,
+    } = query;
 
-    const qb = this.repo.createQueryBuilder('al').orderBy('al.created_at', 'DESC');
+    const qb = this.repo
+      .createQueryBuilder('al')
+      .orderBy('al.created_at', 'DESC');
 
-    if (schema_name) qb.andWhere('al.schema_name = :schema_name', { schema_name });
+    if (schema_name)
+      qb.andWhere('al.schema_name = :schema_name', { schema_name });
     if (table_name) qb.andWhere('al.table_name = :table_name', { table_name });
     if (record_id) qb.andWhere('al.record_id = :record_id', { record_id });
     if (changed_by) qb.andWhere('al.changed_by = :changed_by', { changed_by });
@@ -49,7 +62,10 @@ export class AuditLogRepository {
     return { data, total };
   }
 
-  async findByUser(userId: number, query: AuditLogQueryDto): Promise<{ data: AuditLog[]; total: number }> {
+  async findByUser(
+    userId: number,
+    query: AuditLogQueryDto,
+  ): Promise<{ data: AuditLog[]; total: number }> {
     return this.findAll({ ...query, changed_by: userId });
   }
 }

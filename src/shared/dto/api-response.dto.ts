@@ -13,7 +13,7 @@ export class ApiResponseDto<T = unknown> {
   }
 
   /** Respuesta exitosa */
-  static success<T>(data: T[], message = 'Operación exitosa'): ApiResponseDto<T> {
+  static success<T>(data: T[], message: string): ApiResponseDto<T> {
     return new ApiResponseDto<T>({
       status: true,
       message,

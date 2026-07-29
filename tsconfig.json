@@ -25,7 +25,9 @@
       "@config/*": ["./src/config/*"],
       "@common/*": ["./src/common/*"],
       "@shared/*": ["./src/shared/*"],
-      "@notification/*": ["./src/modules/notification/*"]
+      "@notification/*": ["./src/modules/notification/*"],
+      "@intelligence/*": ["./src/modules/intelligence/*"],
+      "@news/*": ["./src/modules/news/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

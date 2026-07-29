@@ -33,7 +33,7 @@ import { ApiIntrospectGuardResponse } from '@auth/decorators/api-introspect-guar
 import { CurrentUser } from '@auth/decorators/current-user.decorator';
 import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 
-@ApiTags('users')
+@ApiTags('identity')
 @ApiExtraModels(UserResponseDto)
 @Controller('user')
 export class UserController {
@@ -42,9 +42,19 @@ export class UserController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Registrar nuevo usuario' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'Usuario creado exitosamente.', type: UserResponseDto })
-  @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
-  @ApiInternalServerErrorResponse({ description: 'Error al crear usuario en Keycloak o BD.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Usuario creado exitosamente.',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Datos de entrada inválidos.',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Error al crear usuario en Keycloak o BD.',
+    type: ErrorResponseDto,
+  })
   async createUser(@Body() createUserDto: CreateUserDto) {
     return this.userService.createUser(createUserDto);
   }
@@ -60,8 +70,18 @@ export class UserController {
   @ApiIntrospectGuardResponse()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Listar usuarios paginados' })
-  @ApiQuery({ name: 'page', required: false, example: 1, description: 'Número de página (desde 1)' })
-  @ApiQuery({ name: 'limit', required: false, example: 20, description: 'Resultados por página (máx. 100)' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    example: 1,
+    description: 'Número de página (desde 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    example: 20,
+    description: 'Resultados por página (máx. 100)',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Listado paginado de usuarios.',
@@ -78,7 +98,10 @@ export class UserController {
       },
     },
   })
-  @ApiUnauthorizedResponse({ description: 'Token inválido o ausente.', type: ErrorResponseDto })
+  @ApiUnauthorizedResponse({
+    description: 'Token inválido o ausente.',
+    type: ErrorResponseDto,
+  })
   async findAll(
     @Query('page', new ParseIntPipe({ optional: true })) page = 1,
     @Query('limit', new ParseIntPipe({ optional: true })) limit = 20,
@@ -90,8 +113,15 @@ export class UserController {
   @UseGuards(AuthGuard)
   @ApiIntrospectGuardResponse()
   @ApiOperation({ summary: 'Obtener usuario por ID' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Usuario encontrado.', type: UserResponseDto })
-  @ApiNotFoundResponse({ description: 'Usuario no encontrado.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Usuario encontrado.',
+    type: UserResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Usuario no encontrado.',
+    type: ErrorResponseDto,
+  })
   async getUser(
     @Param('id') id: string,
     @CurrentUser() currentUser: IntrospectResponse,
@@ -104,10 +134,23 @@ export class UserController {
   @UseGuards(AuthGuard)
   @ApiIntrospectGuardResponse()
   @ApiOperation({ summary: 'Actualizar información del usuario' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Usuario actualizado exitosamente.', type: UserResponseDto })
-  @ApiNotFoundResponse({ description: 'Usuario no encontrado.', type: ErrorResponseDto })
-  @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
-  @ApiInternalServerErrorResponse({ description: 'Error al actualizar el usuario.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Usuario actualizado exitosamente.',
+    type: UserResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Usuario no encontrado.',
+    type: ErrorResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Datos de entrada inválidos.',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Error al actualizar el usuario.',
+    type: ErrorResponseDto,
+  })
   async updateUser(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,

@@ -6,12 +6,14 @@ import {
   HttpException,
   InternalServerErrorException,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 import { LoggingService } from '@shared/services/logging.service';
+import { I18nService } from 'nestjs-i18n';
 import { Request } from 'express';
 @Injectable()
 /**
@@ -37,7 +39,10 @@ import { Request } from 'express';
  * @implements NestInterceptor
  */
 export class ErrorsInterceptor implements NestInterceptor {
-  constructor(private readonly loggingService: LoggingService) {}
+  constructor(
+    private readonly loggingService: LoggingService,
+    @Inject(I18nService) private readonly i18n: I18nService,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request: Request = context.switchToHttp().getRequest();
@@ -50,7 +55,7 @@ export class ErrorsInterceptor implements NestInterceptor {
 
         let status = HttpStatus.INTERNAL_SERVER_ERROR;
         let error = 'Internal Server Error';
-        let message = 'An unexpected error occurred. Please try again later.';
+        let message = this.i18n.t('shared.UNEXPECTED_SERVER');
         let details: any[] = [];
         let stackTrace: string | undefined = undefined;
 

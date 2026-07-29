@@ -12,6 +12,7 @@ import {
 import { Inject, Logger, UseFilters, UsePipes, ValidationPipe, forwardRef } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { ConfigService } from '@nestjs/config';
+import { I18nService } from 'nestjs-i18n';
 import {
   NOTIFICATION_EVENTS,
   NOTIFICATION_ROOMS,
@@ -48,6 +49,7 @@ export class NotificationGateway
     private readonly configService: ConfigService,
     @Inject(forwardRef(() => AuthService))
     private readonly authService: AuthService,
+    @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
   afterInit(server: Server): void {
@@ -60,7 +62,7 @@ export class NotificationGateway
         socket.handshake.headers?.authorization?.replace('Bearer ', '');
 
       if (!token) {
-        return next(new WsException('Token de autenticación requerido'));
+        return next(new WsException(this.i18n.t('notification.AUTH_TOKEN_REQUIRED')));
       }
 
       try {
@@ -70,7 +72,7 @@ export class NotificationGateway
         socket.data.user = user;
         next();
       } catch {
-        next(new WsException('Token inválido o expirado'));
+        next(new WsException(this.i18n.t('notification.AUTH_TOKEN_INVALID')));
       }
     });
   }

@@ -25,13 +25,30 @@ services:
       - redis_data:/data
     restart: unless-stopped
 
+  # Base de Datos (PostgreSQL)
+  postgres:
+    image: postgres:16-alpine
+    container_name: cost_manager_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: cost_manager
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+
   # Proveedor de Identidad (Keycloak)
   keycloak:
     image: quay.io/keycloak/keycloak:26.1.2 # Última versión estable recomendada
     container_name: cost_manager_keycloak
+    depends_on:
+      - postgres
     environment:
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://host.docker.internal:5432/cost_manager
+      KC_DB_URL: jdbc:postgresql://postgres:5432/cost_manager
       KC_DB_USERNAME: postgres
       KC_DB_PASSWORD: 1234
       KEYCLOAK_ADMIN: admin
@@ -58,6 +75,7 @@ services:
 volumes:
   rabbitmq_data:
   redis_data:
+  postgres_data:
   sonar_data:
   sonar_extensions:
   sonar_logs:

@@ -6,7 +6,10 @@ import helmet from 'helmet';
 import { getHelmetConfig } from '@config/helmet.config';
 import { getCorsConfig } from '@config/cors.config';
 import { getSwaggerConfig } from '@config/swagger.config';
-import { ValidationPipe } from '@nestjs/common';
+import { getSwaggerCustomCss, getSwaggerCustomJs } from '@config/swagger-ui.config';
+import { I18nValidationPipe, I18nValidationExceptionFilter } from 'nestjs-i18n';
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
 
 import cookieParser from 'cookie-parser';
 import { ConfigService } from '@nestjs/config';
@@ -21,14 +24,17 @@ async function bootstrap() {
 
   app.connectMicroservice(getRabbitMQConfig(configService));
 
-  // Pipe global de validación: aplica class-validator en todos los DTOs
+  // Pipe global de validación con i18n: traduce mensajes de class-validator automáticamente
   app.useGlobalPipes(
-    new ValidationPipe({
+    new I18nValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
     }),
   );
+
+  // Filtro global de errores de validación i18n
+  app.useGlobalFilters(new I18nValidationExceptionFilter());
 
   // --- Security setup ---
   // Helmet helps protect your app from some well-known web vulnerabilities by setting HTTP headers appropriately
@@ -45,17 +51,34 @@ async function bootstrap() {
   const globalPrefix = `api/v${apiVersion}`;
   app.setGlobalPrefix(globalPrefix);
 
+  // --- Swagger ---
   const config = getSwaggerConfig(configService);
-
   const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup(`api/v${configService.get<string>('VERSION')}/docs`, app, documentFactory);
+
+  const logoCandidates = [
+    join(__dirname, '..', 'public', 'logo.svg'),
+    join(__dirname, '..', '..', 'public', 'logo.svg'),
+  ];
+  const logoPath = logoCandidates.find((p) => existsSync(p));
+  if (!logoPath) throw new Error('logo.svg not found');
+  const logoBase64 = readFileSync(logoPath).toString('base64');
+
+  const swaggerVersion = configService.get<string>('VERSION') ?? '1';
+  SwaggerModule.setup(`api/v${swaggerVersion}/docs`, app, documentFactory, {
+    customCss: getSwaggerCustomCss(),
+    customJs: getSwaggerCustomJs(logoBase64),
+    customSiteTitle: 'Cost Manager API Docs',
+    customfavIcon: `data:image/svg+xml;base64,${logoBase64}`,
+    jsonDocumentUrl: `api/v${swaggerVersion}/docs-json`,
+    yamlDocumentUrl: `api/v${swaggerVersion}/docs-yaml`,
+  });
 
   // Using port from environment variable or 3000 as fallback
   const port = configService.get<number>('PORT') ?? 3000;
   await app.startAllMicroservices();
   await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}/api/v${configService.get<string>('VERSION')}`);
-  console.log(`Swagger Docs available at: http://localhost:${port}/api/v${configService.get<string>('VERSION')}/docs`);
+  console.log(`Application is running on: http://localhost:${port}/api/v${swaggerVersion}`);
+  console.log(`Swagger Docs available at: http://localhost:${port}/api/v${swaggerVersion}/docs`);
   console.log('RabbitMQ transport connected and listening for messages.');
 }
 bootstrap();

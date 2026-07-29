@@ -1,4 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common';
+import { I18nContext } from 'nestjs-i18n';
 
 /**
  * Extrae el Bearer token del header Authorization.
@@ -6,8 +7,9 @@ import { UnauthorizedException } from '@nestjs/common';
  */
 export function extractBearerToken(authorization: string | undefined): string {
   if (!authorization?.startsWith('Bearer ')) {
+    const i18n = I18nContext.current();
     throw new UnauthorizedException(
-      'Se requiere un Bearer token en el header Authorization.',
+      i18n?.t('shared.BEARER_REQUIRED') ?? 'Se requiere un Bearer token en el header Authorization.',
     );
   }
   return authorization.slice(7);

@@ -30,7 +30,7 @@ import { UpdateFinancialProfileDto } from '@identity/dto/financial-profile/updat
 import { FinancialProfileResponseDto } from '@identity/dto/financial-profile/financial-profile-response.dto';
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 
-@ApiTags('financial-profile')
+@ApiTags('identity')
 @UseGuards(AuthGuard)
 @ApiIntrospectGuardResponse()
 @Controller('user/:userId/financial-profile')
@@ -43,23 +43,46 @@ export class FinancialProfileController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Crear perfil financiero del usuario' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'Perfil financiero creado.', type: FinancialProfileResponseDto })
-  @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
-  @ApiConflictResponse({ description: 'El usuario ya tiene un perfil financiero.', type: ErrorResponseDto })
-  @ApiInternalServerErrorResponse({ description: 'Error al crear el perfil.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Perfil financiero creado.',
+    type: FinancialProfileResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Datos de entrada inválidos.',
+    type: ErrorResponseDto,
+  })
+  @ApiConflictResponse({
+    description: 'El usuario ya tiene un perfil financiero.',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Error al crear el perfil.',
+    type: ErrorResponseDto,
+  })
   async create(
     @Param('userId') userId: string,
     @Body() createFinancialProfileDto: CreateFinancialProfileDto,
     @CurrentUser() currentUser: IntrospectResponse,
   ) {
     await this.userService.assertOwnership(userId, currentUser.sub);
-    return this.financialProfileService.create(userId, createFinancialProfileDto);
+    return this.financialProfileService.create(
+      userId,
+      createFinancialProfileDto,
+    );
   }
 
   @Get()
   @ApiOperation({ summary: 'Obtener perfil financiero del usuario' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Perfil financiero encontrado.', type: FinancialProfileResponseDto })
-  @ApiNotFoundResponse({ description: 'El usuario no tiene perfil financiero.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Perfil financiero encontrado.',
+    type: FinancialProfileResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'El usuario no tiene perfil financiero.',
+    type: ErrorResponseDto,
+  })
   async findOne(
     @Param('userId') userId: string,
     @CurrentUser() currentUser: IntrospectResponse,
@@ -70,23 +93,42 @@ export class FinancialProfileController {
 
   @Patch()
   @ApiOperation({ summary: 'Actualizar perfil financiero del usuario' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Perfil financiero actualizado.', type: FinancialProfileResponseDto })
-  @ApiNotFoundResponse({ description: 'El usuario no tiene perfil financiero.', type: ErrorResponseDto })
-  @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Perfil financiero actualizado.',
+    type: FinancialProfileResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'El usuario no tiene perfil financiero.',
+    type: ErrorResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Datos de entrada inválidos.',
+    type: ErrorResponseDto,
+  })
   async update(
     @Param('userId') userId: string,
     @Body() updateFinancialProfileDto: UpdateFinancialProfileDto,
     @CurrentUser() currentUser: IntrospectResponse,
   ) {
     await this.userService.assertOwnership(userId, currentUser.sub);
-    return this.financialProfileService.update(userId, updateFinancialProfileDto);
+    return this.financialProfileService.update(
+      userId,
+      updateFinancialProfileDto,
+    );
   }
 
   @Delete()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Eliminar perfil financiero del usuario' })
-  @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Perfil financiero eliminado.' })
-  @ApiNotFoundResponse({ description: 'El usuario no tiene perfil financiero.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Perfil financiero eliminado.',
+  })
+  @ApiNotFoundResponse({
+    description: 'El usuario no tiene perfil financiero.',
+    type: ErrorResponseDto,
+  })
   async remove(
     @Param('userId') userId: string,
     @CurrentUser() currentUser: IntrospectResponse,

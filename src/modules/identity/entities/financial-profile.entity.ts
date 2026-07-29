@@ -47,6 +47,9 @@ export class FinancialProfile {
   @Column({ type: 'jsonb', default: '{}' })
   metadata!: Record<string, unknown>;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  monthly_income!: string | null;
+
   @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 

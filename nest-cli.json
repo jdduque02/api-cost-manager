@@ -3,6 +3,16 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
-    "deleteOutDir": true
+    "deleteOutDir": true,
+    "assets": [
+      {
+        "include": "public/**/*",
+        "outDir": "dist/public"
+      },
+      {
+        "include": "i18n/**/*",
+        "outDir": "dist/src"
+      }
+    ]
   }
 }

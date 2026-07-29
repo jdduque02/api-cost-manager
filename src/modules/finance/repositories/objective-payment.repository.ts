@@ -1,5 +1,6 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { Repository } from 'typeorm';
 import { ObjectivePayment } from '@finance/entities/objective-payment.entity';
 import { CreateObjectivePaymentDto } from '@finance/dto/objective-payment/create-objective-payment.dto';
@@ -11,6 +12,7 @@ export class ObjectivePaymentRepository {
   constructor(
     @InjectRepository(ObjectivePayment)
     private readonly repo: Repository<ObjectivePayment>,
+    @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
   async create(userId: number, dto: CreateObjectivePaymentDto): Promise<ObjectivePayment> {
@@ -29,7 +31,7 @@ export class ObjectivePaymentRepository {
 
   async findById(id: number, userId: number): Promise<ObjectivePayment> {
     const payment = await this.repo.findOne({ where: { id, user_id: userId } });
-    if (!payment) throw new NotFoundException(`Pago con id ${id} no encontrado.`);
+    if (!payment) throw new NotFoundException(this.i18n.t('finance.PAYMENT_NOT_FOUND', { args: { id } }));
     return payment;
   }
 

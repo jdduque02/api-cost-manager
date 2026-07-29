@@ -53,6 +53,12 @@ export class FinancialObjective {
   @Column({ type: 'varchar', length: 100, nullable: true })
   owner!: string;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  bank!: string | null;
+
+  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true })
+  current_profitability!: number | null;
+
   @Column({
     type: 'enum',
     enum: FrequencyEnum,
@@ -72,6 +78,9 @@ export class FinancialObjective {
 
   @Column({ type: 'boolean', default: false })
   is_completed!: boolean;
+
+  @Column({ type: 'jsonb', nullable: true })
+  quota_calculation!: Record<string, unknown> | null;
 
   @Column({ type: 'timestamp', nullable: true })
   completed_at!: Date;

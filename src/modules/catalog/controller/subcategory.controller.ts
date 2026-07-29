@@ -32,7 +32,7 @@ import { UpdateSubcategoryDto } from '@catalog/dto/subcategory/update-subcategor
 import { SubcategoryResponseDto } from '@catalog/dto/subcategory/subcategory-response.dto';
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 
-@ApiTags('catalog / subcategories')
+@ApiTags('catalog')
 @UseGuards(AuthGuard)
 @ApiIntrospectGuardResponse()
 @Controller('users/:userId/catalog/subcategories')
@@ -42,10 +42,23 @@ export class SubcategoryController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Crear subcategoría personalizada del usuario' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'Subcategoría creada.', type: SubcategoryResponseDto })
-  @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
-  @ApiConflictResponse({ description: 'Ya existe una subcategoría con ese nombre en esta categoría.', type: ErrorResponseDto })
-  @ApiInternalServerErrorResponse({ description: 'Error al crear la subcategoría.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Subcategoría creada.',
+    type: SubcategoryResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Datos de entrada inválidos.',
+    type: ErrorResponseDto,
+  })
+  @ApiConflictResponse({
+    description: 'Ya existe una subcategoría con ese nombre en esta categoría.',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Error al crear la subcategoría.',
+    type: ErrorResponseDto,
+  })
   async create(
     @Param('userId', ParseIntPipe) userId: number,
     @Body() dto: CreateSubcategoryDto,
@@ -57,11 +70,20 @@ export class SubcategoryController {
   @Get()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Listar subcategorías del usuario' })
-  @ApiQuery({ name: 'categoryId', required: false, description: 'Filtrar por categoría padre.' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Subcategorías del usuario.', type: [SubcategoryResponseDto] })
+  @ApiQuery({
+    name: 'categoryId',
+    required: false,
+    description: 'Filtrar por categoría padre.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Subcategorías del usuario.',
+    type: [SubcategoryResponseDto],
+  })
   async findAll(
     @Param('userId', ParseIntPipe) userId: number,
-    @Query('categoryId', new ParseIntPipe({ optional: true })) categoryId?: number,
+    @Query('categoryId', new ParseIntPipe({ optional: true }))
+    categoryId?: number,
     @CurrentUser() _currentUser?: IntrospectResponse,
   ) {
     return this.subcategoryService.findAll(userId, categoryId);
@@ -70,8 +92,15 @@ export class SubcategoryController {
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Obtener subcategoría por ID' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Subcategoría encontrada.', type: SubcategoryResponseDto })
-  @ApiNotFoundResponse({ description: 'Subcategoría no encontrada.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Subcategoría encontrada.',
+    type: SubcategoryResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Subcategoría no encontrada.',
+    type: ErrorResponseDto,
+  })
   async findOne(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,
@@ -83,9 +112,19 @@ export class SubcategoryController {
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Actualizar subcategoría del usuario' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Subcategoría actualizada.', type: SubcategoryResponseDto })
-  @ApiNotFoundResponse({ description: 'Subcategoría no encontrada.', type: ErrorResponseDto })
-  @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Subcategoría actualizada.',
+    type: SubcategoryResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Subcategoría no encontrada.',
+    type: ErrorResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Datos de entrada inválidos.',
+    type: ErrorResponseDto,
+  })
   async update(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,
@@ -98,8 +137,14 @@ export class SubcategoryController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Desactivar subcategoría del usuario' })
-  @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Subcategoría desactivada.' })
-  @ApiNotFoundResponse({ description: 'Subcategoría no encontrada.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Subcategoría desactivada.',
+  })
+  @ApiNotFoundResponse({
+    description: 'Subcategoría no encontrada.',
+    type: ErrorResponseDto,
+  })
   async remove(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,

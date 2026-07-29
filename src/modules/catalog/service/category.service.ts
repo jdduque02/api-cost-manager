@@ -24,4 +24,8 @@ export class CategoryService {
   async update(id: number, dto: UpdateCategoryDto) {
     return this.categoryRepository.update(id, dto);
   }
+
+  async remove(id: number) {
+    return this.categoryRepository.softDelete(id);
+  }
 }

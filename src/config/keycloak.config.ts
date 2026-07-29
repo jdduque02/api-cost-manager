@@ -1,7 +1,13 @@
-import { KeycloakConnectOptions, PolicyEnforcementMode, TokenValidation } from 'nest-keycloak-connect';
+import {
+  KeycloakConnectOptions,
+  PolicyEnforcementMode,
+  TokenValidation,
+} from 'nest-keycloak-connect';
 import { ConfigService } from '@nestjs/config';
 
-export const getKeycloakConfig = (configService: ConfigService): KeycloakConnectOptions => {
+export const getKeycloakConfig = (
+  configService: ConfigService,
+): KeycloakConnectOptions => {
   return {
     authServerUrl: configService.get<string>('KEYCLOAK_URL')!,
     realm: configService.get<string>('KEYCLOAK_REALM')!,

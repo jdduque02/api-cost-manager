@@ -1,5 +1,6 @@
 import {
   Column,
+  DeleteDateColumn,
   Entity,
   Index,
   PrimaryGeneratedColumn,
@@ -78,4 +79,7 @@ export class FinancialSummary {
   @Column({ type: 'boolean', default: false })
   @Index('idx_financial_summary_final')
   is_final!: boolean;
+
+  @DeleteDateColumn({ type: 'timestamp', nullable: true })
+  deleted_at!: Date;
 }

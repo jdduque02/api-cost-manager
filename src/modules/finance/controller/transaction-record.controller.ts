@@ -34,20 +34,32 @@ import { TransactionRecordQueryDto } from '@finance/dto/transaction-record/trans
 import { TransactionRecordResponseDto } from '@finance/dto/transaction-record/transaction-record-response.dto';
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 
-@ApiTags('finance / transactions')
+@ApiTags('finance')
 @UseGuards(AuthGuard)
 @ApiIntrospectGuardResponse()
 @ApiExtraModels(TransactionRecordResponseDto)
 @Controller('users/:userId/transactions')
 export class TransactionRecordController {
-  constructor(private readonly transactionRecordService: TransactionRecordService) {}
+  constructor(
+    private readonly transactionRecordService: TransactionRecordService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Registrar transacción' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'Transacción creada.', type: TransactionRecordResponseDto })
-  @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
-  @ApiInternalServerErrorResponse({ description: 'Error al crear la transacción.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Transacción creada.',
+    type: TransactionRecordResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Datos de entrada inválidos.',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Error al crear la transacción.',
+    type: ErrorResponseDto,
+  })
   async create(
     @Param('userId', ParseIntPipe) userId: number,
     @Body() dto: CreateTransactionRecordDto,
@@ -58,9 +70,20 @@ export class TransactionRecordController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Listar transacciones del usuario (CRÍTICO: usar date_from/date_to para partition pruning)' })
-  @ApiQuery({ name: 'date_from', required: false, description: 'Fecha inicio (ISO 8601). RECOMENDADO para rendimiento.' })
-  @ApiQuery({ name: 'date_to', required: false, description: 'Fecha fin (ISO 8601).' })
+  @ApiOperation({
+    summary:
+      'Listar transacciones del usuario (CRÍTICO: usar date_from/date_to para partition pruning)',
+  })
+  @ApiQuery({
+    name: 'date_from',
+    required: false,
+    description: 'Fecha inicio (ISO 8601). RECOMENDADO para rendimiento.',
+  })
+  @ApiQuery({
+    name: 'date_to',
+    required: false,
+    description: 'Fecha fin (ISO 8601).',
+  })
   @ApiQuery({ name: 'category_id', required: false })
   @ApiQuery({ name: 'subcategory_id', required: false })
   @ApiQuery({ name: 'type', required: false })
@@ -71,7 +94,10 @@ export class TransactionRecordController {
     description: 'Transacciones del usuario.',
     schema: {
       properties: {
-        data: { type: 'array', items: { $ref: getSchemaPath(TransactionRecordResponseDto) } },
+        data: {
+          type: 'array',
+          items: { $ref: getSchemaPath(TransactionRecordResponseDto) },
+        },
         total: { type: 'number' },
       },
     },
@@ -87,8 +113,15 @@ export class TransactionRecordController {
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Obtener transacción por ID' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Transacción encontrada.', type: TransactionRecordResponseDto })
-  @ApiNotFoundResponse({ description: 'Transacción no encontrada.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Transacción encontrada.',
+    type: TransactionRecordResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Transacción no encontrada.',
+    type: ErrorResponseDto,
+  })
   async findOne(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,
@@ -100,9 +133,19 @@ export class TransactionRecordController {
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Actualizar transacción' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Transacción actualizada.', type: TransactionRecordResponseDto })
-  @ApiNotFoundResponse({ description: 'Transacción no encontrada.', type: ErrorResponseDto })
-  @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Transacción actualizada.',
+    type: TransactionRecordResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Transacción no encontrada.',
+    type: ErrorResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Datos de entrada inválidos.',
+    type: ErrorResponseDto,
+  })
   async update(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,
@@ -115,8 +158,14 @@ export class TransactionRecordController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Eliminar transacción (soft delete)' })
-  @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Transacción eliminada.' })
-  @ApiNotFoundResponse({ description: 'Transacción no encontrada.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Transacción eliminada.',
+  })
+  @ApiNotFoundResponse({
+    description: 'Transacción no encontrada.',
+    type: ErrorResponseDto,
+  })
   async remove(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,

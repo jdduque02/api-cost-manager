@@ -2,6 +2,7 @@ import { Injectable, Inject, Logger, ForbiddenException } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { ConfigService } from '@nestjs/config';
+import { I18nService } from 'nestjs-i18n';
 import { UserRepository } from '@identity/repositories/app-user.repositories';
 import { KeycloakAdminService } from '@auth/service/keycloak-admin.service';
 import { CreateUserDto } from '@identity/dto/user/create-user.dto';
@@ -17,6 +18,7 @@ export class UserService {
     private readonly keycloakAdminService: KeycloakAdminService,
     private readonly configService: ConfigService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
   async createUser(dto: CreateUserDto) {
@@ -28,7 +30,8 @@ export class UserService {
 
     try {
       const { password: _pw, ...userPayload } = dto;
-      const user = await this.userRepository.create({ ...userPayload, external_id: keycloakId });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const user = await this.userRepository.create({ ...userPayload, external_id: keycloakId } as any);
       this.logger.log(`Usuario creado y sincronizado con Keycloak: ${user.id}`);
       return user;
     } catch (error) {
@@ -62,7 +65,8 @@ export class UserService {
   }
 
   async updateUser(id: string, dto: UpdateUserDto) {
-    const user = await this.userRepository.update(id, dto);
+    const { password: _pw, ...updatePayload } = dto;
+    const user = await this.userRepository.update(id, updatePayload as UpdateUserDto);
     await this.cacheManager.del(`user_${id}`);
     this.logger.log(`Cache invalidado para usuario ID: ${id}`);
     return user;
@@ -77,11 +81,11 @@ export class UserService {
    * Lanza ForbiddenException si no coincide.
    */
   async assertOwnership(userId: string, externalId: string | undefined): Promise<void> {
-    if (!externalId) throw new ForbiddenException('No se pudo verificar la identidad del solicitante.');
+    if (!externalId) throw new ForbiddenException(this.i18n.t('identity.OWNERSHIP_FAIL'));
     const user = await this.userRepository.findByExternalId(externalId);
     console.log(user?.id, userId);
     if (user?.id !== userId) {
-      throw new ForbiddenException('No tienes permiso para acceder a este recurso.');
+      throw new ForbiddenException(this.i18n.t('identity.FORBIDDEN'));
     }
   }
 }

@@ -1,11 +1,13 @@
 import {
   ConflictException,
   Injectable,
+  Inject,
   InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { QueryFailedError, Repository } from 'typeorm';
 import { Category } from '@catalog/entities/category.entity';
 import { CreateCategoryDto } from '@catalog/dto/category/create-category.dto';
@@ -20,6 +22,7 @@ export class CategoryRepository {
   constructor(
     @InjectRepository(Category)
     private readonly repo: Repository<Category>,
+    @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
   async create(dto: CreateCategoryDto): Promise<Category> {
@@ -39,7 +42,7 @@ export class CategoryRepository {
 
   async findById(id: number): Promise<Category> {
     const category = await this.repo.findOne({ where: { id, is_active: true } });
-    if (!category) throw new NotFoundException(`Categoría con id ${id} no encontrada.`);
+    if (!category) throw new NotFoundException(this.i18n.t('catalog.CATEGORY_NOT_FOUND', { args: { id } }));
     return category;
   }
 
@@ -51,11 +54,18 @@ export class CategoryRepository {
     return saved;
   }
 
+  async softDelete(id: number): Promise<void> {
+    const category = await this.findById(id);
+    category.is_active = false;
+    await this.repo.save(category);
+    this.logger.log(`Categoría ID ${id} desactivada.`);
+  }
+
   private handleDbError(error: unknown): never {
     if (error instanceof QueryFailedError && (error as any).code === PG_UNIQUE_VIOLATION) {
-      throw new ConflictException('Ya existe una categoría con ese nombre.');
+      throw new ConflictException(this.i18n.t('catalog.CATEGORY_DUPLICATE'));
     }
     this.logger.error(`Error de base de datos: ${(error as Error).message}`);
-    throw new InternalServerErrorException('Error al procesar la solicitud.');
+    throw new InternalServerErrorException(this.i18n.t('catalog.PROCESSING_ERROR'));
   }
 }

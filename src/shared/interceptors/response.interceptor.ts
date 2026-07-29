@@ -5,10 +5,12 @@ import {
   CallHandler,
   Logger,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { Request, Response } from 'express';
+import { I18nService, I18nContext } from 'nestjs-i18n';
 import { ApiResponseDto } from '@shared/dto/api-response.dto';
 
 /**
@@ -32,6 +34,10 @@ export class ResponseInterceptor<TData = unknown>
   implements NestInterceptor<TData, ApiResponseDto<TData>>
 {
   private readonly logger = new Logger(ResponseInterceptor.name);
+
+  constructor(
+    @Inject(I18nService) private readonly i18n: I18nService,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler<TData>): Observable<ApiResponseDto<TData>> {
     const request = context.switchToHttp().getRequest<Request>();
@@ -68,14 +74,14 @@ export class ResponseInterceptor<TData = unknown>
 
   private getSuccessMessageByStatus(status: number): string {
     const statusMessages: Partial<Record<number, string>> = {
-      [HttpStatus.OK]: 'Operación exitosa',
-      [HttpStatus.CREATED]: 'Recurso creado exitosamente',
-      [HttpStatus.ACCEPTED]: 'Solicitud aceptada',
-      [HttpStatus.NO_CONTENT]: 'Operación completada sin contenido',
-      [HttpStatus.PARTIAL_CONTENT]: 'Contenido parcial obtenido',
+      [HttpStatus.OK]: this.i18n.t('shared.SUCCESS'),
+      [HttpStatus.CREATED]: this.i18n.t('shared.CREATED'),
+      [HttpStatus.ACCEPTED]: this.i18n.t('shared.ACCEPTED'),
+      [HttpStatus.NO_CONTENT]: this.i18n.t('shared.NO_CONTENT'),
+      [HttpStatus.PARTIAL_CONTENT]: this.i18n.t('shared.PARTIAL_CONTENT'),
     };
 
-    return statusMessages[status] ?? 'Operación exitosa';
+    return statusMessages[status] ?? this.i18n.t('shared.SUCCESS');
   }
 
   private logResponse(

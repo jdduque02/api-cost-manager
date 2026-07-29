@@ -48,8 +48,21 @@ export class AppUser {
   @Index('idx_user_active')
   is_active!: boolean;
 
+  // ── Datos sensibles (encriptados) ───────────────────────
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  phone!: string | null;
+
+  @Column({ type: 'varchar', length: 1000, nullable: true })
+  address!: string | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  full_name!: string | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  document_id!: string | null;
+
   // ── Relaciones ──────────────────────────────────────────────
-  @OneToOne(() => FinancialProfile, ({ user }) => user, { cascade: true })
+  @OneToOne(() => FinancialProfile, ({ user }) => user)
   @JoinColumn({ name: 'financial_profile_id' })
   financial_profile!: FinancialProfile;
 }

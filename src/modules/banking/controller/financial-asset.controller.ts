@@ -29,7 +29,7 @@ import { UpdateFinancialAssetDto } from '@banking/dto/financial-asset/update-fin
 import { FinancialAssetResponseDto } from '@banking/dto/financial-asset/financial-asset-response.dto';
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 
-@ApiTags('banking / financial-assets')
+@ApiTags('banking')
 @UseGuards(AuthGuard)
 @ApiIntrospectGuardResponse()
 @Controller('users/:userId/financial-assets')
@@ -39,9 +39,19 @@ export class FinancialAssetController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Registrar nuevo activo financiero' })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'Activo creado exitosamente.', type: FinancialAssetResponseDto })
-  @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
-  @ApiInternalServerErrorResponse({ description: 'Error al crear el activo.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Activo creado exitosamente.',
+    type: FinancialAssetResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Datos de entrada inválidos.',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Error al crear el activo.',
+    type: ErrorResponseDto,
+  })
   async create(
     @Param('userId', ParseIntPipe) userId: number,
     @Body() dto: CreateFinancialAssetDto,
@@ -53,7 +63,11 @@ export class FinancialAssetController {
   @Get()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Listar activos financieros del usuario' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Activos del usuario.', type: [FinancialAssetResponseDto] })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Activos del usuario.',
+    type: [FinancialAssetResponseDto],
+  })
   async findAll(
     @Param('userId', ParseIntPipe) userId: number,
     @CurrentUser() _currentUser: IntrospectResponse,
@@ -64,8 +78,15 @@ export class FinancialAssetController {
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Obtener activo financiero por ID' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Activo encontrado.', type: FinancialAssetResponseDto })
-  @ApiNotFoundResponse({ description: 'Activo no encontrado.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Activo encontrado.',
+    type: FinancialAssetResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Activo no encontrado.',
+    type: ErrorResponseDto,
+  })
   async findOne(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,
@@ -77,9 +98,19 @@ export class FinancialAssetController {
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Actualizar activo financiero' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Activo actualizado.', type: FinancialAssetResponseDto })
-  @ApiNotFoundResponse({ description: 'Activo no encontrado.', type: ErrorResponseDto })
-  @ApiBadRequestResponse({ description: 'Datos de entrada inválidos.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Activo actualizado.',
+    type: FinancialAssetResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Activo no encontrado.',
+    type: ErrorResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Datos de entrada inválidos.',
+    type: ErrorResponseDto,
+  })
   async update(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,
@@ -92,8 +123,14 @@ export class FinancialAssetController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Eliminar activo financiero (soft delete)' })
-  @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Activo eliminado.' })
-  @ApiNotFoundResponse({ description: 'Activo no encontrado.', type: ErrorResponseDto })
+  @ApiResponse({
+    status: HttpStatus.NO_CONTENT,
+    description: 'Activo eliminado.',
+  })
+  @ApiNotFoundResponse({
+    description: 'Activo no encontrado.',
+    type: ErrorResponseDto,
+  })
   async remove(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,

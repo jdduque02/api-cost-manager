@@ -35,12 +35,18 @@ export class AuditLogController {
   @Get()
   @HttpCode(HttpStatus.OK)
   @ApiExtraModels(AuditLogResponseDto)
-  @ApiOperation({ summary: 'Listar registros de auditoría con filtros opcionales' })
+  @ApiOperation({
+    summary: 'Listar registros de auditoría con filtros opcionales',
+  })
   @ApiQuery({ name: 'schema_name', required: false })
   @ApiQuery({ name: 'table_name', required: false })
   @ApiQuery({ name: 'record_id', required: false })
   @ApiQuery({ name: 'changed_by', required: false })
-  @ApiQuery({ name: 'action', required: false, enum: ['INSERT', 'UPDATE', 'DELETE'] })
+  @ApiQuery({
+    name: 'action',
+    required: false,
+    enum: ['INSERT', 'UPDATE', 'DELETE'],
+  })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 20 })
   @ApiResponse({
@@ -50,28 +56,42 @@ export class AuditLogController {
       properties: {
         status: { type: 'boolean', example: true },
         message: { type: 'string', example: 'Operación exitosa' },
-        data: { type: 'array', items: { $ref: getSchemaPath(AuditLogResponseDto) } },
+        data: {
+          type: 'array',
+          items: { $ref: getSchemaPath(AuditLogResponseDto) },
+        },
         total: { type: 'number', example: 100 },
         timestamp: { type: 'string', format: 'date-time' },
       },
     },
   })
-  @ApiUnauthorizedResponse({ description: 'Token inválido o ausente.', type: ErrorResponseDto })
-  @ApiInternalServerErrorResponse({ description: 'Error interno del servidor.', type: ErrorResponseDto })
+  @ApiUnauthorizedResponse({
+    description: 'Token inválido o ausente.',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Error interno del servidor.',
+    type: ErrorResponseDto,
+  })
   async findAll(@Query() query: AuditLogQueryDto) {
     return this.auditLogService.findAll(query);
   }
 
   @Get('user/:userId')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Listar registros de auditoría de un usuario específico' })
+  @ApiOperation({
+    summary: 'Listar registros de auditoría de un usuario específico',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Logs del usuario.',
     schema: {
       properties: {
         status: { type: 'boolean', example: true },
-        data: { type: 'array', items: { $ref: getSchemaPath(AuditLogResponseDto) } },
+        data: {
+          type: 'array',
+          items: { $ref: getSchemaPath(AuditLogResponseDto) },
+        },
         total: { type: 'number' },
         timestamp: { type: 'string', format: 'date-time' },
       },

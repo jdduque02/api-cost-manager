@@ -1,11 +1,13 @@
 import {
   ConflictException,
   Injectable,
+  Inject,
   InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { IsNull, QueryFailedError, Repository } from 'typeorm';
 import { BankAccount } from '@banking/entities/bank-account.entity';
 import { CreateBankAccountDto } from '@banking/dto/bank-account/create-bank-account.dto';
@@ -19,6 +21,7 @@ export class BankAccountRepository {
   constructor(
     @InjectRepository(BankAccount)
     private readonly repo: Repository<BankAccount>,
+    @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
   async create(userId: number, dto: CreateBankAccountDto, encryptedAccountNumber: Buffer, encryptedBalance: Buffer): Promise<BankAccount> {
@@ -45,7 +48,7 @@ export class BankAccountRepository {
 
   async findById(id: number, userId: number): Promise<BankAccount> {
     const account = await this.repo.findOne({ where: { id, user_id: userId, deleted_at: IsNull() } });
-    if (!account) throw new NotFoundException(`Cuenta bancaria con id ${id} no encontrada.`);
+    if (!account) throw new NotFoundException(this.i18n.t('banking.BANK_ACCOUNT_NOT_FOUND', { args: { id } }));
     return account;
   }
 
@@ -65,9 +68,9 @@ export class BankAccountRepository {
 
   private handleDbError(error: unknown): never {
     if (error instanceof QueryFailedError && (error as any).code === PG_UNIQUE_VIOLATION) {
-      throw new ConflictException('Ya existe una cuenta con esos datos.');
+      throw new ConflictException(this.i18n.t('banking.BANK_ACCOUNT_DUPLICATE'));
     }
     this.logger.error(`Error de base de datos: ${(error as Error).message}`);
-    throw new InternalServerErrorException('Error al procesar la solicitud.');
+    throw new InternalServerErrorException(this.i18n.t('banking.PROCESSING_ERROR'));
   }
 }

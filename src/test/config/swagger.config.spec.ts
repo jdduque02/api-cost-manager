@@ -9,14 +9,14 @@ describe('getSwaggerConfig', () => {
     return getSwaggerConfig(mockConfigService);
   };
 
-  it('debe incluir el environment en el título', () => {
+  it('debe incluir el environment en la descripción', () => {
     const config = buildConfig({ NODE_ENV: 'DEV', VERSION: '1' });
-    expect(config.info.title).toContain('DEV');
+    expect(config.info.description).toContain('DEV');
   });
 
   it('debe usar "LOCAL" como entorno por defecto si NODE_ENV no está definido', () => {
     const config = buildConfig({ NODE_ENV: undefined, VERSION: '1' });
-    expect(config.info.title).toContain('LOCAL');
+    expect(config.info.description).toContain('LOCAL');
   });
 
   it('debe usar "1" como versión por defecto si VERSION no está definida', () => {
@@ -36,10 +36,45 @@ describe('getSwaggerConfig', () => {
     expect(Object.keys(schemes)).toContain('bearer');
   });
 
-  it('debe tener tags "costs" e "identity"', () => {
+  it('debe tener tags de dominio', () => {
     const config = buildConfig({ NODE_ENV: 'DEV', VERSION: '1' });
     const tagNames = (config.tags ?? []).map((t) => t.name);
-    expect(tagNames).toContain('costs');
     expect(tagNames).toContain('identity');
+    expect(tagNames).toContain('banking');
+    expect(tagNames).toContain('finance');
+    expect(tagNames).toContain('intelligence');
+    expect(tagNames).toContain('auth');
+    expect(tagNames).toContain('audit');
+  });
+
+  it('debe agregar un server por defecto para LOCAL', () => {
+    const config = buildConfig({ NODE_ENV: 'LOCAL', VERSION: '1' });
+    const servers = (config as any).servers;
+    expect(servers).toBeDefined();
+    expect(servers.length).toBe(1);
+    expect(servers[0].url).toContain('localhost');
+    expect(servers[0].description).toContain('LOCAL');
+  });
+
+  it('debe agregar un server para DEV', () => {
+    const config = buildConfig({ NODE_ENV: 'DEV', VERSION: '1' });
+    const servers = (config as any).servers;
+    expect(servers).toBeDefined();
+    expect(servers[0].url).toContain('api-dev');
+    expect(servers[0].description).toContain('DEV');
+  });
+
+  it('debe agregar un server para PROD', () => {
+    const config = buildConfig({ NODE_ENV: 'PROD', VERSION: '2' });
+    const servers = (config as any).servers;
+    expect(servers).toBeDefined();
+    expect(servers[0].url).toContain('api.costmanager.com');
+    expect(servers[0].description).toContain('PROD');
+  });
+
+  it('debe incluir la versión en la URL del server', () => {
+    const config = buildConfig({ NODE_ENV: 'LOCAL', VERSION: '2' });
+    const servers = (config as any).servers;
+    expect(servers[0].url).toContain('/api/v2');
   });
 });

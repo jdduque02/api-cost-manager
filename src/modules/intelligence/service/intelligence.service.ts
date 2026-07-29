@@ -1,5 +1,6 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { Repository, IsNull } from 'typeorm';
 import { FinancialSummary } from '@intelligence/entities/financial-summary.entity';
 import { TaxSummary } from '@intelligence/entities/tax-summary.entity';
@@ -15,6 +16,7 @@ export class IntelligenceService {
     private readonly financialSummaryRepo: Repository<FinancialSummary>,
     @InjectRepository(TaxSummary)
     private readonly taxSummaryRepo: Repository<TaxSummary>,
+    @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
   async findFinancialSummary(userId: number): Promise<FinancialSummaryResponseDto> {
@@ -23,7 +25,7 @@ export class IntelligenceService {
       order: { calculated_at: 'DESC' },
     });
     if (!summary) {
-      throw new NotFoundException(`No se encontró resumen financiero para el usuario ${userId}.`);
+      throw new NotFoundException(this.i18n.t('intelligence.FINANCIAL_SUMMARY_NOT_FOUND', { args: { userId } }));
     }
     return this.mapFinancialSummary(summary);
   }
@@ -33,7 +35,7 @@ export class IntelligenceService {
       where: { user_id: userId, financial_period_id: periodId, deleted_at: IsNull() },
     });
     if (!summary) {
-      throw new NotFoundException(`No se encontró resumen financiero para el período ${periodId}.`);
+      throw new NotFoundException(this.i18n.t('intelligence.FINANCIAL_SUMMARY_PERIOD_NOT_FOUND', { args: { periodId } }));
     }
     return this.mapFinancialSummary(summary);
   }
@@ -45,7 +47,7 @@ export class IntelligenceService {
       order: { created_at: 'DESC' },
     });
     if (!summary) {
-      throw new NotFoundException(`No se encontró resumen fiscal para el año ${year}.`);
+      throw new NotFoundException(this.i18n.t('intelligence.TAX_SUMMARY_NOT_FOUND', { args: { year } }));
     }
     return this.mapTaxSummary(summary);
   }

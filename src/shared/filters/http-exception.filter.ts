@@ -4,9 +4,12 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { I18nService, I18nContext } from 'nestjs-i18n';
 
 /**
  * Filtro global que captura excepciones lanzadas por Guards, Pipes y Controllers
@@ -17,10 +20,16 @@ import { v4 as uuidv4 } from 'uuid';
  */
 @Catch(HttpException)
 export class HttpExceptionFilter implements ExceptionFilter {
+  constructor(
+    @Optional() @Inject(I18nService) private readonly i18n?: I18nService,
+  ) {}
+
   catch(exception: HttpException, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
+
+    const i18n = this.i18n ?? I18nContext.current();
 
     const status = exception.getStatus();
     const responseData = exception.getResponse();
@@ -39,7 +48,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     let error = exception.name.replace('Exception', '');
-    let message = 'Error inesperado.';
+    let message = i18n?.t('shared.UNEXPECTED_ERROR') ?? 'Error inesperado.';
     let details: unknown[] = [];
 
     if (typeof responseData === 'string') {
@@ -48,7 +57,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       const resp = responseData as { message?: string | string[]; error?: string };
       if (Array.isArray(resp.message)) {
         // Errores de validación (class-validator)
-        message = 'Datos de entrada inválidos.';
+        message = i18n?.t('shared.INVALID_INPUT') ?? 'Datos de entrada inválidos.';
         details = resp.message;
       } else {
         message = resp.message ?? message;

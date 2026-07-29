@@ -1,11 +1,13 @@
 import {
   ConflictException,
   Injectable,
+  Inject,
   InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { QueryFailedError, Repository } from 'typeorm';
 import { Subcategory } from '@catalog/entities/subcategory.entity';
 import { CreateSubcategoryDto } from '@catalog/dto/subcategory/create-subcategory.dto';
@@ -20,6 +22,7 @@ export class SubcategoryRepository {
   constructor(
     @InjectRepository(Subcategory)
     private readonly repo: Repository<Subcategory>,
+    @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
   async create(userId: number, dto: CreateSubcategoryDto): Promise<Subcategory> {
@@ -41,7 +44,7 @@ export class SubcategoryRepository {
 
   async findById(id: number, userId: number): Promise<Subcategory> {
     const subcategory = await this.repo.findOne({ where: { id, user_id: userId } });
-    if (!subcategory) throw new NotFoundException(`Subcategoría con id ${id} no encontrada.`);
+    if (!subcategory) throw new NotFoundException(this.i18n.t('catalog.SUBCATEGORY_NOT_FOUND', { args: { id } }));
     return subcategory;
   }
 
@@ -62,9 +65,9 @@ export class SubcategoryRepository {
 
   private handleDbError(error: unknown): never {
     if (error instanceof QueryFailedError && (error as any).code === PG_UNIQUE_VIOLATION) {
-      throw new ConflictException('Ya existe una subcategoría con ese nombre en esta categoría.');
+      throw new ConflictException(this.i18n.t('catalog.SUBCATEGORY_DUPLICATE'));
     }
     this.logger.error(`Error de base de datos: ${(error as Error).message}`);
-    throw new InternalServerErrorException('Error al procesar la solicitud.');
+    throw new InternalServerErrorException(this.i18n.t('catalog.PROCESSING_ERROR'));
   }
 }
