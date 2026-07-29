@@ -2,15 +2,20 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
+  Inject,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { I18nService } from 'nestjs-i18n';
 import { AuthService } from '@auth/service/auth.service';
 import { extractBearerToken } from '@shared/helpers/bearer-token.helper';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    @Inject(I18nService) private readonly i18n: I18nService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
@@ -19,7 +24,7 @@ export class AuthGuard implements CanActivate {
     const result = await this.authService.introspect(token);
 
     if (!result.active) {
-      throw new UnauthorizedException('El token ha expirado o fue revocado.');
+      throw new UnauthorizedException(this.i18n.t('auth.TOKEN_REVOKED'));
     }
 
     // Adjunta el payload del token al request para uso posterior

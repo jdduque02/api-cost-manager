@@ -1,9 +1,9 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class RefreshTokenDto {
-  @ApiProperty({ description: 'Refresh token obtenido en el login.' })
+export class EncryptPasswordDto {
+  @ApiProperty({ example: 'MiContraseñaSegura123!' })
   @IsString()
   @IsNotEmpty()
-  refresh_token!: string;
+  password!: string;
 }

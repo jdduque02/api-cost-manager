@@ -21,4 +21,7 @@ export class KeycloakTokenResponse {
 
   @ApiProperty({ example: 'profile email' })
   scope!: string;
+
+  @ApiProperty({ example: 1 })
+  userId!: number;
 }

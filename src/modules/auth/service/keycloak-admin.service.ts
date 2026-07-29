@@ -10,6 +10,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
+import { I18nService } from 'nestjs-i18n';
 import { firstValueFrom } from 'rxjs';
 import { KeycloakUserRepresentation } from '@identity/interfaces/KeycloakUserRepresentation.dto';
 
@@ -28,6 +29,7 @@ export class KeycloakAdminService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    @Inject(I18nService) private readonly i18n: I18nService,
   ) {
     this.baseUrl = this.configService.get<string>('KEYCLOAK_URL')!;
     this.realm = this.configService.get<string>('KEYCLOAK_REALM')!;
@@ -44,6 +46,7 @@ export class KeycloakAdminService {
     if (cached) return cached;
 
     const url = `${this.baseUrl}/realms/${this.realm}/protocol/openid-connect/token`;
+    this.logger.log(`[getAdminToken] URL: ${url} | clientId: ${this.clientId} | clientSecret: ${this.clientSecret ? '****' : 'UNDEFINED'}`);
     const body = new URLSearchParams({
       grant_type: 'client_credentials',
       client_id: this.clientId,
@@ -69,7 +72,7 @@ export class KeycloakAdminService {
       this.logger.error(
         `[getAdminToken] Status: ${error?.response?.status} | Data: ${JSON.stringify(error?.response?.data)} | Message: ${error?.message}`,
       );
-      throw new InternalServerErrorException('No se pudo obtener el token de administracion de Keycloak.');
+      throw new InternalServerErrorException(this.i18n.t('auth.KEYCLOAK_ADMIN_TOKEN_ERROR'));
     }
   }
 
@@ -94,10 +97,17 @@ export class KeycloakAdminService {
       return keycloakId;
     } catch (error: any) {
       if (error?.response?.status === 409) {
-        throw new ConflictException('El usuario ya existe en Keycloak (username o email duplicado).');
+        throw new ConflictException(this.i18n.t('auth.USER_EXISTS_KEYCLOAK'));
+      }
+      if (error?.response?.status === 403) {
+        this.logger.error(
+          'Keycloak 403 Forbidden — El client no tiene permisos de administrador (realm-admin en realm-management).',
+          error?.response?.data,
+        );
+        throw new InternalServerErrorException(this.i18n.t('auth.USER_REGISTER_ERROR'));
       }
       this.logger.error('Error al crear usuario en Keycloak', error?.response?.data);
-      throw new InternalServerErrorException('Error al registrar el usuario en Keycloak.');
+      throw new InternalServerErrorException(this.i18n.t('auth.USER_REGISTER_ERROR'));
     }
   }
 
@@ -111,7 +121,14 @@ export class KeycloakAdminService {
       );
       this.logger.warn(`Usuario eliminado de Keycloak (rollback): ${keycloakId}`);
     } catch (error: any) {
-      this.logger.error(`No se pudo eliminar el usuario de Keycloak: ${keycloakId}`, error?.response?.data);
+      if (error?.response?.status === 403) {
+        this.logger.error(
+          `Keycloak 403 Forbidden al eliminar usuario ${keycloakId} — Verificar permisos realm-admin.`,
+          error?.response?.data,
+        );
+      } else {
+        this.logger.error(`No se pudo eliminar el usuario de Keycloak: ${keycloakId}`, error?.response?.data);
+      }
     }
   }
 
@@ -126,13 +143,20 @@ export class KeycloakAdminService {
       );
       const users = response.data;
       if (!users.length) {
-        throw new NotFoundException(`No existe un usuario con el email: ${email}`);
+        throw new NotFoundException(this.i18n.t('auth.USER_NOT_FOUND_EMAIL', { args: { email } }));
       }
       return users[0].id;
     } catch (error: any) {
       if (error instanceof NotFoundException) throw error;
-      this.logger.error('[findKeycloakIdByEmail]', error?.response?.data);
-      throw new InternalServerErrorException('Error al buscar el usuario en Keycloak.');
+      if (error?.response?.status === 403) {
+        this.logger.error(
+          '[findKeycloakIdByEmail] Keycloak 403 Forbidden — Verificar permisos realm-admin.',
+          error?.response?.data,
+        );
+      } else {
+        this.logger.error('[findKeycloakIdByEmail]', error?.response?.data);
+      }
+      throw new InternalServerErrorException(this.i18n.t('auth.USER_SEARCH_ERROR'));
     }
   }
 
@@ -148,8 +172,106 @@ export class KeycloakAdminService {
       );
       this.logger.log(`Email de reset de contrasena enviado: ${keycloakId}`);
     } catch (error: any) {
-      this.logger.error('[sendResetPasswordEmail]', error?.response?.data);
-      throw new InternalServerErrorException('No se pudo enviar el email de recuperacion.');
+      if (error?.response?.status === 403) {
+        this.logger.error(
+          '[sendResetPasswordEmail] Keycloak 403 Forbidden — Verificar permisos realm-admin.',
+          error?.response?.data,
+        );
+      } else {
+        this.logger.error('[sendResetPasswordEmail]', error?.response?.data);
+      }
+      throw new InternalServerErrorException(this.i18n.t('auth.PASSWORD_RESET_ERROR'));
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // CHANGE PASSWORD — cambia la contraseña de un usuario en Keycloak
+  // ─────────────────────────────────────────────────────────────
+
+  async changePassword(keycloakId: string, newPassword: string): Promise<void> {
+    const token = await this.getAdminToken();
+    try {
+      await firstValueFrom(
+        this.httpService.put(
+          `${this.adminUrl}/users/${keycloakId}/reset-password`,
+          { type: 'password', value: newPassword, temporary: false },
+          { headers: { Authorization: `Bearer ${token}` } },
+        ),
+      );
+      this.logger.log(`Contrasena cambiada para usuario Keycloak: ${keycloakId}`);
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        this.logger.error(
+          '[changePassword] Keycloak 403 Forbidden — Verificar permisos realm-admin.',
+          error?.response?.data,
+        );
+      } else {
+        this.logger.error('[changePassword]', error?.response?.data);
+      }
+      throw new InternalServerErrorException(this.i18n.t('auth.PASSWORD_CHANGE_ERROR'));
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // GET USER SESSIONS — obtiene las sesiones activas de un usuario
+  // ─────────────────────────────────────────────────────────────
+
+  async getUserSessions(keycloakId: string): Promise<any[]> {
+    const token = await this.getAdminToken();
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get<any[]>(
+          `${this.adminUrl}/users/${keycloakId}/sessions`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        ),
+      );
+      return response.data;
+    } catch (error: any) {
+      this.logger.error('[getUserSessions]', error?.response?.data);
+      throw new InternalServerErrorException(this.i18n.t('auth.SESSIONS_ERROR'));
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // REVOKE SESSION — cierra una sesión específica
+  // ─────────────────────────────────────────────────────────────
+
+  async revokeSession(sessionId: string): Promise<void> {
+    const token = await this.getAdminToken();
+    try {
+      await firstValueFrom(
+        this.httpService.delete(
+          `${this.adminUrl}/sessions/${sessionId}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        ),
+      );
+      this.logger.log(`Sesion revocada: ${sessionId}`);
+    } catch (error: any) {
+      this.logger.error('[revokeSession]', error?.response?.data);
+      throw new InternalServerErrorException(this.i18n.t('auth.SESSION_REVOKE_ERROR'));
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // GET USER EVENTS — obtiene eventos de auditoría de Keycloak
+  // ─────────────────────────────────────────────────────────────
+
+  async getUserEvents(keycloakId: string, max = 50): Promise<any[]> {
+    const token = await this.getAdminToken();
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get<any[]>(
+          `${this.adminUrl}/events`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            params: { user: keycloakId, max },
+          },
+        ),
+      );
+      return response.data;
+    } catch (error: any) {
+      this.logger.error('[getUserEvents]', error?.response?.data);
+      throw new InternalServerErrorException(this.i18n.t('auth.EVENTS_ERROR'));
     }
   }
 }
