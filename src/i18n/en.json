@@ -1,0 +1,125 @@
+{
+  "auth": {
+    "CREDENTIALS_INVALID": "Invalid credentials.",
+    "KEYCLOAK_AUTH_ERROR": "Error authenticating with Keycloak.",
+    "SESSION_EXPIRED": "Session expired or invalid token.",
+    "REFRESH_ERROR": "Error refreshing session.",
+    "LOGOUT_ERROR": "Error logging out.",
+    "TOKEN_EXPIRED": "The token has expired or is not valid.",
+    "KEYCLOAK_INTROSPECT_ERROR": "Error validating token with Keycloak.",
+    "KEYCLOAK_ADMIN_TOKEN_ERROR": "Could not obtain Keycloak admin token.",
+    "USER_EXISTS_KEYCLOAK": "User already exists in Keycloak (duplicate username or email).",
+    "USER_REGISTER_ERROR": "Error registering user in Keycloak.",
+    "USER_NOT_FOUND_EMAIL": "No user found with email: {email}",
+    "USER_SEARCH_ERROR": "Error searching user in Keycloak.",
+    "PASSWORD_RESET_ERROR": "Could not send password recovery email.",
+    "TOKEN_REVOKED": "The token has expired or was revoked.",
+    "IP_BLOCKED": "Your IP has been blocked due to exceeding the maximum number of attempts. Please try again later.",
+    "ENCRYPT_SUCCESS": "Password encrypted successfully.",
+    "ENCRYPT_ERROR": "Error encrypting password.",
+    "KEYCLOAK_ID_MISSING": "User is not synchronized with Keycloak.",
+    "PASSWORD_CHANGE_ERROR": "Error changing password in Keycloak.",
+    "PASSWORD_CHANGED": "Password changed successfully.",
+    "SESSIONS_ERROR": "Error fetching active sessions.",
+    "SESSION_REVOKE_ERROR": "Error revoking session.",
+    "EVENTS_ERROR": "Error fetching access history."
+  },
+  "identity": {
+    "USER_NOT_FOUND": "User with id {id} not found.",
+    "USERNAME_NOT_FOUND": "User with username \"{username}\" not found.",
+    "USER_NOT_DELETED": "User with id {id} is not deleted.",
+    "USER_DUPLICATE": "A user with that email or username already exists.",
+    "DB_ERROR": "Unexpected database error.",
+    "OWNERSHIP_FAIL": "Could not verify the requester's identity.",
+    "FORBIDDEN": "You do not have permission to access this resource."
+  },
+  "financial_profile": {
+    "ALREADY_EXISTS": "User {userId} already has a financial profile.",
+    "NOT_FOUND": "User {userId} does not have a financial profile."
+  },
+  "catalog": {
+    "CATEGORY_NOT_FOUND": "Category with id {id} not found.",
+    "CATEGORY_DUPLICATE": "A category with that name already exists.",
+    "PROCESSING_ERROR": "Error processing the request.",
+    "SUBCATEGORY_NOT_FOUND": "Subcategory with id {id} not found.",
+    "SUBCATEGORY_DUPLICATE": "A subcategory with that name already exists in this category."
+  },
+  "banking": {
+    "BANK_ACCOUNT_NOT_FOUND": "Bank account with id {id} not found.",
+    "BANK_ACCOUNT_DUPLICATE": "An account with those details already exists.",
+    "PROCESSING_ERROR": "Error processing the request.",
+    "ASSET_NOT_FOUND": "Financial asset with id {id} not found.",
+    "LIABILITY_NOT_FOUND": "Financial liability with id {id} not found."
+  },
+  "finance": {
+    "TRANSACTION_NOT_FOUND": "Transaction with id {id} not found.",
+    "PERIOD_DUPLICATE": "A period {year}-{month} already exists for this user.",
+    "PERIOD_NOT_FOUND": "Financial period with id {id} not found.",
+    "PERIOD_CLOSED": "Period {year}-{month} is already closed.",
+    "OBJECTIVE_NOT_FOUND": "Financial objective with id {id} not found.",
+    "PAYMENT_NOT_FOUND": "Payment with id {id} not found.",
+    "OBJECTIVE_ALREADY_REACHED": "You have already reached or exceeded your savings goal. Your current balance equals or exceeds the target amount.",
+    "INVALID_DATE_RANGE": "The start date must be before the end date.",
+    "QUOTA_EXCEEDS_BUDGET": "Your quota of ${quotaAmount} exceeds the recommended {savingsRatio}% of your monthly income (${monthlyIncome}). The maximum recommended per {frequency} is ${maxAllowed}.",
+    "REDUCE_OR_EXTEND_RECOMMENDATION": "Consider reducing the target amount, extending the deadline, or finding ways to increase your income to meet the goal without compromising your financial stability.",
+    "REGISTER_INCOME_RECOMMENDATION": "For a more accurate calculation, register your monthly income in your financial profile. The 50-30-20 rule suggests allocating a maximum of 20% of your income to savings.",
+    "LOAD_PROFILE_RECOMMENDATION": "Load your financial information (monthly income and distribution ratios) in your profile to get a calculation validated against your real savings capacity.",
+    "SET_END_DATE_RECOMMENDATION": "For effective savings, it is recommended to set a deadline for your goal. Goals with a defined date are 42% more likely to be achieved according to behavioral psychology studies.",
+    "REUSE_ROUTE_HINT": "You can reuse this route in the future when you set your target date to get the exact installments."
+  },
+  "intelligence": {
+    "FINANCIAL_SUMMARY_NOT_FOUND": "No financial summary found for user {userId}.",
+    "FINANCIAL_SUMMARY_PERIOD_NOT_FOUND": "No financial summary found for period {periodId}.",
+    "TAX_SUMMARY_NOT_FOUND": "No tax summary found for year {year}."
+  },
+  "news": {
+    "NOT_FOUND": "News item with id {id} not found.",
+    "DUPLICATE": "A news item with that title already exists.",
+    "PROCESSING_ERROR": "Error processing the request."
+  },
+  "notification": {
+    "WS_INTERNAL_ERROR": "Internal WebSocket error.",
+    "AUTH_TOKEN_REQUIRED": "Authentication token required.",
+    "AUTH_TOKEN_INVALID": "Invalid or expired token.",
+    "NOT_FOUND": "Notification with id {id} not found."
+  },
+  "shared": {
+    "UNEXPECTED_ERROR": "Unexpected error.",
+    "INVALID_INPUT": "Invalid input data.",
+    "SUCCESS": "Operation successful",
+    "CREATED": "Resource created successfully",
+    "ACCEPTED": "Request accepted",
+    "NO_CONTENT": "Operation completed with no content",
+    "PARTIAL_CONTENT": "Partial content obtained",
+    "INTERNAL_ERROR": "Internal server error",
+    "VALIDATION_ERRORS": "Validation errors",
+    "UNAUTHORIZED": "Unauthorized",
+    "FORBIDDEN": "Access forbidden",
+    "BEARER_REQUIRED": "A Bearer token is required in the Authorization header.",
+    "UNEXPECTED_SERVER": "An unexpected error occurred. Please try again later.",
+    "RESOURCE_NOT_FOUND": "{resource} not found",
+    "RESOURCE_NOT_FOUND_WITH_ID": "{resource} with identifier '{identifier}' not found"
+  },
+  "validation": {
+    "IS_STRING": "{property} must be a string.",
+    "IS_NOT_EMPTY": "{property} should not be empty.",
+    "IS_EMAIL": "{property} must be an email.",
+    "IS_MIN_LENGTH": "{property} must be longer than or equal to {constraints} characters.",
+    "IS_MAX_LENGTH": "{property} must be shorter than or equal to {constraints} characters.",
+    "IS_MIN": "{property} must not be less than {constraints}.",
+    "IS_MAX": "{property} must not be greater than {constraints}.",
+    "IS_INT": "{property} must be an integer number.",
+    "IS_POSITIVE": "{property} must be a positive number.",
+    "IS_NUMBER": "{property} must be a number.",
+    "IS_ENUM": "{property} must be one of the following values: {constraints}.",
+    "IS_IN": "{property} must be one of the following values: {constraints}.",
+    "IS_MATCH": "{property} must match {constraints} regular expression.",
+    "IS_URL": "{property} must be a URL address.",
+    "IS_BOOLEAN": "{property} must be a boolean value.",
+    "IS_OBJECT": "{property} must be an object.",
+    "IS_DATE_STRING": "{property} must be a valid ISO 8601 date string.",
+    "IS_ARRAY": "{property} must be an array.",
+    "ARRAY_MIN_SIZE": "{property} must contain at least {constraints} elements.",
+    "CUSTOM_VALIDATOR": "{property} failed custom validation."
+  }
+}
