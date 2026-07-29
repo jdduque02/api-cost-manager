@@ -21,16 +21,16 @@ export class CreateUserDto {
     minLength: 3,
     maxLength: 20,
   })
-  @IsString({ message: 'El nombre de usuario debe ser una cadena de texto.' })
-  @IsNotEmpty({ message: 'El nombre de usuario es obligatorio.' })
+  @IsString()
+  @IsNotEmpty()
   username!: string;
 
   @ApiProperty({
     description: 'Correo electrónico de contacto.',
     example: 'juan.perez@ejemplo.com',
   })
-  @IsEmail({}, { message: 'El formato del correo electrónico no es válido.' })
-  @IsNotEmpty({ message: 'El correo electrónico es obligatorio.' })
+  @IsEmail()
+  @IsNotEmpty()
   email!: string;
 
   @ApiProperty({
@@ -38,12 +38,11 @@ export class CreateUserDto {
     example: 'ContraseñaSegura123!',
     minLength: 8,
   })
-  @IsString({ message: 'La contraseña debe ser una cadena de texto.' })
-  @IsNotEmpty({ message: 'La contraseña es obligatoria.' })
-  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres.' })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
   @Matches(
     /((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/,
-    { message: 'La contraseña es demasiado débil. Debe contener al menos una mayúscula, una minúscula, un número y un carácter especial.' }
   )
   password!: string;
 
@@ -53,8 +52,8 @@ export class CreateUserDto {
     maxLength: 10,
   })
   @IsOptional()
-  @IsString({ message: 'El locale debe ser un texto.' })
-  @MaxLength(10, { message: 'El locale no puede exceder los 10 caracteres.' })
+  @IsString()
+  @MaxLength(10)
   locale?: string;
 
   @ApiPropertyOptional({
@@ -63,8 +62,8 @@ export class CreateUserDto {
     maxLength: 50,
   })
   @IsOptional()
-  @IsString({ message: 'La zona horaria debe ser un texto.' })
-  @MaxLength(50, { message: 'La zona horaria no puede exceder los 50 caracteres.' })
+  @IsString()
+  @MaxLength(50)
   timezone?: string;
 
   @ApiPropertyOptional({
@@ -72,7 +71,7 @@ export class CreateUserDto {
     example: { prefered_theme: 'dark', notifications: true },
   })
   @IsOptional()
-  @IsObject({ message: 'Los metadatos deben ser un objeto válido.' })
+  @IsObject()
   metadata?: Record<string, unknown>;
 
   @ApiPropertyOptional({
@@ -81,8 +80,48 @@ export class CreateUserDto {
     default: true,
   })
   @IsOptional()
-  @IsBoolean({ message: 'El estado is_active debe ser un valor booleano.' })
+  @IsBoolean()
   is_active?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Número de teléfono o celular del usuario (se almacena encriptado).',
+    example: '+57 310 123 4567',
+    maxLength: 200,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  phone?: string;
+
+  @ApiPropertyOptional({
+    description: 'Dirección física del usuario (se almacena encriptado).',
+    example: 'Cra 10 #5-20, Bogotá',
+    maxLength: 300,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  address?: string;
+
+  @ApiPropertyOptional({
+    description: 'Nombre completo del usuario (se almacena encriptado).',
+    example: 'Juan Pérez García',
+    maxLength: 200,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  full_name?: string;
+
+  @ApiPropertyOptional({
+    description: 'Número de documento de identidad (se almacena encriptado).',
+    example: '1234567890',
+    maxLength: 50,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  document_id?: string;
 
   @ApiPropertyOptional({
     description: 'Perfil financiero del usuario.',

@@ -1,6 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
+import { IdentityModule } from '@identity/identity.module';
+import { AuditModule } from '../audit/audit.module';
 import { FinancialObjective } from './entities/financial-objective.entity';
 import { FinancialPeriod } from './entities/financial-period.entity';
 import { TransactionRecord } from './entities/transaction-record.entity';
@@ -29,6 +31,8 @@ import { ObjectivePaymentRepository } from './repositories/objective-payment.rep
       Notification,
     ]),
     AuthModule,
+    forwardRef(() => IdentityModule),
+    AuditModule,
   ],
   controllers: [
     FinancialObjectiveController,

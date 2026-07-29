@@ -73,6 +73,20 @@ export class CreateFinancialObjectiveDto {
   @MaxLength(100)
   owner?: string;
 
+  @ApiPropertyOptional({ description: 'Banco donde se aloja el ahorro (se almacena encriptado).', example: 'Bancolombia' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  bank?: string;
+
+  @ApiPropertyOptional({ description: 'Rentabilidad actual anual del ahorro (%).', example: 5.5 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  current_profitability?: number;
+
   @ApiPropertyOptional({ enum: FrequencyEnum, description: 'Frecuencia de pago.' })
   @IsOptional()
   @IsEnum(FrequencyEnum)
@@ -95,4 +109,16 @@ export class CreateFinancialObjectiveDto {
   @IsOptional()
   @IsDateString()
   end_date?: string;
+
+  @ApiPropertyOptional({
+    description: 'Referencia del cálculo de cuota previo (resultado de /calculate-quota). Se guarda como referencia interna.',
+    example: {
+      quota_amount: 416666.67,
+      total_periods: 24,
+      has_financial_profile: true,
+      is_within_budget: true,
+    },
+  })
+  @IsOptional()
+  quota_calculation?: Record<string, unknown>;
 }

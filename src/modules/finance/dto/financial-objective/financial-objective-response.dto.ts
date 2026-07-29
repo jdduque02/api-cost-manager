@@ -38,6 +38,12 @@ export class FinancialObjectiveResponseDto {
   @ApiPropertyOptional({ nullable: true })
   owner!: string | null;
 
+  @ApiPropertyOptional({ example: 'Bancolombia', nullable: true })
+  bank!: string | null;
+
+  @ApiPropertyOptional({ example: 5.5, nullable: true })
+  current_profitability!: number | null;
+
   @ApiPropertyOptional({ enum: FrequencyEnum, nullable: true })
   frequency!: FrequencyEnum | null;
 
@@ -52,6 +58,12 @@ export class FinancialObjectiveResponseDto {
 
   @ApiProperty({ example: false })
   is_completed!: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Referencia del cálculo de cuota usado al crear la meta.',
+    nullable: true,
+  })
+  quota_calculation!: Record<string, unknown> | null;
 
   @ApiPropertyOptional({ nullable: true })
   completed_at!: Date | null;

@@ -16,8 +16,8 @@ export class CreateFinancialProfileDto {
     description: 'Identificador único del usuario asociado al perfil.',
     example: '1',
   })
-  @IsString({ message: 'El ID del usuario debe ser un texto.' })
-  @IsNotEmpty({ message: 'El ID del usuario es obligatorio.' })
+  @IsString()
+  @IsNotEmpty()
   user_id!: string;
 
   @ApiPropertyOptional({
@@ -26,8 +26,8 @@ export class CreateFinancialProfileDto {
     maxLength: 50,
   })
   @IsOptional()
-  @IsString({ message: 'El nombre del perfil debe ser un texto.' })
-  @MaxLength(50, { message: 'El nombre del perfil no puede exceder los 50 caracteres.' })
+  @IsString()
+  @MaxLength(50)
   profile_name?: string;
 
   @ApiPropertyOptional({
@@ -36,7 +36,7 @@ export class CreateFinancialProfileDto {
     default: false,
   })
   @IsOptional()
-  @IsBoolean({ message: 'El campo is_custom debe ser un valor booleano.' })
+  @IsBoolean()
   is_custom?: boolean;
 
   @ApiPropertyOptional({
@@ -46,9 +46,9 @@ export class CreateFinancialProfileDto {
     maximum: 100,
   })
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'El ratio de necesidades debe ser un número con máximo 2 decimales.' })
-  @Min(0, { message: 'El ratio de necesidades no puede ser negativo.' })
-  @Max(100, { message: 'El ratio de necesidades no puede superar 100.' })
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(100)
   needs_ratio?: number;
 
   @ApiPropertyOptional({
@@ -58,9 +58,9 @@ export class CreateFinancialProfileDto {
     maximum: 100,
   })
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'El ratio de deseos debe ser un número con máximo 2 decimales.' })
-  @Min(0, { message: 'El ratio de deseos no puede ser negativo.' })
-  @Max(100, { message: 'El ratio de deseos no puede superar 100.' })
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(100)
   wants_ratio?: number;
 
   @ApiPropertyOptional({
@@ -70,9 +70,9 @@ export class CreateFinancialProfileDto {
     maximum: 100,
   })
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'El ratio de ahorro debe ser un número con máximo 2 decimales.' })
-  @Min(0, { message: 'El ratio de ahorro no puede ser negativo.' })
-  @Max(100, { message: 'El ratio de ahorro no puede superar 100.' })
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(100)
   savings_ratio?: number;
 
   @ApiPropertyOptional({
@@ -82,9 +82,9 @@ export class CreateFinancialProfileDto {
     maximum: 100,
   })
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'El ratio máximo de deuda debe ser un número con máximo 2 decimales.' })
-  @Min(0, { message: 'El ratio máximo de deuda no puede ser negativo.' })
-  @Max(100, { message: 'El ratio máximo de deuda no puede superar 100.' })
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(100)
   max_debt_ratio?: number;
 
   @ApiPropertyOptional({
@@ -92,6 +92,16 @@ export class CreateFinancialProfileDto {
     example: { version: '1.0', tags: ['emergencia', 'personal'] },
   })
   @IsOptional()
-  @IsObject({ message: 'Los metadatos deben ser un objeto válido.' })
+  @IsObject()
   metadata?: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    description: 'Ingreso mensual del usuario en pesos colombianos (se almacena encriptado).',
+    example: 3500000,
+    minimum: 0,
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  monthly_income?: number;
 }

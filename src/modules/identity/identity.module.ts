@@ -24,6 +24,6 @@ import { AuthModule } from '../auth/auth.module';
     FinancialProfileService,
     UserService,
   ],
-  exports: [UserRepository],
+  exports: [UserRepository, FinancialProfileRepository, FinancialProfileService],
 })
 export class IdentityModule {}

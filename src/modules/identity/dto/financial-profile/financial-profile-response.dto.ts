@@ -31,6 +31,9 @@ export class FinancialProfileResponseDto {
   metadata!: Record<string, unknown>;
 
   @Expose()
+  monthly_income!: number | null;
+
+  @Expose()
   created_at!: Date;
 
   @Expose()

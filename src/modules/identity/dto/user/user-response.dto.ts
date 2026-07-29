@@ -31,6 +31,18 @@ export class UserResponseDto {
   @Expose()
   is_active!: boolean;
 
+  @Expose({ groups: ['detail'] })
+  phone!: string | null;
+
+  @Expose({ groups: ['detail'] })
+  address!: string | null;
+
+  @Expose({ groups: ['detail'] })
+  full_name!: string | null;
+
+  @Expose({ groups: ['detail'] })
+  document_id!: string | null;
+
   @Expose()
   created_at!: Date;
 

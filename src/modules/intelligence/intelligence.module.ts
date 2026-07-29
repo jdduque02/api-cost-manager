@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from '@auth/auth.module';
 import { FinancialSummary } from '@intelligence/entities/financial-summary.entity';
 import { SummaryCategoryBreakdown } from '@intelligence/entities/summary-category-breakdown.entity';
 import { TaxSummary } from '@intelligence/entities/tax-summary.entity';
@@ -9,6 +10,7 @@ import { IntelligenceController } from '@intelligence/controller/intelligence.co
 @Module({
   imports: [
     TypeOrmModule.forFeature([FinancialSummary, SummaryCategoryBreakdown, TaxSummary]),
+    AuthModule,
   ],
   controllers: [IntelligenceController],
   providers: [IntelligenceService],

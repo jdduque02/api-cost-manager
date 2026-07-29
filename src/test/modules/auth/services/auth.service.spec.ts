@@ -9,6 +9,7 @@ import { of, throwError } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { AuthService } from '@auth/service/auth.service';
 import { KeycloakAdminService } from '@auth/service/keycloak-admin.service';
+import { UserRepository } from '@identity/repositories/app-user.repositories';
 import { LoginDto } from '@auth/dto/login.dto';
 import { RefreshTokenDto } from '@auth/dto/refresh-token.dto';
 
@@ -35,6 +36,13 @@ const mockKeycloakAdminService = {
   sendResetPasswordEmail: jest.fn(),
 };
 
+const mockUserRepository = {
+  create: jest.fn(),
+  findByExternalId: jest.fn(),
+  findByUsername: jest.fn(),
+  update: jest.fn(),
+};
+
 const axiosResponse = <T>(data: T): AxiosResponse<T> => ({
   data,
   status: 200,
@@ -53,6 +61,7 @@ describe('AuthService', () => {
         { provide: HttpService, useValue: mockHttpService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: KeycloakAdminService, useValue: mockKeycloakAdminService },
+        { provide: UserRepository, useValue: mockUserRepository },
       ],
     }).compile();
 
@@ -185,6 +194,7 @@ describe('AuthService', () => {
     };
 
     it('debe retornar IntrospectResponse con token activo', async () => {
+      mockUserRepository.findByUsername.mockResolvedValue({ id: '123' });
       mockHttpService.post.mockReturnValue(of(axiosResponse(activeTokenData)));
       const result = await service.introspect('valid-token');
       expect(result.active).toBe(true);

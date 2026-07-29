@@ -24,7 +24,7 @@ export class CreateSubcategoryDto {
   @ApiPropertyOptional({ description: 'Color hexadecimal (formato #RRGGBB).', example: '#FFA500' })
   @IsOptional()
   @IsString()
-  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'color_hex debe tener formato #RRGGBB.' })
+  @Matches(/^#[0-9A-Fa-f]{6}$/)
   color_hex?: string;
 
   @ApiPropertyOptional({ description: 'Estado activo.', example: true })
