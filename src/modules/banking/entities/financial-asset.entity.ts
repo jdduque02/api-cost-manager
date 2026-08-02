@@ -31,8 +31,17 @@ export class FinancialAsset {
   @Column({ type: 'numeric', precision: 15, scale: 2 })
   current_value!: number;
 
+  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true })
+  current_yield!: number;
+
   @Column({ type: 'varchar', length: 3, default: 'COP' })
   currency!: string;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  symbol!: string;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  quote_source!: string;
 
   @Column({ type: 'bytea', nullable: true })
   encrypted_data!: Buffer;

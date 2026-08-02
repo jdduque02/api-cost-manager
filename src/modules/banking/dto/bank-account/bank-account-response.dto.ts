@@ -19,6 +19,9 @@ export class BankAccountResponseDto {
   @ApiProperty({ description: 'Saldo visible de la cuenta.', example: '1500000' })
   display_balance!: string;
 
+  @ApiProperty({ example: 'COP' })
+  currency!: string;
+
   @ApiProperty({ example: false })
   is_primary!: boolean;
 

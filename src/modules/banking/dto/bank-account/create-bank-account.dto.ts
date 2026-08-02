@@ -25,6 +25,12 @@ export class CreateBankAccountDto {
   @IsNumber()
   balance!: number;
 
+  @ApiPropertyOptional({ description: 'Código de moneda ISO 4217.', example: 'COP' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(3)
+  currency?: string;
+
   @ApiPropertyOptional({ description: 'Indica si es la cuenta principal del usuario.', example: false })
   @IsOptional()
   @IsBoolean()

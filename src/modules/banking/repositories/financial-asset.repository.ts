@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { I18nService } from 'nestjs-i18n';
-import { IsNull, Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { FinancialAsset } from '@banking/entities/financial-asset.entity';
 import { CreateFinancialAssetDto } from '@banking/dto/financial-asset/create-financial-asset.dto';
 import { UpdateFinancialAssetDto } from '@banking/dto/financial-asset/update-financial-asset.dto';
@@ -39,6 +39,25 @@ export class FinancialAssetRepository {
     const saved = await this.repo.save(updated);
     this.logger.log(`Activo financiero ID ${id} actualizado para usuario ID: ${userId}`);
     return saved;
+  }
+
+  async updateQuote(
+    id: number,
+    userId: number,
+    price: number,
+    currency: string,
+  ): Promise<void> {
+    await this.repo.update(
+      { id, user_id: userId, deleted_at: IsNull() },
+      { current_value: price, currency },
+    );
+  }
+
+  async findSymbolized(userId: number): Promise<FinancialAsset[]> {
+    return this.repo.find({
+      where: { user_id: userId, deleted_at: IsNull(), symbol: Not(IsNull()) },
+      order: { created_at: 'DESC' },
+    });
   }
 
   async softDelete(id: number, userId: number): Promise<void> {

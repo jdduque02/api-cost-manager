@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { HttpModule } from '@nestjs/axios';
 import { AuthModule } from '@auth/auth.module';
 import { BankAccount } from '@banking/entities/bank-account.entity';
 import { FinancialAsset } from '@banking/entities/financial-asset.entity';
@@ -10,6 +11,7 @@ import { FinancialLiabilityController } from '@banking/controller/financial-liab
 import { BankAccountService } from '@banking/service/bank-account.service';
 import { FinancialAssetService } from '@banking/service/financial-asset.service';
 import { FinancialLiabilityService } from '@banking/service/financial-liability.service';
+import { MarketDataService } from '@banking/service/market-data.service';
 import { BankAccountRepository } from '@banking/repositories/bank-account.repository';
 import { FinancialAssetRepository } from '@banking/repositories/financial-asset.repository';
 import { FinancialLiabilityRepository } from '@banking/repositories/financial-liability.repository';
@@ -17,6 +19,7 @@ import { FinancialLiabilityRepository } from '@banking/repositories/financial-li
 @Module({
   imports: [
     TypeOrmModule.forFeature([BankAccount, FinancialAsset, FinancialLiability]),
+    HttpModule,
     AuthModule,
   ],
   controllers: [
@@ -28,6 +31,7 @@ import { FinancialLiabilityRepository } from '@banking/repositories/financial-li
     BankAccountService,
     FinancialAssetService,
     FinancialLiabilityService,
+    MarketDataService,
     BankAccountRepository,
     FinancialAssetRepository,
     FinancialLiabilityRepository,

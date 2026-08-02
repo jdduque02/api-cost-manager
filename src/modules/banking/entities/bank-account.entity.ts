@@ -34,6 +34,9 @@ export class BankAccount {
   @Column({ type: 'bytea' })
   encrypted_balance!: Buffer;
 
+  @Column({ type: 'varchar', length: 3, default: 'COP' })
+  currency!: string;
+
   @Column({ type: 'boolean', default: false })
   @Index('idx_bank_account_primary')
   is_primary!: boolean;

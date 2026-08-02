@@ -30,6 +30,7 @@ export class BankAccountRepository {
         user_id: userId,
         bank_name: dto.bank_name,
         account_type: dto.account_type,
+        currency: dto.currency ?? 'COP',
         encrypted_account_number: encryptedAccountNumber,
         encrypted_balance: encryptedBalance,
         is_primary: dto.is_primary ?? false,

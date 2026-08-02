@@ -26,6 +26,7 @@ export class BankAccountService {
       account_type: entity.account_type,
       masked_account_number: maskedNumber,
       display_balance: displayBalance,
+      currency: entity.currency,
       is_primary: entity.is_primary,
       created_at: entity.created_at,
       updated_at: entity.updated_at ?? null,
@@ -53,6 +54,7 @@ export class BankAccountService {
     const partial: Partial<BankAccount> = {
       bank_name: dto.bank_name,
       account_type: dto.account_type,
+      currency: dto.currency,
       is_primary: dto.is_primary,
     };
     if (dto.account_number) partial.encrypted_account_number = Buffer.from(dto.account_number, 'utf8');

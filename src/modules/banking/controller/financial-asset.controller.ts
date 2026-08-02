@@ -75,6 +75,24 @@ export class FinancialAssetController {
     return this.financialAssetService.findAll(userId);
   }
 
+  @Get('quotes')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Consultar valor en línea de acciones/divisas registradas' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Cotizaciones en vivo de los activos con símbolo registrado.',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Error al consultar cotizaciones.',
+    type: ErrorResponseDto,
+  })
+  async getQuotes(
+    @Param('userId', ParseIntPipe) userId: number,
+    @CurrentUser() _currentUser: IntrospectResponse,
+  ) {
+    return this.financialAssetService.refreshQuotes(userId);
+  }
+
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Obtener activo financiero por ID' })
