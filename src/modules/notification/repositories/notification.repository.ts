@@ -28,10 +28,15 @@ export class NotificationRepository {
       description: dto.description ?? null,
       is_active: dto.is_active ?? true,
       scheduled_at: dto.scheduled_at ?? null,
+      reference: dto.reference ?? null,
     });
     const saved = await this.repo.save(notification);
     this.logger.log(`Notificación creada para usuario ID: ${userId}`);
     return saved;
+  }
+
+  async findByReference(userId: number, reference: string): Promise<Notification | null> {
+    return this.repo.findOne({ where: { user_id: userId, reference } });
   }
 
   async findAll(userId: number, filters?: { is_read?: boolean; is_active?: boolean }): Promise<Notification[]> {

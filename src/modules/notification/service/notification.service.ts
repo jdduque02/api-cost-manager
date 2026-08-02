@@ -26,6 +26,7 @@ export class NotificationService {
       is_read: notification.is_read,
       is_active: notification.is_active,
       scheduled_at: notification.scheduled_at,
+      reference: notification.reference,
       created_at: notification.created_at,
     };
     this.gateway.sendNotificationToUser(userId, payload);
@@ -63,6 +64,20 @@ export class NotificationService {
   }
 
   // ── WebSocket helpers (invoked by other modules) ──────────
+
+  /**
+   * Crea una notificación solo si no existe otra con la misma `reference`.
+   * Usado por el scheduler de recordatorios para evitar duplicados.
+   */
+  async createIfMissing(
+    userId: number,
+    dto: CreateNotificationDto,
+    reference: string,
+  ): Promise<Notification | null> {
+    const existing = await this.notificationRepository.findByReference(userId, reference);
+    if (existing) return null;
+    return this.create(userId, { ...dto, reference });
+  }
 
   sendToUser(userId: number, payload: NotificationPayload): void {
     this.gateway.sendNotificationToUser(userId, payload);

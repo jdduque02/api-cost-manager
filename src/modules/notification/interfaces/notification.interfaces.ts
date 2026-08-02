@@ -8,6 +8,7 @@ export interface NotificationPayload {
   is_read: boolean;
   is_active: boolean;
   scheduled_at: Date | null;
+  reference: string | null;
   created_at: Date;
 }
 

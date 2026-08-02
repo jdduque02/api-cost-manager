@@ -32,6 +32,10 @@ export class Notification {
   @Column({ type: 'timestamp', nullable: true })
   scheduled_at!: Date | null;
 
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  @Index('idx_notification_reference')
+  reference!: string | null;
+
   @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 

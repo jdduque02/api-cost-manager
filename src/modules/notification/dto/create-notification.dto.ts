@@ -17,6 +17,12 @@ export class CreateNotificationDto {
   @IsOptional()
   scheduled_at?: Date;
 
+  @ApiPropertyOptional({ description: 'Clave de deduplicación (ej: fixed:reminder:{txId}:{YYYY-MM-DD})', example: 'fixed:reminder:42:2026-08-15' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  reference?: string;
+
   @ApiPropertyOptional({ description: 'Estado activo', default: true })
   @IsOptional()
   @IsBoolean()
