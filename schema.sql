@@ -33,7 +33,33 @@ CREATE SCHEMA IF NOT EXISTS news;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type_enum') THEN
-    CREATE TYPE transaction_type_enum AS ENUM ('income', 'expense');
+    CREATE TYPE transaction_type_enum AS ENUM ('income', 'expense', 'investment');
+  ELSE
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_enum e
+      JOIN pg_type t ON e.enumtypid = t.oid
+      WHERE t.typname = 'transaction_type_enum' AND e.enumlabel = 'investment'
+    ) THEN
+      ALTER TYPE transaction_type_enum ADD VALUE 'investment';
+    END IF;
+  END IF;
+END
+$$;
+
+-- profile_bucket_enum (rango del perfil financiero)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'profile_bucket_enum') THEN
+    CREATE TYPE profile_bucket_enum AS ENUM ('needs', 'wants', 'savings', 'investment', 'debt');
+  END IF;
+END
+$$;
+
+-- fixed_type_enum
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'fixed_type_enum') THEN
+    CREATE TYPE fixed_type_enum AS ENUM ('deduction', 'fixed_income');
   END IF;
 END
 $$;
@@ -133,6 +159,7 @@ CREATE TABLE IF NOT EXISTS identity.financial_profile (
   needs_ratio       NUMERIC(5,2)  NOT NULL DEFAULT 50,
   wants_ratio       NUMERIC(5,2)  NOT NULL DEFAULT 30,
   savings_ratio     NUMERIC(5,2)  NOT NULL DEFAULT 20,
+  investment_ratio  NUMERIC(5,2)  NOT NULL DEFAULT 10,
   max_debt_ratio    NUMERIC(5,2)  NOT NULL DEFAULT 40,
   metadata          JSONB         NOT NULL DEFAULT '{}',
   monthly_income    VARCHAR(500),   -- Encriptado (AES-256-GCM)
@@ -140,9 +167,9 @@ CREATE TABLE IF NOT EXISTS identity.financial_profile (
   updated_at        TIMESTAMP,
 
   CONSTRAINT ck_ratios_positive
-    CHECK (needs_ratio >= 0 AND wants_ratio >= 0 AND savings_ratio >= 0),
+    CHECK (needs_ratio >= 0 AND wants_ratio >= 0 AND savings_ratio >= 0 AND investment_ratio >= 0),
   CONSTRAINT ck_ratios_max
-    CHECK ((needs_ratio + wants_ratio + savings_ratio) <= 100.00),
+    CHECK ((needs_ratio + wants_ratio + savings_ratio + investment_ratio) <= 100.00),
 
   CONSTRAINT fk_financial_profile_user
     FOREIGN KEY (user_id) REFERENCES identity.app_user(id) ON DELETE CASCADE
@@ -169,6 +196,11 @@ CREATE TABLE IF NOT EXISTS finance.transaction_record (
   subcategory_id        BIGINT,
   type                  transaction_type_enum   NOT NULL,
   amount                NUMERIC(15,2)           NOT NULL,
+  is_fixed              BOOLEAN                 NOT NULL DEFAULT FALSE,
+  fixed_type            fixed_type_enum,
+  frequency             frequency_enum,
+  due_day               SMALLINT,
+  reminder_days         SMALLINT                NOT NULL DEFAULT 3,
   payment_method        payment_method_enum,
   description           TEXT,
   reference_code        VARCHAR(100),
@@ -230,12 +262,14 @@ CREATE TABLE IF NOT EXISTS finance.notification (
   is_read         BOOLEAN         NOT NULL DEFAULT FALSE,
   is_active       BOOLEAN         NOT NULL DEFAULT TRUE,
   scheduled_at    TIMESTAMP,
+  reference       VARCHAR(120),
   created_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_notification_user   ON finance.notification (user_id);
 CREATE INDEX IF NOT EXISTS idx_notification_unread ON finance.notification (is_read) WHERE is_read = FALSE;
+CREATE INDEX IF NOT EXISTS idx_notification_reference ON finance.notification (user_id, reference);
 
 -- ── finance.financial_period ────────────────────────────────
 CREATE TABLE IF NOT EXISTS finance.financial_period (
@@ -320,6 +354,8 @@ CREATE TABLE IF NOT EXISTS banking.financial_asset (
   name            VARCHAR(100)    NOT NULL,
   current_value   NUMERIC(15,2)   NOT NULL,
   currency        VARCHAR(3)      NOT NULL DEFAULT 'COP',
+  symbol          VARCHAR(20),
+  quote_source    VARCHAR(20),
   encrypted_data  BYTEA,          -- pgp_sym_encrypt
   created_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      TIMESTAMP,
@@ -330,6 +366,8 @@ CREATE INDEX IF NOT EXISTS idx_financial_asset_user ON banking.financial_asset (
 CREATE INDEX IF NOT EXISTS idx_financial_asset_type ON banking.financial_asset (asset_type);
 
 COMMENT ON TABLE  banking.financial_asset IS 'Activos financieros. Datos cifrados con pgcrypto.';
+COMMENT ON COLUMN banking.financial_asset.symbol       IS 'Ticker/símbolo de cotización (ej: NU, USDT, BTC).';
+COMMENT ON COLUMN banking.financial_asset.quote_source IS 'Proveedor de cotización: yahoo o coingecko.';
 COMMENT ON COLUMN banking.financial_asset.encrypted_data IS 'Datos adicionales cifrados con pgp_sym_encrypt';
 
 -- ── banking.financial_liability ─────────────────────────────
@@ -387,6 +425,7 @@ CREATE TABLE IF NOT EXISTS catalog.category (
   id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   name          VARCHAR(100)    NOT NULL,
   group_type    transaction_type_enum NOT NULL,
+  profile_bucket catalog.profile_bucket_enum,
   icon_key      VARCHAR(50),
   color_hex     VARCHAR(7),
   sort_order    INT             NOT NULL DEFAULT 0,
@@ -396,6 +435,7 @@ CREATE TABLE IF NOT EXISTS catalog.category (
 );
 
 CREATE INDEX IF NOT EXISTS idx_category_group_type ON catalog.category (group_type);
+CREATE INDEX IF NOT EXISTS idx_category_profile_bucket ON catalog.category (profile_bucket);
 CREATE INDEX IF NOT EXISTS idx_category_active     ON catalog.category (is_active);
 
 -- ── catalog.subcategory ─────────────────────────────────────
