@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { FinancialPeriodRepository } from '@finance/repositories/financial-period.repository';
 import { FinancialPeriod } from '@finance/entities/financial-period.entity';
 import { CreateFinancialPeriodDto } from '@finance/dto/financial-period/create-financial-period.dto';
@@ -10,6 +11,10 @@ const mockTypeOrmRepo = {
   save: jest.fn(),
   find: jest.fn(),
   findOne: jest.fn(),
+};
+
+const mockI18nService = {
+  t: jest.fn((key: string) => `[${key}]`),
 };
 
 const buildPeriod = (overrides = {}): FinancialPeriod =>
@@ -31,6 +36,7 @@ describe('FinancialPeriodRepository', () => {
       providers: [
         FinancialPeriodRepository,
         { provide: getRepositoryToken(FinancialPeriod), useValue: mockTypeOrmRepo },
+        { provide: I18nService, useValue: mockI18nService },
       ],
     }).compile();
 

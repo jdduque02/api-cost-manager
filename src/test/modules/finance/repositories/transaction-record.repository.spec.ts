@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { TransactionRecordRepository } from '@finance/repositories/transaction-record.repository';
 import { TransactionRecord } from '@finance/entities/transaction-record.entity';
 import { CreateTransactionRecordDto } from '@finance/dto/transaction-record/create-transaction-record.dto';
@@ -16,6 +17,7 @@ const mockQb = {
   orderBy: jest.fn().mockReturnThis(),
   take: jest.fn().mockReturnThis(),
   skip: jest.fn().mockReturnThis(),
+  getMany: jest.fn(),
   getManyAndCount: jest.fn(),
 };
 
@@ -26,6 +28,10 @@ const mockTypeOrmRepo = {
   merge: jest.fn(),
   softRemove: jest.fn(),
   createQueryBuilder: jest.fn().mockReturnValue(mockQb),
+};
+
+const mockI18nService = {
+  t: jest.fn().mockReturnValue('Transacción no encontrada'),
 };
 
 const buildRecord = (overrides = {}): TransactionRecord =>
@@ -48,6 +54,7 @@ describe('TransactionRecordRepository', () => {
       providers: [
         TransactionRecordRepository,
         { provide: getRepositoryToken(TransactionRecord), useValue: mockTypeOrmRepo },
+        { provide: I18nService, useValue: mockI18nService },
       ],
     }).compile();
 
@@ -148,6 +155,25 @@ describe('TransactionRecordRepository', () => {
       mockTypeOrmRepo.findOne.mockResolvedValue(null);
 
       await expect(repo.findById(999, 10)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // findFixedForReminders
+  // ─────────────────────────────────────────────────────────────
+  describe('findFixedForReminders', () => {
+    it('debe filtrar transacciones fijas con due_day definido y created_at acotado', async () => {
+      const records = [buildRecord({ id: 7, is_fixed: true, due_day: 15 })];
+      mockQb.getMany.mockResolvedValue(records);
+
+      const from = new Date('2025-08-02');
+      const result = await repo.findFixedForReminders(from);
+
+      expect(mockQb.where).toHaveBeenCalledWith('tr.deleted_at IS NULL');
+      expect(mockQb.andWhere).toHaveBeenCalledWith('tr.is_fixed = TRUE');
+      expect(mockQb.andWhere).toHaveBeenCalledWith('tr.due_day IS NOT NULL');
+      expect(mockQb.andWhere).toHaveBeenCalledWith('tr.created_at >= :from', { from });
+      expect(result).toEqual(records);
     });
   });
 

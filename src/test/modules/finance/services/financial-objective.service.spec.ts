@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
+import { I18nService } from 'nestjs-i18n';
 import { FinancialObjectiveService } from '@finance/service/financial-objective.service';
 import { FinancialObjectiveRepository } from '@finance/repositories/financial-objective.repository';
+import { FinancialProfileRepository } from '@identity/repositories/financial-profile.repository';
+import { AuditLogService } from '@audit/service/audit-log.service';
 import { CreateFinancialObjectiveDto } from '@finance/dto/financial-objective/create-financial-objective.dto';
 import { UpdateFinancialObjectiveDto } from '@finance/dto/financial-objective/update-financial-objective.dto';
 import { FinancialObjectiveTypeEnum } from '@shared/enums';
@@ -12,6 +15,16 @@ const mockFinancialObjectiveRepository = {
   findById: jest.fn(),
   update: jest.fn(),
   softDelete: jest.fn(),
+};
+
+const mockFinancialProfileRepository = {};
+
+const mockAuditLogService = {
+  log: jest.fn(),
+};
+
+const mockI18nService = {
+  t: jest.fn((key: string) => `[${key}]`),
 };
 
 const buildObjective = (overrides = {}) => ({
@@ -31,6 +44,9 @@ describe('FinancialObjectiveService', () => {
       providers: [
         FinancialObjectiveService,
         { provide: FinancialObjectiveRepository, useValue: mockFinancialObjectiveRepository },
+        { provide: FinancialProfileRepository, useValue: mockFinancialProfileRepository },
+        { provide: AuditLogService, useValue: mockAuditLogService },
+        { provide: I18nService, useValue: mockI18nService },
       ],
     }).compile();
 

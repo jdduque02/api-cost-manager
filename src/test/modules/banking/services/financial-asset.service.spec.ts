@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { FinancialAssetService } from '@banking/service/financial-asset.service';
 import { FinancialAssetRepository } from '@banking/repositories/financial-asset.repository';
+import { MarketDataService } from '@banking/service/market-data.service';
 import { FinancialAsset } from '@banking/entities/financial-asset.entity';
 
 const mockFinancialAssetRepository = {
@@ -10,6 +11,12 @@ const mockFinancialAssetRepository = {
   findById: jest.fn(),
   update: jest.fn(),
   softDelete: jest.fn(),
+  findSymbolized: jest.fn(),
+  updateQuote: jest.fn(),
+};
+
+const mockMarketDataService = {
+  refreshQuotes: jest.fn(),
 };
 
 const buildAsset = (overrides = {}): FinancialAsset =>
@@ -31,6 +38,7 @@ describe('FinancialAssetService', () => {
       providers: [
         FinancialAssetService,
         { provide: FinancialAssetRepository, useValue: mockFinancialAssetRepository },
+        { provide: MarketDataService, useValue: mockMarketDataService },
       ],
     }).compile();
 
@@ -107,6 +115,49 @@ describe('FinancialAssetService', () => {
       mockFinancialAssetRepository.softDelete.mockRejectedValue(new NotFoundException());
 
       await expect(service.remove(999, 10)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('refreshQuotes', () => {
+    it('debe consultar cotizaciones y persistir solo las exitosas', async () => {
+      const assets = [
+        buildAsset({ id: 1, symbol: 'NU', quote_source: 'yahoo' }),
+        buildAsset({ id: 2, symbol: 'USDT', quote_source: 'coingecko' }),
+      ];
+      const quotes = [
+        {
+          asset_id: 1,
+          name: 'Acciones Ecopetrol',
+          symbol: 'NU',
+          price: 12.5,
+          currency: 'USD',
+          success: true,
+        },
+        {
+          asset_id: 2,
+          name: 'Acciones Ecopetrol',
+          symbol: 'USDT',
+          price: 0,
+          currency: 'COP',
+          success: false,
+        },
+      ];
+      mockFinancialAssetRepository.findSymbolized.mockResolvedValue(assets);
+      mockMarketDataService.refreshQuotes.mockResolvedValue(quotes);
+      mockFinancialAssetRepository.updateQuote.mockResolvedValue(undefined);
+
+      const result = await service.refreshQuotes(10);
+
+      expect(mockFinancialAssetRepository.findSymbolized).toHaveBeenCalledWith(10);
+      expect(mockMarketDataService.refreshQuotes).toHaveBeenCalledWith(assets);
+      expect(mockFinancialAssetRepository.updateQuote).toHaveBeenCalledTimes(1);
+      expect(mockFinancialAssetRepository.updateQuote).toHaveBeenCalledWith(
+        1,
+        10,
+        12.5,
+        'USD',
+      );
+      expect(result).toEqual(quotes);
     });
   });
 });

@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { IsNull } from 'typeorm';
+import { I18nService } from 'nestjs-i18n';
+import { EncryptionService } from '@shared/services/encryption.service';
 import { FinancialObjectiveRepository } from '@finance/repositories/financial-objective.repository';
 import { FinancialObjective } from '@finance/entities/financial-objective.entity';
 import { CreateFinancialObjectiveDto } from '@finance/dto/financial-objective/create-financial-objective.dto';
@@ -15,6 +17,15 @@ const mockTypeOrmRepo = {
   findOne: jest.fn(),
   merge: jest.fn(),
   softRemove: jest.fn(),
+};
+
+const mockI18nService = {
+  t: jest.fn((key: string) => `[${key}]`),
+};
+
+const mockEncryptionService = {
+  encrypt: jest.fn((v: string) => v),
+  decrypt: jest.fn((v: string) => v),
 };
 
 const buildObjective = (overrides = {}): FinancialObjective =>
@@ -37,6 +48,8 @@ describe('FinancialObjectiveRepository', () => {
       providers: [
         FinancialObjectiveRepository,
         { provide: getRepositoryToken(FinancialObjective), useValue: mockTypeOrmRepo },
+        { provide: I18nService, useValue: mockI18nService },
+        { provide: EncryptionService, useValue: mockEncryptionService },
       ],
     }).compile();
 

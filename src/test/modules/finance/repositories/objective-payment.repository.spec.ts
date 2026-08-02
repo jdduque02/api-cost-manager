@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { ObjectivePaymentRepository } from '@finance/repositories/objective-payment.repository';
 import { ObjectivePayment } from '@finance/entities/objective-payment.entity';
 import { CreateObjectivePaymentDto } from '@finance/dto/objective-payment/create-objective-payment.dto';
@@ -11,6 +12,10 @@ const mockTypeOrmRepo = {
   find: jest.fn(),
   findOne: jest.fn(),
   remove: jest.fn(),
+};
+
+const mockI18nService = {
+  t: jest.fn((key: string) => `[${key}]`),
 };
 
 const buildPayment = (overrides = {}): ObjectivePayment =>
@@ -31,6 +36,7 @@ describe('ObjectivePaymentRepository', () => {
       providers: [
         ObjectivePaymentRepository,
         { provide: getRepositoryToken(ObjectivePayment), useValue: mockTypeOrmRepo },
+        { provide: I18nService, useValue: mockI18nService },
       ],
     }).compile();
 
