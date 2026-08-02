@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { TransactionTypeEnum } from '@shared/enums';
+import { ProfileBucketEnum, TransactionTypeEnum } from '@shared/enums';
 import { Subcategory } from '@catalog/entities/subcategory.entity';
 
 @Entity({ name: 'category', schema: 'catalog' })
@@ -25,6 +25,15 @@ export class Category {
   })
   @Index('idx_category_group_type')
   group_type!: TransactionTypeEnum;
+
+  @Column({
+    type: 'enum',
+    enum: ProfileBucketEnum,
+    enumName: 'profile_bucket_enum',
+    nullable: true,
+  })
+  @Index('idx_category_profile_bucket')
+  profile_bucket!: ProfileBucketEnum | null;
 
   @Column({ type: 'varchar', length: 50, nullable: true })
   icon_key!: string;

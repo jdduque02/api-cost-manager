@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TransactionTypeEnum } from '@shared/enums';
+import { ProfileBucketEnum, TransactionTypeEnum } from '@shared/enums';
 
 export class CategoryResponseDto {
   @ApiProperty({ example: 1 })
@@ -10,6 +10,13 @@ export class CategoryResponseDto {
 
   @ApiProperty({ enum: TransactionTypeEnum })
   group_type!: TransactionTypeEnum;
+
+  @ApiPropertyOptional({
+    enum: ProfileBucketEnum,
+    example: ProfileBucketEnum.NEEDS,
+    nullable: true,
+  })
+  profile_bucket!: ProfileBucketEnum | null;
 
   @ApiPropertyOptional({ example: 'food-fork-drink', nullable: true })
   icon_key!: string | null;
