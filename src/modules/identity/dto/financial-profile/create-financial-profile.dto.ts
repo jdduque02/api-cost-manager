@@ -76,6 +76,18 @@ export class CreateFinancialProfileDto {
   savings_ratio?: number;
 
   @ApiPropertyOptional({
+    description: 'Porcentaje destinado a inversión.',
+    example: 10,
+    minimum: 0,
+    maximum: 100,
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(100)
+  investment_ratio?: number;
+
+  @ApiPropertyOptional({
     description: 'Límite máximo de endeudamiento permitido.',
     example: 35,
     minimum: 0,

@@ -13,11 +13,11 @@ import { AppUser } from './app-user.entity';
 @Entity({ name: 'financial_profile', schema: 'identity' })
 @Check(
   'ck_ratios_positive',
-  `needs_ratio >= 0 AND wants_ratio >= 0 AND savings_ratio >= 0`,
+  `needs_ratio >= 0 AND wants_ratio >= 0 AND savings_ratio >= 0 AND investment_ratio >= 0`,
 )
 @Check(
   'ck_ratios_max',
-  `(needs_ratio + wants_ratio + savings_ratio) <= 100.00`,
+  `(needs_ratio + wants_ratio + savings_ratio + investment_ratio) <= 100.00`,
 )
 export class FinancialProfile {
   @PrimaryGeneratedColumn('identity', { type: 'bigint' })
@@ -40,6 +40,9 @@ export class FinancialProfile {
 
   @Column({ type: 'numeric', precision: 5, scale: 2, default: 20 })
   savings_ratio!: number;
+
+  @Column({ type: 'numeric', precision: 5, scale: 2, default: 10 })
+  investment_ratio!: number;
 
   @Column({ type: 'numeric', precision: 5, scale: 2, default: 40 })
   max_debt_ratio!: number;

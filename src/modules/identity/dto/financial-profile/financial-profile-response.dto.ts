@@ -25,6 +25,9 @@ export class FinancialProfileResponseDto {
   savings_ratio!: number;
 
   @Expose()
+  investment_ratio!: number;
+
+  @Expose()
   max_debt_ratio!: number;
 
   @Expose()
