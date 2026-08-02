@@ -81,7 +81,15 @@
     "WS_INTERNAL_ERROR": "Internal WebSocket error.",
     "AUTH_TOKEN_REQUIRED": "Authentication token required.",
     "AUTH_TOKEN_INVALID": "Invalid or expired token.",
-    "NOT_FOUND": "Notification with id {id} not found."
+    "NOT_FOUND": "Notification with id {id} not found.",
+    "UPCOMING_DEDUCTION": "Upcoming deduction",
+    "UPCOMING_INCOME": "Upcoming income",
+    "UPCOMING_INVESTMENT": "Upcoming investment",
+    "GENERIC_MOVEMENT": "your movement",
+    "UPCOMING_DESCRIPTION": "Your {concept} of {amount} will be executed on {date}.",
+    "PAYMENT_METHOD": "Payment method: {method}",
+    "SOURCE_ENTITY": "Source entity: {source}",
+    "ADD_PAYMENT_HINT": "Please have enough balance and register the payment method and source entity to execute the movement."
   },
   "shared": {
     "UNEXPECTED_ERROR": "Unexpected error.",
