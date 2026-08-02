@@ -52,6 +52,20 @@ export class TransactionRecordRepository {
     return record;
   }
 
+  /**
+   * CRÍTICO: query para el scheduler de recordatorios.
+   * SIEMPRE incluye created_at en el WHERE para habilitar partition pruning.
+   */
+  async findFixedForReminders(fromDate: Date): Promise<TransactionRecord[]> {
+    return this.repo
+      .createQueryBuilder('tr')
+      .where('tr.deleted_at IS NULL')
+      .andWhere('tr.is_fixed = TRUE')
+      .andWhere('tr.due_day IS NOT NULL')
+      .andWhere('tr.created_at >= :from', { from: fromDate })
+      .getMany();
+  }
+
   async update(id: number, userId: number, dto: UpdateTransactionRecordDto): Promise<TransactionRecord> {
     const record = await this.findById(id, userId);
     const updated = this.repo.merge(record, dto as Partial<TransactionRecord>);

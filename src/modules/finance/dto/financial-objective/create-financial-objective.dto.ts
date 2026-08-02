@@ -45,6 +45,13 @@ export class CreateFinancialObjectiveDto {
   @Min(0)
   target_amount!: number;
 
+  @ApiPropertyOptional({ description: 'Saldo actual ahorrado hacia el objetivo.', example: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  current_balance?: number;
+
   @ApiPropertyOptional({ description: 'Tasa de interés anual (%).', example: 5.5 })
   @IsOptional()
   @Type(() => Number)

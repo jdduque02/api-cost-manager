@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { I18nModule } from 'nestjs-i18n';
 import { getI18nConfig } from '@config/i18n.config';
@@ -33,6 +34,7 @@ import { getKeycloakConfig } from '@config/keycloak.config';
       expandVariables: true,
     }),
     TypeOrmModule.forRootAsync(databaseConfig),
+    ScheduleModule.forRoot(),
     SharedModule,
     SharedEncryptionModule,
     IdentityModule,

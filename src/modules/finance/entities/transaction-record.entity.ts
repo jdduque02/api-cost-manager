@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { PaymentMethodEnum, TransactionTypeEnum } from '@shared/enums';
+import { FixedTypeEnum, FrequencyEnum, PaymentMethodEnum, TransactionTypeEnum } from '@shared/enums';
 
 /**
  * CRÍTICO: Esta tabla está PARTICIONADA por RANGE(created_at) — trimestral.
@@ -41,6 +41,31 @@ export class TransactionRecord {
 
   @Column({ type: 'numeric', precision: 15, scale: 2 })
   amount!: number;
+
+  @Column({ type: 'boolean', default: false })
+  is_fixed!: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: FixedTypeEnum,
+    enumName: 'fixed_type_enum',
+    nullable: true,
+  })
+  fixed_type!: FixedTypeEnum;
+
+  @Column({
+    type: 'enum',
+    enum: FrequencyEnum,
+    enumName: 'frequency_enum',
+    nullable: true,
+  })
+  frequency!: FrequencyEnum;
+
+  @Column({ type: 'smallint', nullable: true })
+  due_day!: number | null;
+
+  @Column({ type: 'smallint', nullable: true, default: 3 })
+  reminder_days!: number | null;
 
   @Column({
     type: 'enum',

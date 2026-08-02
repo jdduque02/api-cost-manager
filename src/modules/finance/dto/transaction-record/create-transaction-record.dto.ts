@@ -1,16 +1,25 @@
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
+  IsIn,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { PaymentMethodEnum, TransactionTypeEnum } from '@shared/enums';
+import {
+  FixedTypeEnum,
+  FrequencyEnum,
+  PaymentMethodEnum,
+  TransactionTypeEnum,
+} from '@shared/enums';
 
 export class CreateTransactionRecordDto {
   @ApiProperty({ description: 'ID de la categoría.', example: 1 })
@@ -91,4 +100,35 @@ export class CreateTransactionRecordDto {
   @IsOptional()
   @IsDateString()
   created_at?: string;
+
+  @ApiPropertyOptional({ description: 'Marca la transacción como fija (deducción o ingreso fijo).', example: true })
+  @IsOptional()
+  @IsBoolean()
+  is_fixed?: boolean;
+
+  @ApiPropertyOptional({ enum: FixedTypeEnum, description: 'Tipo de transacción fija: deducción o ingreso fijo.' })
+  @IsOptional()
+  @IsEnum(FixedTypeEnum)
+  fixed_type?: FixedTypeEnum;
+
+  @ApiPropertyOptional({ description: 'Periodicidad de la transacción fija (quincenal o mensual).', enum: ['biweekly', 'monthly'] })
+  @IsOptional()
+  @IsIn(['biweekly', 'monthly'])
+  frequency?: FrequencyEnum;
+
+  @ApiPropertyOptional({ description: 'Día del mes (1-31) en que llega el ingreso o se ejecuta la deducción.', example: 15 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(31)
+  due_day?: number;
+
+  @ApiPropertyOptional({ description: 'Anticipación en días para generar el recordatorio de la transacción fija (default 3).', example: 3 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(30)
+  reminder_days?: number;
 }

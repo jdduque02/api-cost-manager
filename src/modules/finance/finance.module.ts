@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { IdentityModule } from '@identity/identity.module';
 import { AuditModule } from '../audit/audit.module';
+import { NotificationModule } from '../notification/notification.module';
 import { FinancialObjective } from './entities/financial-objective.entity';
 import { FinancialPeriod } from './entities/financial-period.entity';
 import { TransactionRecord } from './entities/transaction-record.entity';
@@ -16,6 +17,7 @@ import { FinancialObjectiveService } from './service/financial-objective.service
 import { FinancialPeriodService } from './service/financial-period.service';
 import { TransactionRecordService } from './service/transaction-record.service';
 import { ObjectivePaymentService } from './service/objective-payment.service';
+import { FixedReminderScheduler } from './service/fixed-reminder.scheduler';
 import { FinancialObjectiveRepository } from './repositories/financial-objective.repository';
 import { FinancialPeriodRepository } from './repositories/financial-period.repository';
 import { TransactionRecordRepository } from './repositories/transaction-record.repository';
@@ -33,6 +35,7 @@ import { ObjectivePaymentRepository } from './repositories/objective-payment.rep
     AuthModule,
     forwardRef(() => IdentityModule),
     AuditModule,
+    NotificationModule,
   ],
   controllers: [
     FinancialObjectiveController,
@@ -45,6 +48,7 @@ import { ObjectivePaymentRepository } from './repositories/objective-payment.rep
     FinancialPeriodService,
     TransactionRecordService,
     ObjectivePaymentService,
+    FixedReminderScheduler,
     FinancialObjectiveRepository,
     FinancialPeriodRepository,
     TransactionRecordRepository,

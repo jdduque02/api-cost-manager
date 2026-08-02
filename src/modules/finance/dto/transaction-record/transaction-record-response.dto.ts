@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PaymentMethodEnum, TransactionTypeEnum } from '@shared/enums';
+import { FixedTypeEnum, PaymentMethodEnum, TransactionTypeEnum } from '@shared/enums';
 
 export class TransactionRecordResponseDto {
   @ApiProperty({ example: 1 })
@@ -19,6 +19,21 @@ export class TransactionRecordResponseDto {
 
   @ApiProperty({ example: 50000 })
   amount!: number;
+
+  @ApiProperty({ example: false })
+  is_fixed!: boolean;
+
+  @ApiPropertyOptional({ enum: FixedTypeEnum, nullable: true })
+  fixed_type!: FixedTypeEnum | null;
+
+  @ApiPropertyOptional({ enum: ['biweekly', 'monthly'], nullable: true })
+  frequency!: 'biweekly' | 'monthly' | null;
+
+  @ApiPropertyOptional({ example: 15, nullable: true })
+  due_day!: number | null;
+
+  @ApiPropertyOptional({ example: 3, nullable: true })
+  reminder_days!: number | null;
 
   @ApiPropertyOptional({ enum: PaymentMethodEnum, nullable: true })
   payment_method!: PaymentMethodEnum | null;
