@@ -1,5 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { FixedTypeEnum, PaymentMethodEnum, TransactionTypeEnum } from '@shared/enums';
+import {
+  FixedTypeEnum,
+  PaymentMethodEnum,
+  TransactionTypeEnum,
+} from '@shared/enums';
 
 export class TransactionRecordResponseDto {
   @ApiProperty({ example: 1 })
@@ -61,6 +65,37 @@ export class TransactionRecordResponseDto {
 
   @ApiPropertyOptional({ nullable: true })
   addressee!: string | null;
+
+  @ApiProperty({ example: '2026-04-25', description: 'Fecha de negocio.' })
+  transaction_date!: Date;
+
+  @ApiPropertyOptional({
+    example: 3,
+    nullable: true,
+    description: 'Meta asociada.',
+  })
+  objective_id!: number | null;
+
+  @ApiPropertyOptional({
+    example: 1,
+    nullable: true,
+    description: 'Cuenta bancaria asociada.',
+  })
+  account_id!: number | null;
+
+  @ApiPropertyOptional({
+    example: 2,
+    nullable: true,
+    description: 'Activo financiero asociado.',
+  })
+  asset_id!: number | null;
+
+  @ApiPropertyOptional({
+    example: 1,
+    nullable: true,
+    description: 'Pasivo asociado.',
+  })
+  liability_id!: number | null;
 
   @ApiProperty({ example: '2026-04-25T10:00:00.000Z' })
   created_at!: Date;

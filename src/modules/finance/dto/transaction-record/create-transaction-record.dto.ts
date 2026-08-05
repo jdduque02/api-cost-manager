@@ -4,7 +4,6 @@ import {
   IsEnum,
   IsIn,
   IsInt,
-  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -35,7 +34,10 @@ export class CreateTransactionRecordDto {
   @Min(1)
   subcategory_id?: number;
 
-  @ApiProperty({ enum: TransactionTypeEnum, description: 'Tipo de transacción.' })
+  @ApiProperty({
+    enum: TransactionTypeEnum,
+    description: 'Tipo de transacción.',
+  })
   @IsEnum(TransactionTypeEnum)
   type!: TransactionTypeEnum;
 
@@ -45,17 +47,26 @@ export class CreateTransactionRecordDto {
   @Min(0)
   amount!: number;
 
-  @ApiPropertyOptional({ enum: PaymentMethodEnum, description: 'Método de pago.' })
+  @ApiPropertyOptional({
+    enum: PaymentMethodEnum,
+    description: 'Método de pago.',
+  })
   @IsOptional()
   @IsEnum(PaymentMethodEnum)
   payment_method?: PaymentMethodEnum;
 
-  @ApiPropertyOptional({ description: 'Descripción de la transacción.', example: 'Almuerzo trabajo' })
+  @ApiPropertyOptional({
+    description: 'Descripción de la transacción.',
+    example: 'Almuerzo trabajo',
+  })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Código de referencia.', example: 'REF-2026-001' })
+  @ApiPropertyOptional({
+    description: 'Código de referencia.',
+    example: 'REF-2026-001',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
@@ -66,13 +77,19 @@ export class CreateTransactionRecordDto {
   @IsString({ each: true })
   attachments?: string[];
 
-  @ApiPropertyOptional({ description: 'Cuenta origen.', example: 'Cuenta ahorros Bancolombia' })
+  @ApiPropertyOptional({
+    description: 'Cuenta origen.',
+    example: 'Cuenta ahorros Bancolombia',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
   source_account?: string;
 
-  @ApiPropertyOptional({ description: 'Cuenta destino.', example: 'Cuenta ahorros Davivienda' })
+  @ApiPropertyOptional({
+    description: 'Cuenta destino.',
+    example: 'Cuenta ahorros Davivienda',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
@@ -96,27 +113,53 @@ export class CreateTransactionRecordDto {
   @MaxLength(200)
   addressee?: string;
 
-  @ApiPropertyOptional({ description: 'Fecha de la transacción (CRÍTICO: siempre incluir para partition pruning).', example: '2026-04-25T10:00:00.000Z' })
+  @ApiPropertyOptional({
+    description:
+      'Fecha de negocio de la transacción (día del movimiento). Por defecto: hoy.',
+    example: '2026-04-25',
+  })
+  @IsOptional()
+  @IsDateString()
+  transaction_date?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Fecha de la transacción (CRÍTICO: siempre incluir para partition pruning).',
+    example: '2026-04-25T10:00:00.000Z',
+  })
   @IsOptional()
   @IsDateString()
   created_at?: string;
 
-  @ApiPropertyOptional({ description: 'Marca la transacción como fija (deducción o ingreso fijo).', example: true })
+  @ApiPropertyOptional({
+    description: 'Marca la transacción como fija (deducción o ingreso fijo).',
+    example: true,
+  })
   @IsOptional()
   @IsBoolean()
   is_fixed?: boolean;
 
-  @ApiPropertyOptional({ enum: FixedTypeEnum, description: 'Tipo de transacción fija: deducción o ingreso fijo.' })
+  @ApiPropertyOptional({
+    enum: FixedTypeEnum,
+    description: 'Tipo de transacción fija: deducción o ingreso fijo.',
+  })
   @IsOptional()
   @IsEnum(FixedTypeEnum)
   fixed_type?: FixedTypeEnum;
 
-  @ApiPropertyOptional({ description: 'Periodicidad de la transacción fija (quincenal o mensual).', enum: ['biweekly', 'monthly'] })
+  @ApiPropertyOptional({
+    description: 'Periodicidad de la transacción fija (quincenal o mensual).',
+    enum: ['biweekly', 'monthly'],
+  })
   @IsOptional()
   @IsIn(['biweekly', 'monthly'])
   frequency?: FrequencyEnum;
 
-  @ApiPropertyOptional({ description: 'Día del mes (1-31) en que llega el ingreso o se ejecuta la deducción.', example: 15 })
+  @ApiPropertyOptional({
+    description:
+      'Día del mes (1-31) en que llega el ingreso o se ejecuta la deducción.',
+    example: 15,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -124,11 +167,59 @@ export class CreateTransactionRecordDto {
   @Max(31)
   due_day?: number;
 
-  @ApiPropertyOptional({ description: 'Anticipación en días para generar el recordatorio de la transacción fija (default 3).', example: 3 })
+  @ApiPropertyOptional({
+    description:
+      'Anticipación en días para generar el recordatorio de la transacción fija (default 3).',
+    example: 3,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(0)
   @Max(30)
   reminder_days?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'ID de la meta asociada (financial_objective). Al vincular, el saldo de la meta se ajusta según el tipo: ingreso/inversión suma, gasto resta.',
+    example: 3,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  objective_id?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'ID de la cuenta bancaria asociada (banking.bank_account). Máximo un patrimonio (cuenta, activo o pasivo) por transacción. Ingreso suma, gasto/inversión resta del saldo.',
+    example: 1,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  account_id?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'ID del activo financiero asociado (banking.financial_asset). Máximo un patrimonio por transacción. Ingreso/inversión suma al valor, gasto resta.',
+    example: 2,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  asset_id?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'ID del pasivo asociado (banking.financial_liability). Máximo un patrimonio por transacción. Reduce el saldo del pasivo (abono).',
+    example: 1,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  liability_id?: number;
 }

@@ -20,6 +20,7 @@ import {
   ApiInternalServerErrorResponse,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@auth/guards/auth.guard';
+import { OwnershipGuard } from '@auth/guards/ownership.guard';
 import { ApiIntrospectGuardResponse } from '@auth/decorators/api-introspect-guard-response.decorator';
 import { CurrentUser } from '@auth/decorators/current-user.decorator';
 import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
@@ -29,7 +30,7 @@ import { FinancialPeriodResponseDto } from '@finance/dto/financial-period/financ
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 
 @ApiTags('finance')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, OwnershipGuard)
 @ApiIntrospectGuardResponse()
 @Controller('users/:userId/financial-periods')
 export class FinancialPeriodController {

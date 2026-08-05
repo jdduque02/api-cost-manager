@@ -24,6 +24,7 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@auth/guards/auth.guard';
+import { OwnershipGuard } from '@auth/guards/ownership.guard';
 import { ApiIntrospectGuardResponse } from '@auth/decorators/api-introspect-guard-response.decorator';
 import { CurrentUser } from '@auth/decorators/current-user.decorator';
 import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
@@ -31,13 +32,15 @@ import { TransactionRecordService } from '@finance/service/transaction-record.se
 import { CreateTransactionRecordDto } from '@finance/dto/transaction-record/create-transaction-record.dto';
 import { UpdateTransactionRecordDto } from '@finance/dto/transaction-record/update-transaction-record.dto';
 import { TransactionRecordQueryDto } from '@finance/dto/transaction-record/transaction-record-query.dto';
+import { TransactionSummaryQueryDto } from '@finance/dto/transaction-record/transaction-summary-query.dto';
 import { TransactionRecordResponseDto } from '@finance/dto/transaction-record/transaction-record-response.dto';
+import { TransactionSummaryResponseDto } from '@finance/dto/transaction-record/transaction-summary-response.dto';
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 
 @ApiTags('finance')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, OwnershipGuard)
 @ApiIntrospectGuardResponse()
-@ApiExtraModels(TransactionRecordResponseDto)
+@ApiExtraModels(TransactionRecordResponseDto, TransactionSummaryResponseDto)
 @Controller('users/:userId/transactions')
 export class TransactionRecordController {
   constructor(
@@ -72,12 +75,12 @@ export class TransactionRecordController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      'Listar transacciones del usuario (CRÍTICO: usar date_from/date_to para partition pruning)',
+      'Listar transacciones del usuario (usar date_from/date_to por transaction_date)',
   })
   @ApiQuery({
     name: 'date_from',
     required: false,
-    description: 'Fecha inicio (ISO 8601). RECOMENDADO para rendimiento.',
+    description: 'Fecha inicio (ISO 8601). Filtra por transaction_date.',
   })
   @ApiQuery({
     name: 'date_to',
@@ -87,6 +90,26 @@ export class TransactionRecordController {
   @ApiQuery({ name: 'category_id', required: false })
   @ApiQuery({ name: 'subcategory_id', required: false })
   @ApiQuery({ name: 'type', required: false })
+  @ApiQuery({
+    name: 'objective_id',
+    required: false,
+    description: 'Filtrar por meta asociada',
+  })
+  @ApiQuery({
+    name: 'account_id',
+    required: false,
+    description: 'Filtrar por cuenta bancaria asociada',
+  })
+  @ApiQuery({
+    name: 'asset_id',
+    required: false,
+    description: 'Filtrar por activo financiero asociado',
+  })
+  @ApiQuery({
+    name: 'liability_id',
+    required: false,
+    description: 'Filtrar por pasivo asociado',
+  })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 20 })
   @ApiResponse({
@@ -108,6 +131,46 @@ export class TransactionRecordController {
     @CurrentUser() _currentUser: IntrospectResponse,
   ) {
     return this.transactionRecordService.findAll(userId, query);
+  }
+
+  @Get('summary')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Resumen/resumen de transacciones por intervalo de tiempo (día/semana/mes)',
+  })
+  @ApiQuery({
+    name: 'date_from',
+    required: false,
+    description: 'Fecha inicio (ISO 8601). Filtra por transaction_date.',
+  })
+  @ApiQuery({
+    name: 'date_to',
+    required: false,
+    description: 'Fecha fin (ISO 8601).',
+  })
+  @ApiQuery({
+    name: 'group_by',
+    required: false,
+    enum: ['day', 'week', 'month'],
+    description: 'Granularidad de la serie del resumen.',
+  })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    description: 'Filtrar por tipo de transacción.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Resumen de transacciones del intervalo.',
+    type: TransactionSummaryResponseDto,
+  })
+  async summary(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Query() query: TransactionSummaryQueryDto,
+    @CurrentUser() _currentUser: IntrospectResponse,
+  ) {
+    return this.transactionRecordService.getSummary(userId, query);
   }
 
   @Get(':id')

@@ -210,9 +210,20 @@ CREATE TABLE IF NOT EXISTS finance.transaction_record (
   source_bank           VARCHAR(100),
   destination_bank      VARCHAR(100),
   addressee             VARCHAR(200),
+  transaction_date      DATE                    NOT NULL DEFAULT CURRENT_DATE,
+  objective_id          BIGINT,
+  account_id            BIGINT,
+  asset_id              BIGINT,
+  liability_id          BIGINT,
   created_at            TIMESTAMP               NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at            TIMESTAMP,
-  deleted_at            TIMESTAMP
+  deleted_at            TIMESTAMP,
+
+  -- Máximo un patrimonio (cuenta, activo o pasivo) por transacción.
+  -- Las FK hacia financial_objective/bank_account/financial_asset/
+  -- financial_liability se agregan al final del esquema (ALTER TABLE).
+  CONSTRAINT chk_transaction_single_patrimony
+    CHECK (num_nonnulls(account_id, asset_id, liability_id) <= 1)
 ) PARTITION BY RANGE (created_at);
 
 -- Particiones trimestrales (ejemplo: Q1-Q4 2026)
@@ -234,8 +245,13 @@ CREATE TABLE IF NOT EXISTS finance.transaction_record_2026_q4
 
 CREATE INDEX IF NOT EXISTS idx_transaction_user         ON finance.transaction_record (user_id);
 CREATE INDEX IF NOT EXISTS idx_transaction_user_created ON finance.transaction_record (user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_transaction_user_date    ON finance.transaction_record (user_id, transaction_date);
 CREATE INDEX IF NOT EXISTS idx_transaction_category     ON finance.transaction_record (category_id);
 CREATE INDEX IF NOT EXISTS idx_transaction_type         ON finance.transaction_record (type);
+CREATE INDEX IF NOT EXISTS idx_transaction_objective    ON finance.transaction_record (objective_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_account      ON finance.transaction_record (account_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_asset        ON finance.transaction_record (asset_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_liability    ON finance.transaction_record (liability_id);
 
 COMMENT ON TABLE finance.transaction_record IS 'Registro de transacciones particionado por trimestre. SIEMPRE incluir created_at en WHERE.';
 
@@ -543,7 +559,6 @@ COMMENT ON COLUMN intelligence.tax_summary.assets_in_uvt IS 'GENERATED: total_as
 -- ============================================================
 -- 9. SCHEMA: news
 -- ============================================================
-
 -- ── news.news_item ──────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS news.news_item (
   id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -563,6 +578,32 @@ CREATE INDEX IF NOT EXISTS idx_news_item_category     ON news.news_item (categor
 CREATE INDEX IF NOT EXISTS idx_news_item_published_at ON news.news_item (published_at DESC NULLS LAST);
 
 COMMENT ON TABLE news.news_item IS 'Noticias y contenido informativo del sistema.';
+
+-- ============================================================
+-- FK de transacciones → metas / patrimonio
+-- (se crean aquí porque banking.* y finance.financial_objective
+--  ya existen en este punto del script)
+-- ============================================================
+
+ALTER TABLE finance.transaction_record
+  ADD CONSTRAINT fk_transaction_objective
+  FOREIGN KEY (objective_id) REFERENCES finance.financial_objective (id)
+  ON DELETE SET NULL;
+
+ALTER TABLE finance.transaction_record
+  ADD CONSTRAINT fk_transaction_account
+  FOREIGN KEY (account_id) REFERENCES banking.bank_account (id)
+  ON DELETE SET NULL;
+
+ALTER TABLE finance.transaction_record
+  ADD CONSTRAINT fk_transaction_asset
+  FOREIGN KEY (asset_id) REFERENCES banking.financial_asset (id)
+  ON DELETE SET NULL;
+
+ALTER TABLE finance.transaction_record
+  ADD CONSTRAINT fk_transaction_liability
+  FOREIGN KEY (liability_id) REFERENCES banking.financial_liability (id)
+  ON DELETE SET NULL;
 
 -- ============================================================
 -- FIN DEL SCHEMA

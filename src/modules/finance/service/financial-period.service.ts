@@ -6,7 +6,9 @@ import { CreateFinancialPeriodDto } from '@finance/dto/financial-period/create-f
 export class FinancialPeriodService {
   private readonly logger = new Logger(FinancialPeriodService.name);
 
-  constructor(private readonly financialPeriodRepository: FinancialPeriodRepository) {}
+  constructor(
+    private readonly financialPeriodRepository: FinancialPeriodRepository,
+  ) {}
 
   async create(userId: number, dto: CreateFinancialPeriodDto) {
     return this.financialPeriodRepository.create(userId, dto);

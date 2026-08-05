@@ -1,4 +1,11 @@
-import { IsDateString, IsEnum, IsInt, IsOptional, IsPositive, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsPositive,
+  Min,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { TransactionTypeEnum } from '@shared/enums';
@@ -23,7 +30,10 @@ export class TransactionRecordQueryDto {
   @IsEnum(TransactionTypeEnum)
   type?: TransactionTypeEnum;
 
-  @ApiPropertyOptional({ example: '2026-01-01', description: 'Fecha inicio (CRÍTICO para partition pruning).' })
+  @ApiPropertyOptional({
+    example: '2026-01-01',
+    description: 'Fecha inicio (ISO 8601). Filtra por transaction_date.',
+  })
   @IsOptional()
   @IsDateString()
   date_from?: string;
@@ -46,4 +56,44 @@ export class TransactionRecordQueryDto {
   @IsInt()
   @Min(1)
   limit?: number = 20;
+
+  @ApiPropertyOptional({
+    example: 3,
+    description: 'Filtrar por meta asociada.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  objective_id?: number;
+
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Filtrar por cuenta bancaria asociada.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  account_id?: number;
+
+  @ApiPropertyOptional({
+    example: 2,
+    description: 'Filtrar por activo financiero asociado.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  asset_id?: number;
+
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Filtrar por pasivo asociado.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  liability_id?: number;
 }

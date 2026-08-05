@@ -1,4 +1,10 @@
-import { BadRequestException, Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  forwardRef,
+} from '@nestjs/common';
 import { I18nService } from 'nestjs-i18n';
 import { FinancialObjectiveRepository } from '@finance/repositories/financial-objective.repository';
 import { CreateFinancialObjectiveDto } from '@finance/dto/financial-objective/create-financial-objective.dto';
@@ -53,7 +59,10 @@ export class FinancialObjectiveService {
     return this.financialObjectiveRepository.softDelete(id, userId);
   }
 
-  async calculateQuota(userId: number, dto: CalculateQuotaDto): Promise<CalculateQuotaResponseDto> {
+  async calculateQuota(
+    userId: number,
+    dto: CalculateQuotaDto,
+  ): Promise<CalculateQuotaResponseDto> {
     const warnings: string[] = [];
     const recommendations: string[] = [];
     let monthlyIncome: number | null = null;
@@ -62,12 +71,16 @@ export class FinancialObjectiveService {
 
     // 1. Obtener perfil financiero del usuario
     try {
-      const profile = await this.financialProfileRepository.findByUserId(String(userId));
+      const profile = await this.financialProfileRepository.findByUserId(
+        String(userId),
+      );
       hasFinancialProfile = true;
       monthlyIncome = profile.monthly_income as unknown as number;
       savingsRatio = profile.savings_ratio ?? 20;
     } catch {
-      this.logger.debug(`Usuario ${userId} no tiene perfil financiero registrado.`);
+      this.logger.debug(
+        `Usuario ${userId} no tiene perfil financiero registrado.`,
+      );
     }
 
     // 2. Validar fin de período
@@ -108,7 +121,9 @@ export class FinancialObjectiveService {
     const amountToSave = dto.target_amount - (dto.current_balance ?? 0);
 
     if (amountToSave <= 0) {
-      throw new BadRequestException(this.i18n.t('finance.OBJECTIVE_ALREADY_REACHED'));
+      throw new BadRequestException(
+        this.i18n.t('finance.OBJECTIVE_ALREADY_REACHED'),
+      );
     }
 
     // 4. Calcular períodos
@@ -128,8 +143,8 @@ export class FinancialObjectiveService {
     const quotaAmount = amountToSave / totalPeriods;
 
     // 6. Calcular rentabilidad proyectada
-    let projectedFinalBalance: number | null = null;
-    let currentProfitability: number | null = null;
+    const projectedFinalBalance: number | null = null;
+    const currentProfitability: number | null = null;
 
     // La rentabilidad se pasa como parámetro de la meta existente, no del cálculo
     // Se retorna null aquí; el frontend puede combinarla con datos de la meta
@@ -140,16 +155,17 @@ export class FinancialObjectiveService {
 
     if (monthlyIncome !== null && monthlyIncome > 0) {
       const periodsPerMonth = PERIODS_PER_MONTH[dto.frequency];
-      maxAllowedPerPeriod = (monthlyIncome * (savingsRatio / 100)) / periodsPerMonth;
+      maxAllowedPerPeriod =
+        (monthlyIncome * (savingsRatio / 100)) / periodsPerMonth;
       isWithinBudget = quotaAmount <= maxAllowedPerPeriod;
 
       if (!isWithinBudget) {
         warnings.push(
           `Tu cuota de $${quotaAmount.toLocaleString('es-CO', { maximumFractionDigits: 0 })} ` +
-          `excede el ${savingsRatio}% recomendado de tu ingreso mensual ` +
-          `($${monthlyIncome.toLocaleString('es-CO', { maximumFractionDigits: 0 })}). ` +
-          `El máximo recomendado por ${dto.frequency === FrequencyEnum.WEEKLY ? 'semana' : dto.frequency === FrequencyEnum.BIWEEKLY ? 'quincena' : 'mes'} ` +
-          `es $${maxAllowedPerPeriod.toLocaleString('es-CO', { maximumFractionDigits: 0 })}.`,
+            `excede el ${savingsRatio}% recomendado de tu ingreso mensual ` +
+            `($${monthlyIncome.toLocaleString('es-CO', { maximumFractionDigits: 0 })}). ` +
+            `El máximo recomendado por ${dto.frequency === FrequencyEnum.WEEKLY ? 'semana' : dto.frequency === FrequencyEnum.BIWEEKLY ? 'quincena' : 'mes'} ` +
+            `es $${maxAllowedPerPeriod.toLocaleString('es-CO', { maximumFractionDigits: 0 })}.`,
         );
         recommendations.push(
           this.i18n.t('finance.REDUCE_OR_EXTEND_RECOMMENDATION'),
@@ -163,9 +179,7 @@ export class FinancialObjectiveService {
 
     // 8. Sin perfil financiero
     if (!hasFinancialProfile) {
-      recommendations.push(
-        this.i18n.t('finance.LOAD_PROFILE_RECOMMENDATION'),
-      );
+      recommendations.push(this.i18n.t('finance.LOAD_PROFILE_RECOMMENDATION'));
     }
 
     const response: CalculateQuotaResponseDto = {
@@ -180,7 +194,9 @@ export class FinancialObjectiveService {
       quota_amount: Math.round(quotaAmount * 100) / 100,
       monthly_income: monthlyIncome,
       savings_ratio: savingsRatio,
-      max_allowed_per_period: maxAllowedPerPeriod ? Math.round(maxAllowedPerPeriod * 100) / 100 : null,
+      max_allowed_per_period: maxAllowedPerPeriod
+        ? Math.round(maxAllowedPerPeriod * 100) / 100
+        : null,
       is_within_budget: isWithinBudget,
       bank: null,
       current_profitability: currentProfitability,
@@ -195,7 +211,10 @@ export class FinancialObjectiveService {
     return response;
   }
 
-  private async logCalculation(userId: number, response: CalculateQuotaResponseDto): Promise<void> {
+  private async logCalculation(
+    userId: number,
+    response: CalculateQuotaResponseDto,
+  ): Promise<void> {
     try {
       await this.auditLogService.write({
         schema_name: 'finance',
@@ -220,7 +239,9 @@ export class FinancialObjectiveService {
         },
       });
     } catch (error) {
-      this.logger.warn(`No se pudo registrar audit log para cálculo de cuota del usuario ${userId}: ${(error as Error).message}`);
+      this.logger.warn(
+        `No se pudo registrar audit log para cálculo de cuota del usuario ${userId}: ${(error as Error).message}`,
+      );
     }
   }
 }

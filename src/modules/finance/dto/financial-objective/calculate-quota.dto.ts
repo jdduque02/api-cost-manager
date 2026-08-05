@@ -32,7 +32,8 @@ export class CalculateQuotaDto {
   current_balance?: number;
 
   @ApiPropertyOptional({
-    description: 'Fecha de inicio del plan de ahorro (ISO 8601). Si no se envía, usa la fecha actual.',
+    description:
+      'Fecha de inicio del plan de ahorro (ISO 8601). Si no se envía, usa la fecha actual.',
     example: '2026-01-01',
   })
   @IsOptional()
@@ -40,7 +41,8 @@ export class CalculateQuotaDto {
   start_date?: string;
 
   @ApiPropertyOptional({
-    description: 'Fecha límite para alcanzar la meta (ISO 8601). Si no se envía, se retorna un mensaje recomendativo sin calcular cuotas.',
+    description:
+      'Fecha límite para alcanzar la meta (ISO 8601). Si no se envía, se retorna un mensaje recomendativo sin calcular cuotas.',
     example: '2027-12-31',
   })
   @IsOptional()
@@ -52,9 +54,12 @@ export class CalculateQuotaDto {
     description: 'Frecuencia de las cuotas de ahorro.',
     example: FrequencyEnum.MONTHLY,
   })
-  @IsEnum([FrequencyEnum.WEEKLY, FrequencyEnum.BIWEEKLY, FrequencyEnum.MONTHLY], {
-    message: 'La frecuencia debe ser: weekly, biweekly o monthly.',
-  })
+  @IsEnum(
+    [FrequencyEnum.WEEKLY, FrequencyEnum.BIWEEKLY, FrequencyEnum.MONTHLY],
+    {
+      message: 'La frecuencia debe ser: weekly, biweekly o monthly.',
+    },
+  )
   @IsNotEmpty()
   frequency!: FrequencyEnum;
 }

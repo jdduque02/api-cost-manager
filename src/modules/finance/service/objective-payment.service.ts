@@ -6,7 +6,9 @@ import { CreateObjectivePaymentDto } from '@finance/dto/objective-payment/create
 export class ObjectivePaymentService {
   private readonly logger = new Logger(ObjectivePaymentService.name);
 
-  constructor(private readonly objectivePaymentRepository: ObjectivePaymentRepository) {}
+  constructor(
+    private readonly objectivePaymentRepository: ObjectivePaymentRepository,
+  ) {}
 
   async create(userId: number, dto: CreateObjectivePaymentDto) {
     return this.objectivePaymentRepository.create(userId, dto);

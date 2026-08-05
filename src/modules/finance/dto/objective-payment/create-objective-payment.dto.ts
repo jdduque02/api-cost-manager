@@ -1,4 +1,12 @@
-import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -15,11 +23,17 @@ export class CreateObjectivePaymentDto {
   @Min(0)
   amount!: number;
 
-  @ApiProperty({ description: 'Fecha del pago (ISO 8601 date).', example: '2026-04-25' })
+  @ApiProperty({
+    description: 'Fecha del pago (ISO 8601 date).',
+    example: '2026-04-25',
+  })
   @IsDateString()
   payment_date!: string;
 
-  @ApiPropertyOptional({ description: 'Nota del pago.', example: 'Abono mensual' })
+  @ApiPropertyOptional({
+    description: 'Nota del pago.',
+    example: 'Abono mensual',
+  })
   @IsOptional()
   @IsString()
   note?: string;

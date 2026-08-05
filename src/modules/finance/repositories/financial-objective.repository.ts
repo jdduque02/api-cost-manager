@@ -1,4 +1,10 @@
-import { ConflictException, Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Inject,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { I18nService } from 'nestjs-i18n';
 import { IsNull, Repository } from 'typeorm';
@@ -20,10 +26,16 @@ export class FinancialObjectiveRepository {
 
   private readonly SCHEMA = 'finance';
 
-  async create(userId: number, dto: CreateFinancialObjectiveDto): Promise<FinancialObjective> {
+  async create(
+    userId: number,
+    dto: CreateFinancialObjectiveDto,
+  ): Promise<FinancialObjective> {
     const encrypted = { ...dto };
     if (encrypted.bank !== undefined && encrypted.bank !== null) {
-      encrypted.bank = this.encryptionService.encryptField(encrypted.bank, this.SCHEMA) as unknown as string;
+      encrypted.bank = this.encryptionService.encryptField(
+        encrypted.bank,
+        this.SCHEMA,
+      ) as unknown as string;
     }
     const objective = this.repo.create({ ...encrypted, user_id: userId });
     const saved = await this.repo.save(objective);
@@ -40,35 +52,54 @@ export class FinancialObjectiveRepository {
   }
 
   async findById(id: number, userId: number): Promise<FinancialObjective> {
-    const objective = await this.repo.findOne({ where: { id, user_id: userId, deleted_at: IsNull() } });
-    if (!objective) throw new NotFoundException(this.i18n.t('finance.OBJECTIVE_NOT_FOUND', { args: { id } }));
+    const objective = await this.repo.findOne({
+      where: { id, user_id: userId, deleted_at: IsNull() },
+    });
+    if (!objective)
+      throw new NotFoundException(
+        this.i18n.t('finance.OBJECTIVE_NOT_FOUND', { args: { id } }),
+      );
     return this.decryptBank(objective);
   }
 
-  async update(id: number, userId: number, dto: UpdateFinancialObjectiveDto): Promise<FinancialObjective> {
+  async update(
+    id: number,
+    userId: number,
+    dto: UpdateFinancialObjectiveDto,
+  ): Promise<FinancialObjective> {
     const objective = await this.findById(id, userId);
 
     const encrypted = { ...dto };
     if (encrypted.bank !== undefined && encrypted.bank !== null) {
-      encrypted.bank = this.encryptionService.encryptField(encrypted.bank, this.SCHEMA) as unknown as string;
+      encrypted.bank = this.encryptionService.encryptField(
+        encrypted.bank,
+        this.SCHEMA,
+      ) as unknown as string;
     }
 
-    const updated = this.repo.merge(objective, encrypted as Partial<FinancialObjective>);
+    const updated = this.repo.merge(objective, encrypted);
     const saved = await this.repo.save(updated);
-    this.logger.log(`Objetivo financiero ID ${id} actualizado para usuario ID: ${userId}`);
+    this.logger.log(
+      `Objetivo financiero ID ${id} actualizado para usuario ID: ${userId}`,
+    );
     return this.decryptBank(saved);
   }
 
   async softDelete(id: number, userId: number): Promise<void> {
     const objective = await this.findById(id, userId);
     await this.repo.softRemove(objective);
-    this.logger.log(`Objetivo financiero ID ${id} eliminado (soft) para usuario ID: ${userId}`);
+    this.logger.log(
+      `Objetivo financiero ID ${id} eliminado (soft) para usuario ID: ${userId}`,
+    );
   }
 
   private decryptBank(objective: FinancialObjective): FinancialObjective {
     const result = { ...objective };
     if (result.bank) {
-      result.bank = this.encryptionService.decryptField(result.bank, this.SCHEMA);
+      result.bank = this.encryptionService.decryptField(
+        result.bank,
+        this.SCHEMA,
+      );
     }
     return result;
   }

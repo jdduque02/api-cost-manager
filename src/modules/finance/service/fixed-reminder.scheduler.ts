@@ -28,7 +28,11 @@ export function nextMonthlyOccurrence(dueDay: number, today: Date): Date {
     clampDay(current.getFullYear(), current.getMonth(), dueDay),
   );
   if (candidate.getTime() < current.getTime()) {
-    const nextMonth = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+    const nextMonth = new Date(
+      current.getFullYear(),
+      current.getMonth() + 1,
+      1,
+    );
     return new Date(
       nextMonth.getFullYear(),
       nextMonth.getMonth(),
@@ -38,7 +42,11 @@ export function nextMonthlyOccurrence(dueDay: number, today: Date): Date {
   return candidate;
 }
 
-export function nextBiweeklyOccurrence(dueDay: number | null, createdDate: Date, today: Date): Date {
+export function nextBiweeklyOccurrence(
+  dueDay: number | null,
+  createdDate: Date,
+  today: Date,
+): Date {
   const anchor =
     dueDay != null
       ? new Date(
@@ -97,9 +105,13 @@ export class FixedReminderScheduler {
 
     let transactions: TransactionRecord[];
     try {
-      transactions = await this.transactionRecordRepository.findFixedForReminders(from);
+      transactions =
+        await this.transactionRecordRepository.findFixedForReminders(from);
     } catch (error) {
-      this.logger.error('Error al consultar transacciones fijas para recordatorios', error);
+      this.logger.error(
+        'Error al consultar transacciones fijas para recordatorios',
+        error,
+      );
       return;
     }
 
@@ -114,16 +126,28 @@ export class FixedReminderScheduler {
       const reference = `fixed:reminder:${tx.id}:${next.toISOString().slice(0, 10)}`;
       const { title, description } = this.buildMessage(tx, next);
       try {
-        await this.notificationService.createIfMissing(tx.user_id, { title, description }, reference);
+        await this.notificationService.createIfMissing(
+          tx.user_id,
+          { title, description },
+          reference,
+        );
       } catch (error) {
-        this.logger.warn(`No se pudo crear recordatorio para transacción ${tx.id}`, error);
+        this.logger.warn(
+          `No se pudo crear recordatorio para transacción ${tx.id}`,
+          error,
+        );
       }
     }
 
-    this.logger.log(`Recordatorios procesados para ${transactions.length} transacciones fijas.`);
+    this.logger.log(
+      `Recordatorios procesados para ${transactions.length} transacciones fijas.`,
+    );
   }
 
-  private buildMessage(tx: TransactionRecord, next: Date): { title: string; description: string } {
+  private buildMessage(
+    tx: TransactionRecord,
+    next: Date,
+  ): { title: string; description: string } {
     const isInvestment = tx.type === TransactionTypeEnum.INVESTMENT;
     const isIncome = tx.type === TransactionTypeEnum.INCOME;
 
@@ -135,7 +159,10 @@ export class FixedReminderScheduler {
           : 'notification.UPCOMING_DEDUCTION',
     );
 
-    const concept = tx.description ?? tx.addressee ?? this.i18n.t('notification.GENERIC_MOVEMENT');
+    const concept =
+      tx.description ??
+      tx.addressee ??
+      this.i18n.t('notification.GENERIC_MOVEMENT');
     const date = next.toLocaleDateString('es-CO', {
       day: 'numeric',
       month: 'long',
@@ -143,14 +170,22 @@ export class FixedReminderScheduler {
     });
     const amount = fmtAmount(Number(tx.amount));
 
-    const method = tx.payment_method ? PAYMENT_METHOD_LABELS[tx.payment_method] : null;
-    const source = [tx.source_bank, tx.source_account].filter(Boolean).join(' · ');
+    const method = tx.payment_method
+      ? PAYMENT_METHOD_LABELS[tx.payment_method]
+      : null;
+    const source = [tx.source_bank, tx.source_account]
+      .filter(Boolean)
+      .join(' · ');
 
     let description: string;
     if (method || source) {
       const paymentInfo = [
-        method ? this.i18n.t('notification.PAYMENT_METHOD', { args: { method } }) : '',
-        source ? this.i18n.t('notification.SOURCE_ENTITY', { args: { source } }) : '',
+        method
+          ? this.i18n.t('notification.PAYMENT_METHOD', { args: { method } })
+          : '',
+        source
+          ? this.i18n.t('notification.SOURCE_ENTITY', { args: { source } })
+          : '',
       ]
         .filter(Boolean)
         .join(' · ');

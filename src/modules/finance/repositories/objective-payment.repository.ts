@@ -15,14 +15,22 @@ export class ObjectivePaymentRepository {
     @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
-  async create(userId: number, dto: CreateObjectivePaymentDto): Promise<ObjectivePayment> {
+  async create(
+    userId: number,
+    dto: CreateObjectivePaymentDto,
+  ): Promise<ObjectivePayment> {
     const payment = this.repo.create({ ...dto, user_id: userId });
     const saved = await this.repo.save(payment);
-    this.logger.log(`Pago al objetivo ${dto.objective_id} registrado para usuario ID: ${userId}`);
+    this.logger.log(
+      `Pago al objetivo ${dto.objective_id} registrado para usuario ID: ${userId}`,
+    );
     return saved;
   }
 
-  async findByObjective(objectiveId: number, userId: number): Promise<ObjectivePayment[]> {
+  async findByObjective(
+    objectiveId: number,
+    userId: number,
+  ): Promise<ObjectivePayment[]> {
     return this.repo.find({
       where: { objective_id: objectiveId, user_id: userId },
       order: { payment_date: 'DESC' },
@@ -31,7 +39,10 @@ export class ObjectivePaymentRepository {
 
   async findById(id: number, userId: number): Promise<ObjectivePayment> {
     const payment = await this.repo.findOne({ where: { id, user_id: userId } });
-    if (!payment) throw new NotFoundException(this.i18n.t('finance.PAYMENT_NOT_FOUND', { args: { id } }));
+    if (!payment)
+      throw new NotFoundException(
+        this.i18n.t('finance.PAYMENT_NOT_FOUND', { args: { id } }),
+      );
     return payment;
   }
 

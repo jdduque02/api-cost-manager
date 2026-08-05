@@ -9,6 +9,9 @@ import { FinancialPeriod } from './entities/financial-period.entity';
 import { TransactionRecord } from './entities/transaction-record.entity';
 import { ObjectivePayment } from './entities/objective-payment.entity';
 import { Notification } from './entities/notification.entity';
+import { BankAccount } from '@banking/entities/bank-account.entity';
+import { FinancialAsset } from '@banking/entities/financial-asset.entity';
+import { FinancialLiability } from '@banking/entities/financial-liability.entity';
 import { FinancialObjectiveController } from './controller/financial-objective.controller';
 import { FinancialPeriodController } from './controller/financial-period.controller';
 import { TransactionRecordController } from './controller/transaction-record.controller';
@@ -31,6 +34,9 @@ import { ObjectivePaymentRepository } from './repositories/objective-payment.rep
       TransactionRecord,
       ObjectivePayment,
       Notification,
+      BankAccount,
+      FinancialAsset,
+      FinancialLiability,
     ]),
     AuthModule,
     forwardRef(() => IdentityModule),

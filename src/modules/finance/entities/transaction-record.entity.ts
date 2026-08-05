@@ -7,7 +7,12 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { FixedTypeEnum, FrequencyEnum, PaymentMethodEnum, TransactionTypeEnum } from '@shared/enums';
+import {
+  FixedTypeEnum,
+  FrequencyEnum,
+  PaymentMethodEnum,
+  TransactionTypeEnum,
+} from '@shared/enums';
 
 /**
  * CRÍTICO: Esta tabla está PARTICIONADA por RANGE(created_at) — trimestral.
@@ -16,8 +21,13 @@ import { FixedTypeEnum, FrequencyEnum, PaymentMethodEnum, TransactionTypeEnum } 
  */
 @Entity({ name: 'transaction_record', schema: 'finance' })
 @Index('idx_transaction_user_created', ['user_id', 'created_at'])
+@Index('idx_transaction_user_date', ['user_id', 'transaction_date'])
 @Index('idx_transaction_category', ['category_id'])
 @Index('idx_transaction_type', ['type'])
+@Index('idx_transaction_objective', ['objective_id'])
+@Index('idx_transaction_account', ['account_id'])
+@Index('idx_transaction_asset', ['asset_id'])
+@Index('idx_transaction_liability', ['liability_id'])
 export class TransactionRecord {
   @PrimaryGeneratedColumn('identity', { type: 'bigint' })
   id!: number;
@@ -98,6 +108,24 @@ export class TransactionRecord {
 
   @Column({ type: 'varchar', length: 200, nullable: true })
   addressee!: string;
+
+  @Column({
+    type: 'date',
+    default: () => 'CURRENT_DATE',
+  })
+  transaction_date!: Date;
+
+  @Column({ type: 'bigint', nullable: true })
+  objective_id!: number | null;
+
+  @Column({ type: 'bigint', nullable: true })
+  account_id!: number | null;
+
+  @Column({ type: 'bigint', nullable: true })
+  asset_id!: number | null;
+
+  @Column({ type: 'bigint', nullable: true })
+  liability_id!: number | null;
 
   @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;

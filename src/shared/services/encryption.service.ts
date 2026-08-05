@@ -54,9 +54,14 @@ export class EncryptionService implements OnModuleInit {
   encrypt(plainText: string, schema: string): string {
     const key = this.getKey(schema);
     const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv(ALGORITHM, key, iv, { authTagLength: 16 });
+    const cipher = crypto.createCipheriv(ALGORITHM, key, iv, {
+      authTagLength: 16,
+    });
 
-    const encrypted = Buffer.concat([cipher.update(plainText, 'utf8'), cipher.final()]);
+    const encrypted = Buffer.concat([
+      cipher.update(plainText, 'utf8'),
+      cipher.final(),
+    ]);
     const authTag = cipher.getAuthTag();
 
     return `${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted.toString('base64')}`;
@@ -67,7 +72,9 @@ export class EncryptionService implements OnModuleInit {
     const parts = cipherText.split(':');
 
     if (parts.length !== 3) {
-      throw new Error(`Formato de texto cifrado inválido para esquema '${schema}'. Se esperaban 3 partes, se recibieron ${parts.length}.`);
+      throw new Error(
+        `Formato de texto cifrado inválido para esquema '${schema}'. Se esperaban 3 partes, se recibieron ${parts.length}.`,
+      );
     }
 
     const [ivB64, authTagB64, encryptedB64] = parts;
@@ -75,21 +82,32 @@ export class EncryptionService implements OnModuleInit {
     const authTag = Buffer.from(authTagB64, 'base64');
     const encrypted = Buffer.from(encryptedB64, 'base64');
 
-    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, { authTagLength: 16 });
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, {
+      authTagLength: 16,
+    });
     decipher.setAuthTag(authTag);
 
-    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+    const decrypted = Buffer.concat([
+      decipher.update(encrypted),
+      decipher.final(),
+    ]);
     return decrypted.toString('utf8');
   }
 
-  encryptField(value: string | null | undefined, schema: string): string | null {
+  encryptField(
+    value: string | null | undefined,
+    schema: string,
+  ): string | null {
     if (value === null || value === undefined || value === '') {
       return null;
     }
     return this.encrypt(value, schema);
   }
 
-  decryptField(value: string | null | undefined, schema: string): string | null {
+  decryptField(
+    value: string | null | undefined,
+    schema: string,
+  ): string | null {
     if (value === null || value === undefined || value === '') {
       return null;
     }
@@ -100,7 +118,9 @@ export class EncryptionService implements OnModuleInit {
     try {
       return this.decrypt(value, schema);
     } catch {
-      this.logger.warn(`No se pudo descifrar campo del esquema '${schema}'. Retornando valor original.`);
+      this.logger.warn(
+        `No se pudo descifrar campo del esquema '${schema}'. Retornando valor original.`,
+      );
       return value;
     }
   }
