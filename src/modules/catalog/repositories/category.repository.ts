@@ -37,12 +37,21 @@ export class CategoryRepository {
   }
 
   async findAll(): Promise<Category[]> {
-    return this.repo.find({ where: { is_active: true }, order: { sort_order: 'ASC', name: 'ASC' }, relations: { subcategories: false } });
+    return this.repo.find({
+      where: { is_active: true },
+      order: { sort_order: 'ASC', name: 'ASC' },
+      relations: { subcategories: false },
+    });
   }
 
   async findById(id: number): Promise<Category> {
-    const category = await this.repo.findOne({ where: { id, is_active: true } });
-    if (!category) throw new NotFoundException(this.i18n.t('catalog.CATEGORY_NOT_FOUND', { args: { id } }));
+    const category = await this.repo.findOne({
+      where: { id, is_active: true },
+    });
+    if (!category)
+      throw new NotFoundException(
+        this.i18n.t('catalog.CATEGORY_NOT_FOUND', { args: { id } }),
+      );
     return category;
   }
 
@@ -62,10 +71,15 @@ export class CategoryRepository {
   }
 
   private handleDbError(error: unknown): never {
-    if (error instanceof QueryFailedError && (error as any).code === PG_UNIQUE_VIOLATION) {
+    if (
+      error instanceof QueryFailedError &&
+      (error as any).code === PG_UNIQUE_VIOLATION
+    ) {
       throw new ConflictException(this.i18n.t('catalog.CATEGORY_DUPLICATE'));
     }
     this.logger.error(`Error de base de datos: ${(error as Error).message}`);
-    throw new InternalServerErrorException(this.i18n.t('catalog.PROCESSING_ERROR'));
+    throw new InternalServerErrorException(
+      this.i18n.t('catalog.PROCESSING_ERROR'),
+    );
   }
 }

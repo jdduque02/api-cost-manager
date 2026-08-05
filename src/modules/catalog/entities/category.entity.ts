@@ -55,6 +55,9 @@ export class Category {
   is_active!: boolean;
 
   // ── Relaciones ──────────────────────────────────────────────
-  @OneToMany(() => Subcategory, (subcategory: Subcategory) => subcategory.category)
+  @OneToMany(
+    () => Subcategory,
+    (subcategory: Subcategory) => subcategory.category,
+  )
   subcategories!: Subcategory[];
 }

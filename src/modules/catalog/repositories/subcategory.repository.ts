@@ -25,11 +25,16 @@ export class SubcategoryRepository {
     @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
-  async create(userId: number, dto: CreateSubcategoryDto): Promise<Subcategory> {
+  async create(
+    userId: number,
+    dto: CreateSubcategoryDto,
+  ): Promise<Subcategory> {
     try {
       const subcategory = this.repo.create({ ...dto, user_id: userId });
       const saved = await this.repo.save(subcategory);
-      this.logger.log(`Subcategoría creada: ${saved.name} (ID: ${saved.id}) para usuario ID: ${userId}`);
+      this.logger.log(
+        `Subcategoría creada: ${saved.name} (ID: ${saved.id}) para usuario ID: ${userId}`,
+      );
       return saved;
     } catch (error) {
       this.handleDbError(error);
@@ -39,20 +44,31 @@ export class SubcategoryRepository {
   async findAll(userId: number, categoryId?: number): Promise<Subcategory[]> {
     const where: Record<string, unknown> = { user_id: userId, is_active: true };
     if (categoryId) where.category_id = categoryId;
-    return this.repo.find({ where: where as any, order: { name: 'ASC' } });
+    return this.repo.find({ where: where, order: { name: 'ASC' } });
   }
 
   async findById(id: number, userId: number): Promise<Subcategory> {
-    const subcategory = await this.repo.findOne({ where: { id, user_id: userId } });
-    if (!subcategory) throw new NotFoundException(this.i18n.t('catalog.SUBCATEGORY_NOT_FOUND', { args: { id } }));
+    const subcategory = await this.repo.findOne({
+      where: { id, user_id: userId },
+    });
+    if (!subcategory)
+      throw new NotFoundException(
+        this.i18n.t('catalog.SUBCATEGORY_NOT_FOUND', { args: { id } }),
+      );
     return subcategory;
   }
 
-  async update(id: number, userId: number, dto: UpdateSubcategoryDto): Promise<Subcategory> {
+  async update(
+    id: number,
+    userId: number,
+    dto: UpdateSubcategoryDto,
+  ): Promise<Subcategory> {
     const subcategory = await this.findById(id, userId);
     const updated = this.repo.merge(subcategory, dto);
     const saved = await this.repo.save(updated);
-    this.logger.log(`Subcategoría ID ${id} actualizada para usuario ID: ${userId}`);
+    this.logger.log(
+      `Subcategoría ID ${id} actualizada para usuario ID: ${userId}`,
+    );
     return saved;
   }
 
@@ -60,14 +76,21 @@ export class SubcategoryRepository {
     const subcategory = await this.findById(id, userId);
     subcategory.is_active = false;
     await this.repo.save(subcategory);
-    this.logger.log(`Subcategoría ID ${id} desactivada para usuario ID: ${userId}`);
+    this.logger.log(
+      `Subcategoría ID ${id} desactivada para usuario ID: ${userId}`,
+    );
   }
 
   private handleDbError(error: unknown): never {
-    if (error instanceof QueryFailedError && (error as any).code === PG_UNIQUE_VIOLATION) {
+    if (
+      error instanceof QueryFailedError &&
+      (error as any).code === PG_UNIQUE_VIOLATION
+    ) {
       throw new ConflictException(this.i18n.t('catalog.SUBCATEGORY_DUPLICATE'));
     }
     this.logger.error(`Error de base de datos: ${(error as Error).message}`);
-    throw new InternalServerErrorException(this.i18n.t('catalog.PROCESSING_ERROR'));
+    throw new InternalServerErrorException(
+      this.i18n.t('catalog.PROCESSING_ERROR'),
+    );
   }
 }

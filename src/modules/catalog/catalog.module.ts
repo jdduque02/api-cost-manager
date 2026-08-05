@@ -11,10 +11,7 @@ import { CategoryRepository } from './repositories/category.repository';
 import { SubcategoryRepository } from './repositories/subcategory.repository';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Category, Subcategory]),
-    AuthModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Category, Subcategory]), AuthModule],
   controllers: [CategoryController, SubcategoryController],
   providers: [
     CategoryService,
