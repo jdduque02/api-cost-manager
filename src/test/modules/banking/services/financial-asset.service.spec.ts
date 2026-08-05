@@ -37,7 +37,10 @@ describe('FinancialAssetService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FinancialAssetService,
-        { provide: FinancialAssetRepository, useValue: mockFinancialAssetRepository },
+        {
+          provide: FinancialAssetRepository,
+          useValue: mockFinancialAssetRepository,
+        },
         { provide: MarketDataService, useValue: mockMarketDataService },
       ],
     }).compile();
@@ -48,7 +51,11 @@ describe('FinancialAssetService', () => {
 
   describe('create', () => {
     it('debe delegar al repositorio y retornar el activo creado', async () => {
-      const dto = { asset_type: 'acciones', name: 'Acciones Ecopetrol', current_value: 5000000 };
+      const dto = {
+        asset_type: 'acciones',
+        name: 'Acciones Ecopetrol',
+        current_value: 5000000,
+      };
       const asset = buildAsset();
       mockFinancialAssetRepository.create.mockResolvedValue(asset);
 
@@ -83,7 +90,9 @@ describe('FinancialAssetService', () => {
     });
 
     it('debe propagar NotFoundException del repositorio', async () => {
-      mockFinancialAssetRepository.findById.mockRejectedValue(new NotFoundException());
+      mockFinancialAssetRepository.findById.mockRejectedValue(
+        new NotFoundException(),
+      );
 
       await expect(service.findOne(999, 10)).rejects.toThrow(NotFoundException);
     });
@@ -97,7 +106,11 @@ describe('FinancialAssetService', () => {
 
       const result = await service.update(1, 10, dto);
 
-      expect(mockFinancialAssetRepository.update).toHaveBeenCalledWith(1, 10, dto);
+      expect(mockFinancialAssetRepository.update).toHaveBeenCalledWith(
+        1,
+        10,
+        dto,
+      );
       expect(result.current_value).toBe(6000000);
     });
   });
@@ -108,11 +121,16 @@ describe('FinancialAssetService', () => {
 
       await expect(service.remove(1, 10)).resolves.toBeUndefined();
 
-      expect(mockFinancialAssetRepository.softDelete).toHaveBeenCalledWith(1, 10);
+      expect(mockFinancialAssetRepository.softDelete).toHaveBeenCalledWith(
+        1,
+        10,
+      );
     });
 
     it('debe propagar NotFoundException del repositorio', async () => {
-      mockFinancialAssetRepository.softDelete.mockRejectedValue(new NotFoundException());
+      mockFinancialAssetRepository.softDelete.mockRejectedValue(
+        new NotFoundException(),
+      );
 
       await expect(service.remove(999, 10)).rejects.toThrow(NotFoundException);
     });
@@ -148,7 +166,9 @@ describe('FinancialAssetService', () => {
 
       const result = await service.refreshQuotes(10);
 
-      expect(mockFinancialAssetRepository.findSymbolized).toHaveBeenCalledWith(10);
+      expect(mockFinancialAssetRepository.findSymbolized).toHaveBeenCalledWith(
+        10,
+      );
       expect(mockMarketDataService.refreshQuotes).toHaveBeenCalledWith(assets);
       expect(mockFinancialAssetRepository.updateQuote).toHaveBeenCalledTimes(1);
       expect(mockFinancialAssetRepository.updateQuote).toHaveBeenCalledWith(

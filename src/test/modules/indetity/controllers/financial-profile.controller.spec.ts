@@ -25,7 +25,7 @@ describe('FinancialProfileController', () => {
   beforeEach(() => {
     controller = new FinancialProfileController(
       mockFinancialProfileService as unknown as FinancialProfileService,
-      mockUserService as unknown as UserService,
+      mockUserService,
     );
     jest.clearAllMocks();
   });
@@ -76,7 +76,11 @@ describe('FinancialProfileController', () => {
   });
 
   it('debe propagar excepción del servicio', async () => {
-    mockFinancialProfileService.findByUserId.mockRejectedValue(new NotFoundException());
-    await expect(controller.findOne('999', currentUser)).rejects.toThrow(NotFoundException);
+    mockFinancialProfileService.findByUserId.mockRejectedValue(
+      new NotFoundException(),
+    );
+    await expect(controller.findOne('999', currentUser)).rejects.toThrow(
+      NotFoundException,
+    );
   });
 });

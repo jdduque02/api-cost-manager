@@ -12,14 +12,16 @@ describe('getRabbitMQConfig', () => {
   });
 
   it('debe construir la configuración de RMQ con valores del entorno', () => {
-    (mockConfigService.get as jest.Mock).mockImplementation((key: string, defaultValue?: unknown) => {
-      const env: Record<string, unknown> = {
-        RABBITMQ_URL: 'amqp://app:secret@localhost:5672',
-        RABBITMQ_QUEUE: 'cost_manager_events',
-        RABBITMQ_QUEUE_DURABLE: 'false',
-      };
-      return env[key] ?? defaultValue;
-    });
+    (mockConfigService.get as jest.Mock).mockImplementation(
+      (key: string, defaultValue?: unknown) => {
+        const env: Record<string, unknown> = {
+          RABBITMQ_URL: 'amqp://app:secret@localhost:5672',
+          RABBITMQ_QUEUE: 'cost_manager_events',
+          RABBITMQ_QUEUE_DURABLE: 'false',
+        };
+        return env[key] ?? defaultValue;
+      },
+    );
 
     const config = getRabbitMQConfig(mockConfigService as ConfigService);
 
@@ -35,7 +37,9 @@ describe('getRabbitMQConfig', () => {
   });
 
   it('debe aplicar valores por defecto cuando no hay variables de entorno', () => {
-    (mockConfigService.get as jest.Mock).mockImplementation((_: string, defaultValue?: unknown) => defaultValue);
+    (mockConfigService.get as jest.Mock).mockImplementation(
+      (_: string, defaultValue?: unknown) => defaultValue,
+    );
 
     const config = getRabbitMQConfig(mockConfigService as ConfigService);
 

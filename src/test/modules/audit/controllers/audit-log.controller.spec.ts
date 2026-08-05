@@ -88,7 +88,9 @@ describe('AuditLogController', () => {
     it('debe propagar excepciones del servicio', async () => {
       mockAuditLogService.findByUser.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.findByUser(999, {})).rejects.toThrow(NotFoundException);
+      await expect(controller.findByUser(999, {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

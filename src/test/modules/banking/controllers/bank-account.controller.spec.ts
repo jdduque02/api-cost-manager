@@ -61,7 +61,10 @@ describe('BankAccountController', () => {
   // ─────────────────────────────────────────────────────────────
   describe('findAll', () => {
     it('debe retornar todas las cuentas del usuario', async () => {
-      const accounts = [buildAccount(), buildAccount({ id: 2, bank_name: 'Davivienda' })];
+      const accounts = [
+        buildAccount(),
+        buildAccount({ id: 2, bank_name: 'Davivienda' }),
+      ];
       mockBankAccountService.findAll.mockResolvedValue(accounts);
 
       const result = await controller.findAll(10, currentUser);
@@ -96,7 +99,9 @@ describe('BankAccountController', () => {
     it('debe propagar NotFoundException si la cuenta no existe', async () => {
       mockBankAccountService.findOne.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(NotFoundException);
+      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -132,7 +137,9 @@ describe('BankAccountController', () => {
     it('debe propagar NotFoundException si la cuenta no existe', async () => {
       mockBankAccountService.remove.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.remove(10, 999, currentUser)).rejects.toThrow(NotFoundException);
+      await expect(controller.remove(10, 999, currentUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

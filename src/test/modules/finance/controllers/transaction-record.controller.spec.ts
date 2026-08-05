@@ -4,11 +4,13 @@ import { TransactionRecordService } from '@finance/service/transaction-record.se
 import { CreateTransactionRecordDto } from '@finance/dto/transaction-record/create-transaction-record.dto';
 import { UpdateTransactionRecordDto } from '@finance/dto/transaction-record/update-transaction-record.dto';
 import { TransactionRecordQueryDto } from '@finance/dto/transaction-record/transaction-record-query.dto';
+import { TransactionSummaryQueryDto } from '@finance/dto/transaction-record/transaction-summary-query.dto';
 import { TransactionTypeEnum } from '@shared/enums';
 
 const mockTransactionRecordService = {
   create: jest.fn(),
   findAll: jest.fn(),
+  getSummary: jest.fn(),
   findOne: jest.fn(),
   update: jest.fn(),
   remove: jest.fn(),
@@ -44,7 +46,7 @@ describe('TransactionRecordController', () => {
       category_id: 2,
       type: TransactionTypeEnum.EXPENSE,
       amount: 50000,
-    } as CreateTransactionRecordDto;
+    };
 
     it('debe registrar transacción delegando al servicio', async () => {
       const created = buildTransaction();
@@ -68,7 +70,36 @@ describe('TransactionRecordController', () => {
 
       const result = await controller.findAll(10, query, currentUser);
 
-      expect(mockTransactionRecordService.findAll).toHaveBeenCalledWith(10, query);
+      expect(mockTransactionRecordService.findAll).toHaveBeenCalledWith(
+        10,
+        query,
+      );
+      expect(result).toEqual(payload);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // summary
+  // ─────────────────────────────────────────────────────────────
+  describe('summary', () => {
+    it('debe retornar el resumen por intervalo delegando al servicio', async () => {
+      const payload = {
+        date_from: '2026-08-01',
+        date_to: '2026-08-31',
+        group_by: 'day' as const,
+        totals: { income: 100, expenses: 50, investments: 0, count: 3 },
+        by_category: [],
+        series: [],
+      };
+      mockTransactionRecordService.getSummary.mockResolvedValue(payload);
+      const query: TransactionSummaryQueryDto = { group_by: 'day' };
+
+      const result = await controller.summary(10, query, currentUser);
+
+      expect(mockTransactionRecordService.getSummary).toHaveBeenCalledWith(
+        10,
+        query,
+      );
       expect(result).toEqual(payload);
     });
   });
@@ -88,9 +119,13 @@ describe('TransactionRecordController', () => {
     });
 
     it('debe propagar NotFoundException si no existe', async () => {
-      mockTransactionRecordService.findOne.mockRejectedValue(new NotFoundException());
+      mockTransactionRecordService.findOne.mockRejectedValue(
+        new NotFoundException(),
+      );
 
-      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(NotFoundException);
+      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -105,7 +140,11 @@ describe('TransactionRecordController', () => {
 
       const result = await controller.update(10, 1, dto, currentUser);
 
-      expect(mockTransactionRecordService.update).toHaveBeenCalledWith(1, 10, dto);
+      expect(mockTransactionRecordService.update).toHaveBeenCalledWith(
+        1,
+        10,
+        dto,
+      );
       expect(result).toEqual(updated);
     });
   });

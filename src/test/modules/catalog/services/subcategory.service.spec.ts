@@ -63,7 +63,10 @@ describe('SubcategoryService', () => {
 
       const result = await service.findAll(10);
 
-      expect(mockSubcategoryRepository.findAll).toHaveBeenCalledWith(10, undefined);
+      expect(mockSubcategoryRepository.findAll).toHaveBeenCalledWith(
+        10,
+        undefined,
+      );
       expect(result).toHaveLength(1);
     });
 
@@ -93,7 +96,9 @@ describe('SubcategoryService', () => {
     });
 
     it('debe propagar NotFoundException del repositorio', async () => {
-      mockSubcategoryRepository.findById.mockRejectedValue(new NotFoundException());
+      mockSubcategoryRepository.findById.mockRejectedValue(
+        new NotFoundException(),
+      );
 
       await expect(service.findOne(999, 10)).rejects.toThrow(NotFoundException);
     });
@@ -128,7 +133,9 @@ describe('SubcategoryService', () => {
     });
 
     it('debe propagar NotFoundException del repositorio', async () => {
-      mockSubcategoryRepository.softDelete.mockRejectedValue(new NotFoundException());
+      mockSubcategoryRepository.softDelete.mockRejectedValue(
+        new NotFoundException(),
+      );
 
       await expect(service.remove(999, 10)).rejects.toThrow(NotFoundException);
     });

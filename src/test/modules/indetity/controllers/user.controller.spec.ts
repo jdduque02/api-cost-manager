@@ -19,9 +19,7 @@ describe('UserController', () => {
   let controller: UserController;
 
   beforeEach(() => {
-    controller = new UserController(
-      mockUserService as unknown as UserService,
-    );
+    controller = new UserController(mockUserService as unknown as UserService);
     jest.clearAllMocks();
   });
 
@@ -44,7 +42,10 @@ describe('UserController', () => {
     mockUserService.findAllUsers.mockResolvedValue(payload);
 
     const result = await controller.findAll(1, 200);
-    expect(mockUserService.findAllUsers).toHaveBeenCalledWith({ page: 1, limit: 100 });
+    expect(mockUserService.findAllUsers).toHaveBeenCalledWith({
+      page: 1,
+      limit: 100,
+    });
     expect(result).toEqual(payload);
   });
 
@@ -53,7 +54,10 @@ describe('UserController', () => {
     mockUserService.findAllUsers.mockResolvedValue(payload);
 
     const result = await controller.findAll(2, 20);
-    expect(mockUserService.findAllUsers).toHaveBeenCalledWith({ page: 2, limit: 20 });
+    expect(mockUserService.findAllUsers).toHaveBeenCalledWith({
+      page: 2,
+      limit: 20,
+    });
     expect(result).toEqual(payload);
   });
 
@@ -78,7 +82,9 @@ describe('UserController', () => {
 
   it('debe propagar NotFoundException del servicio', async () => {
     mockUserService.findUser.mockRejectedValue(new NotFoundException());
-    await expect(controller.getUser('999', currentUser)).rejects.toThrow(NotFoundException);
+    await expect(controller.getUser('999', currentUser)).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('debe retornar estado público del módulo', () => {

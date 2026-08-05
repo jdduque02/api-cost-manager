@@ -25,9 +25,13 @@ describe('redisConfig', () => {
   });
 
   describe('useFactory', () => {
-    const buildStore = async (env: Record<string, string | number | undefined>) => {
+    const buildStore = async (
+      env: Record<string, string | number | undefined>,
+    ) => {
       const mockConfigService = {
-        get: jest.fn((key: string, defaultVal?: unknown) => env[key] ?? defaultVal),
+        get: jest.fn(
+          (key: string, defaultVal?: unknown) => env[key] ?? defaultVal,
+        ),
       } as unknown as ConfigService;
       return (redisConfig.useFactory as Function)(mockConfigService);
     };

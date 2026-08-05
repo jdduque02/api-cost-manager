@@ -47,13 +47,18 @@ describe('FinancialObjectiveRepository', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FinancialObjectiveRepository,
-        { provide: getRepositoryToken(FinancialObjective), useValue: mockTypeOrmRepo },
+        {
+          provide: getRepositoryToken(FinancialObjective),
+          useValue: mockTypeOrmRepo,
+        },
         { provide: I18nService, useValue: mockI18nService },
         { provide: EncryptionService, useValue: mockEncryptionService },
       ],
     }).compile();
 
-    repo = module.get<FinancialObjectiveRepository>(FinancialObjectiveRepository);
+    repo = module.get<FinancialObjectiveRepository>(
+      FinancialObjectiveRepository,
+    );
     jest.clearAllMocks();
   });
 
@@ -74,7 +79,10 @@ describe('FinancialObjectiveRepository', () => {
 
       const result = await repo.create(10, dto);
 
-      expect(mockTypeOrmRepo.create).toHaveBeenCalledWith({ ...dto, user_id: 10 });
+      expect(mockTypeOrmRepo.create).toHaveBeenCalledWith({
+        ...dto,
+        user_id: 10,
+      });
       expect(result).toEqual(objective);
     });
   });
@@ -84,7 +92,10 @@ describe('FinancialObjectiveRepository', () => {
   // ─────────────────────────────────────────────────────────────
   describe('findAll', () => {
     it('debe retornar objetivos del usuario sin soft-delete', async () => {
-      const list = [buildObjective(), buildObjective({ id: 2, name: 'Vacaciones' })];
+      const list = [
+        buildObjective(),
+        buildObjective({ id: 2, name: 'Vacaciones' }),
+      ];
       mockTypeOrmRepo.find.mockResolvedValue(list);
 
       const result = await repo.findAll(10);
@@ -138,7 +149,9 @@ describe('FinancialObjectiveRepository', () => {
     it('debe lanzar NotFoundException si no existe', async () => {
       mockTypeOrmRepo.findOne.mockResolvedValue(null);
 
-      await expect(repo.update(999, 10, dto)).rejects.toThrow(NotFoundException);
+      await expect(repo.update(999, 10, dto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

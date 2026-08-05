@@ -45,9 +45,9 @@ describe('ResponseHelper', () => {
     });
 
     it('should handle custom error objects with message property', () => {
-        const error = { message: 'Custom object error' };
-        const response = ResponseHelper.error('Main error', { error });
-        expect(response.error).toBe('Custom object error');
+      const error = { message: 'Custom object error' };
+      const response = ResponseHelper.error('Main error', { error });
+      expect(response.error).toBe('Custom object error');
     });
   });
 
@@ -56,22 +56,24 @@ describe('ResponseHelper', () => {
       const response = ResponseHelper.notFound('User', 123);
 
       expect(response.status).toBe(HttpStatus.NOT_FOUND);
-      expect(response.message).toBe("User con identificador '123' no encontrado");
+      expect(response.message).toBe(
+        "User con identificador '123' no encontrado",
+      );
       expect(response.body).toEqual({ resource: 'User', identifier: 123 });
     });
 
     it('should format a notFound error without identifier', () => {
-        const response = ResponseHelper.notFound('Resource');
-        expect(response.message).toBe("Resource no encontrado");
+      const response = ResponseHelper.notFound('Resource');
+      expect(response.message).toBe('Resource no encontrado');
     });
   });
 
   describe('validationError', () => {
-      it('should return a 400 response with validation details', () => {
-          const errors = ['Email is required'];
-          const response = ResponseHelper.validationError(errors);
-          expect(response.status).toBe(HttpStatus.BAD_REQUEST);
-          expect(response.body).toEqual({ validationErrors: errors });
-      });
+    it('should return a 400 response with validation details', () => {
+      const errors = ['Email is required'];
+      const response = ResponseHelper.validationError(errors);
+      expect(response.status).toBe(HttpStatus.BAD_REQUEST);
+      expect(response.body).toEqual({ validationErrors: errors });
+    });
   });
 });

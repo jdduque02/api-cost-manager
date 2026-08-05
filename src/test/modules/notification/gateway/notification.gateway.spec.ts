@@ -1,7 +1,10 @@
 import { NotificationGateway } from '@notification/gateway/notification.gateway';
 import { NotificationService } from '@notification/service/notification.service';
 import { NotificationPayload } from '@notification/interfaces/notification.interfaces';
-import { NOTIFICATION_EVENTS, NOTIFICATION_ROOMS } from '@notification/constants/notification.events';
+import {
+  NOTIFICATION_EVENTS,
+  NOTIFICATION_ROOMS,
+} from '@notification/constants/notification.events';
 
 // ─────────────────────────────────────────────────────────────
 // Mocks del Server y Socket de socket.io
@@ -31,7 +34,9 @@ describe('NotificationService', () => {
   let service: NotificationService;
 
   beforeEach(() => {
-    service = new NotificationService(mockGateway as unknown as NotificationGateway);
+    service = new NotificationService(
+      mockGateway as unknown as NotificationGateway,
+    );
     jest.clearAllMocks();
   });
 
@@ -41,7 +46,10 @@ describe('NotificationService', () => {
 
       service.sendToUser(10, payload);
 
-      expect(mockGateway.sendNotificationToUser).toHaveBeenCalledWith(10, payload);
+      expect(mockGateway.sendNotificationToUser).toHaveBeenCalledWith(
+        10,
+        payload,
+      );
     });
   });
 
@@ -85,7 +93,10 @@ describe('NotificationGateway — métodos de emisión', () => {
       gateway.sendNotificationToUser(10, payload);
 
       expect(mockServer.to).toHaveBeenCalledWith(expectedRoom);
-      expect(mockServerTo.emit).toHaveBeenCalledWith(NOTIFICATION_EVENTS.NEW_NOTIFICATION, payload);
+      expect(mockServerTo.emit).toHaveBeenCalledWith(
+        NOTIFICATION_EVENTS.NEW_NOTIFICATION,
+        payload,
+      );
     });
   });
 
@@ -96,9 +107,12 @@ describe('NotificationGateway — métodos de emisión', () => {
       gateway.confirmMarkRead(10, 42);
 
       expect(mockServer.to).toHaveBeenCalledWith(expectedRoom);
-      expect(mockServerTo.emit).toHaveBeenCalledWith(NOTIFICATION_EVENTS.MARK_READ, {
-        notification_id: 42,
-      });
+      expect(mockServerTo.emit).toHaveBeenCalledWith(
+        NOTIFICATION_EVENTS.MARK_READ,
+        {
+          notification_id: 42,
+        },
+      );
     });
   });
 
@@ -109,13 +123,18 @@ describe('NotificationGateway — métodos de emisión', () => {
       gateway.confirmMarkAllRead(10);
 
       expect(mockServer.to).toHaveBeenCalledWith(expectedRoom);
-      expect(mockServerTo.emit).toHaveBeenCalledWith(NOTIFICATION_EVENTS.MARK_ALL_READ);
+      expect(mockServerTo.emit).toHaveBeenCalledWith(
+        NOTIFICATION_EVENTS.MARK_ALL_READ,
+      );
     });
   });
 
   describe('handleConnection / handleDisconnect', () => {
     it('handleConnection no debe lanzar excepción', () => {
-      const socket = { id: 'socket-1', data: { user: { sub: 'kc-uuid' } } } as any;
+      const socket = {
+        id: 'socket-1',
+        data: { user: { sub: 'kc-uuid' } },
+      } as any;
       expect(() => gateway.handleConnection(socket)).not.toThrow();
     });
 
@@ -151,7 +170,9 @@ describe('NotificationGateway — métodos de emisión', () => {
   describe('handleMarkAsRead', () => {
     it('no debe lanzar excepción al recibir el evento', () => {
       const client = { id: 'socket-1', data: {} } as any;
-      expect(() => gateway.handleMarkAsRead({ notification_id: 5 }, client)).not.toThrow();
+      expect(() =>
+        gateway.handleMarkAsRead({ notification_id: 5 }, client),
+      ).not.toThrow();
     });
   });
 

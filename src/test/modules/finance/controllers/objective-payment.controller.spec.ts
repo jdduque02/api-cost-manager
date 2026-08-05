@@ -59,7 +59,10 @@ describe('ObjectivePaymentController', () => {
 
       const result = await controller.findAll(10, 5, currentUser);
 
-      expect(mockObjectivePaymentService.findByObjective).toHaveBeenCalledWith(5, 10);
+      expect(mockObjectivePaymentService.findByObjective).toHaveBeenCalledWith(
+        5,
+        10,
+      );
       expect(result).toHaveLength(2);
     });
   });
@@ -76,9 +79,13 @@ describe('ObjectivePaymentController', () => {
     });
 
     it('debe propagar NotFoundException si no existe', async () => {
-      mockObjectivePaymentService.findOne.mockRejectedValue(new NotFoundException());
+      mockObjectivePaymentService.findOne.mockRejectedValue(
+        new NotFoundException(),
+      );
 
-      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(NotFoundException);
+      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

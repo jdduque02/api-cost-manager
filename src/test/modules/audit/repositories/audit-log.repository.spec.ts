@@ -141,7 +141,9 @@ describe('AuditLogRepository', () => {
       await repo.findByUser(7, { page: 1, limit: 5 });
 
       // changed_by = 7 se aplicará como filtro andWhere
-      expect(qb.andWhere).toHaveBeenCalledWith('al.changed_by = :changed_by', { changed_by: 7 });
+      expect(qb.andWhere).toHaveBeenCalledWith('al.changed_by = :changed_by', {
+        changed_by: 7,
+      });
     });
   });
 });

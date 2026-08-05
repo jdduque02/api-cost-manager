@@ -12,9 +12,13 @@ describe('databaseConfig', () => {
   describe('useFactory', () => {
     const buildConfig = (env: Record<string, string | number | undefined>) => {
       const mockConfigService = {
-        get: jest.fn((key: string, defaultVal?: unknown) => env[key] ?? defaultVal),
+        get: jest.fn(
+          (key: string, defaultVal?: unknown) => env[key] ?? defaultVal,
+        ),
       } as unknown as ConfigService;
-      return (databaseConfig.useFactory as Function)(mockConfigService) as TypeOrmModuleOptions;
+      return (databaseConfig.useFactory as Function)(
+        mockConfigService,
+      ) as TypeOrmModuleOptions;
     };
 
     it('debe retornar la configuración de PostgreSQL con los valores del entorno', () => {

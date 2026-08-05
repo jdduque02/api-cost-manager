@@ -35,7 +35,10 @@ describe('FinancialPeriodRepository', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FinancialPeriodRepository,
-        { provide: getRepositoryToken(FinancialPeriod), useValue: mockTypeOrmRepo },
+        {
+          provide: getRepositoryToken(FinancialPeriod),
+          useValue: mockTypeOrmRepo,
+        },
         { provide: I18nService, useValue: mockI18nService },
       ],
     }).compile();
@@ -58,7 +61,10 @@ describe('FinancialPeriodRepository', () => {
 
       const result = await repo.create(10, dto);
 
-      expect(mockTypeOrmRepo.create).toHaveBeenCalledWith({ ...dto, user_id: 10 });
+      expect(mockTypeOrmRepo.create).toHaveBeenCalledWith({
+        ...dto,
+        user_id: 10,
+      });
       expect(result).toEqual(period);
     });
 
@@ -74,7 +80,10 @@ describe('FinancialPeriodRepository', () => {
   // ─────────────────────────────────────────────────────────────
   describe('findAll', () => {
     it('debe retornar períodos del usuario ordenados', async () => {
-      const list = [buildPeriod(), buildPeriod({ id: 2, year: 2024, month: 2 })];
+      const list = [
+        buildPeriod(),
+        buildPeriod({ id: 2, year: 2024, month: 2 }),
+      ];
       mockTypeOrmRepo.find.mockResolvedValue(list);
 
       const result = await repo.findAll(10);
@@ -126,7 +135,9 @@ describe('FinancialPeriodRepository', () => {
     });
 
     it('debe lanzar ConflictException si el período ya está cerrado', async () => {
-      mockTypeOrmRepo.findOne.mockResolvedValue(buildPeriod({ is_closed: true }));
+      mockTypeOrmRepo.findOne.mockResolvedValue(
+        buildPeriod({ is_closed: true }),
+      );
 
       await expect(repo.close(1, 10)).rejects.toThrow(ConflictException);
     });

@@ -5,7 +5,6 @@ import { BearerToken } from '@auth/decorators/bearer-token.decorator';
 
 describe('BearerToken decorator', () => {
   class TestController {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     test(@BearerToken() token: string): string {
       return token;
     }
@@ -16,7 +15,10 @@ describe('BearerToken decorator', () => {
       ROUTE_ARGS_METADATA,
       TestController,
       'test',
-    ) as Record<string, { factory?: (data: unknown, ctx: ExecutionContext) => string }>;
+    ) as Record<
+      string,
+      { factory?: (data: unknown, ctx: ExecutionContext) => string }
+    >;
 
     const key = Object.keys(metadata)[0];
     return metadata[key].factory!;

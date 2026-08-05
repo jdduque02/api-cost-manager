@@ -43,8 +43,14 @@ describe('FinancialObjectiveService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FinancialObjectiveService,
-        { provide: FinancialObjectiveRepository, useValue: mockFinancialObjectiveRepository },
-        { provide: FinancialProfileRepository, useValue: mockFinancialProfileRepository },
+        {
+          provide: FinancialObjectiveRepository,
+          useValue: mockFinancialObjectiveRepository,
+        },
+        {
+          provide: FinancialProfileRepository,
+          useValue: mockFinancialProfileRepository,
+        },
         { provide: AuditLogService, useValue: mockAuditLogService },
         { provide: I18nService, useValue: mockI18nService },
       ],
@@ -65,7 +71,10 @@ describe('FinancialObjectiveService', () => {
 
       const result = await service.create(10, dto);
 
-      expect(mockFinancialObjectiveRepository.create).toHaveBeenCalledWith(10, dto);
+      expect(mockFinancialObjectiveRepository.create).toHaveBeenCalledWith(
+        10,
+        dto,
+      );
       expect(result).toEqual(created);
     });
   });
@@ -89,12 +98,17 @@ describe('FinancialObjectiveService', () => {
 
       const result = await service.findOne(1, 10);
 
-      expect(mockFinancialObjectiveRepository.findById).toHaveBeenCalledWith(1, 10);
+      expect(mockFinancialObjectiveRepository.findById).toHaveBeenCalledWith(
+        1,
+        10,
+      );
       expect(result).toEqual(objective);
     });
 
     it('debe propagar NotFoundException del repositorio', async () => {
-      mockFinancialObjectiveRepository.findById.mockRejectedValue(new NotFoundException());
+      mockFinancialObjectiveRepository.findById.mockRejectedValue(
+        new NotFoundException(),
+      );
 
       await expect(service.findOne(999, 10)).rejects.toThrow(NotFoundException);
     });
@@ -108,7 +122,11 @@ describe('FinancialObjectiveService', () => {
 
       const result = await service.update(1, 10, dto);
 
-      expect(mockFinancialObjectiveRepository.update).toHaveBeenCalledWith(1, 10, dto);
+      expect(mockFinancialObjectiveRepository.update).toHaveBeenCalledWith(
+        1,
+        10,
+        dto,
+      );
       expect(result).toEqual(updated);
     });
   });
@@ -119,7 +137,10 @@ describe('FinancialObjectiveService', () => {
 
       await service.remove(1, 10);
 
-      expect(mockFinancialObjectiveRepository.softDelete).toHaveBeenCalledWith(1, 10);
+      expect(mockFinancialObjectiveRepository.softDelete).toHaveBeenCalledWith(
+        1,
+        10,
+      );
     });
   });
 });

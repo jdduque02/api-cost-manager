@@ -12,6 +12,9 @@ import { KeycloakAdminService } from '@auth/service/keycloak-admin.service';
 import { UserRepository } from '@identity/repositories/app-user.repositories';
 import { LoginDto } from '@auth/dto/login.dto';
 import { RefreshTokenDto } from '@auth/dto/refresh-token.dto';
+import { EncryptionService } from '@shared/services/encryption.service';
+import { IpBlockService } from '@shared/services/ip-block.service';
+import { I18nService } from 'nestjs-i18n';
 
 const mockHttpService = {
   post: jest.fn(),
@@ -43,6 +46,26 @@ const mockUserRepository = {
   update: jest.fn(),
 };
 
+const mockEncryptionService = {
+  isEncrypted: jest.fn(() => true),
+  decrypt: jest.fn((value: string) => value),
+  encrypt: jest.fn((value: string) => value),
+};
+
+const mockIpBlockService = {
+  recordFailedAttempt: jest.fn().mockResolvedValue({
+    blocked: false,
+    remainingAttempts: 4,
+  }),
+  resetAttempts: jest.fn(),
+};
+
+const mockI18nService = {
+  t: jest.fn((key: string) => key),
+};
+
+const TEST_IP = '127.0.0.1';
+
 const axiosResponse = <T>(data: T): AxiosResponse<T> => ({
   data,
   status: 200,
@@ -62,6 +85,9 @@ describe('AuthService', () => {
         { provide: ConfigService, useValue: mockConfigService },
         { provide: KeycloakAdminService, useValue: mockKeycloakAdminService },
         { provide: UserRepository, useValue: mockUserRepository },
+        { provide: EncryptionService, useValue: mockEncryptionService },
+        { provide: IpBlockService, useValue: mockIpBlockService },
+        { provide: I18nService, useValue: mockI18nService },
       ],
     }).compile();
 
@@ -85,31 +111,43 @@ describe('AuthService', () => {
     };
 
     it('debe retornar KeycloakTokenResponse en login exitoso', async () => {
+      mockUserRepository.findByUsername.mockResolvedValue({ id: '123' });
       mockHttpService.post.mockReturnValue(of(axiosResponse(tokenResponse)));
-      const result = await service.login(dto);
+      const result = await service.login(dto, TEST_IP);
       expect(result).toEqual(tokenResponse);
       expect(mockHttpService.post).toHaveBeenCalledTimes(1);
+      expect(mockIpBlockService.resetAttempts).toHaveBeenCalledWith(TEST_IP);
     });
 
     it('debe lanzar UnauthorizedException con credenciales inválidas (401)', async () => {
       mockHttpService.post.mockReturnValue(
         throwError(() => ({ response: { status: 401, data: {} } })),
       );
-      await expect(service.login(dto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(dto, TEST_IP)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(mockIpBlockService.recordFailedAttempt).toHaveBeenCalledWith(
+        TEST_IP,
+      );
     });
 
     it('debe lanzar UnauthorizedException con credenciales inválidas (400)', async () => {
       mockHttpService.post.mockReturnValue(
         throwError(() => ({ response: { status: 400, data: {} } })),
       );
-      await expect(service.login(dto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(dto, TEST_IP)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('debe lanzar InternalServerErrorException en error de red', async () => {
       mockHttpService.post.mockReturnValue(
         throwError(() => ({ response: { status: 500, data: {} } })),
       );
-      await expect(service.login(dto)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.login(dto, TEST_IP)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+      expect(mockIpBlockService.recordFailedAttempt).not.toHaveBeenCalled();
     });
   });
 
@@ -120,7 +158,10 @@ describe('AuthService', () => {
     const dto: RefreshTokenDto = { refresh_token: 'valid-refresh-token' };
 
     it('debe retornar nuevos tokens en refresh exitoso', async () => {
-      const tokenResponse = { access_token: 'new-access', refresh_token: 'new-refresh' };
+      const tokenResponse = {
+        access_token: 'new-access',
+        refresh_token: 'new-refresh',
+      };
       mockHttpService.post.mockReturnValue(of(axiosResponse(tokenResponse)));
       const result = await service.refresh(dto);
       expect(result).toEqual(tokenResponse);
@@ -137,7 +178,9 @@ describe('AuthService', () => {
       mockHttpService.post.mockReturnValue(
         throwError(() => ({ response: { status: 500, data: {} } })),
       );
-      await expect(service.refresh(dto)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.refresh(dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
@@ -147,14 +190,18 @@ describe('AuthService', () => {
   describe('logout', () => {
     it('debe cerrar sesión correctamente', async () => {
       mockHttpService.post.mockReturnValue(of(axiosResponse({})));
-      await expect(service.logout('valid-refresh-token')).resolves.toBeUndefined();
+      await expect(
+        service.logout('valid-refresh-token'),
+      ).resolves.toBeUndefined();
     });
 
     it('debe lanzar InternalServerErrorException en error de red', async () => {
       mockHttpService.post.mockReturnValue(
         throwError(() => ({ response: { status: 500, data: {} } })),
       );
-      await expect(service.logout('token')).rejects.toThrow(InternalServerErrorException);
+      await expect(service.logout('token')).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
@@ -163,18 +210,30 @@ describe('AuthService', () => {
   // ─────────────────────────────────────────────────────────────
   describe('forgotPassword', () => {
     it('debe enviar email de recuperación correctamente', async () => {
-      mockKeycloakAdminService.findKeycloakIdByEmail.mockResolvedValue('kc-id-123');
-      mockKeycloakAdminService.sendResetPasswordEmail.mockResolvedValue(undefined);
-      await expect(service.forgotPassword('user@test.com')).resolves.toBeUndefined();
-      expect(mockKeycloakAdminService.findKeycloakIdByEmail).toHaveBeenCalledWith('user@test.com');
-      expect(mockKeycloakAdminService.sendResetPasswordEmail).toHaveBeenCalledWith('kc-id-123');
+      mockKeycloakAdminService.findKeycloakIdByEmail.mockResolvedValue(
+        'kc-id-123',
+      );
+      mockKeycloakAdminService.sendResetPasswordEmail.mockResolvedValue(
+        undefined,
+      );
+      await expect(
+        service.forgotPassword('user@test.com'),
+      ).resolves.toBeUndefined();
+      expect(
+        mockKeycloakAdminService.findKeycloakIdByEmail,
+      ).toHaveBeenCalledWith('user@test.com');
+      expect(
+        mockKeycloakAdminService.sendResetPasswordEmail,
+      ).toHaveBeenCalledWith('kc-id-123');
     });
 
     it('debe propagar error si el email no existe en Keycloak', async () => {
       mockKeycloakAdminService.findKeycloakIdByEmail.mockRejectedValue(
         new UnauthorizedException('Email no encontrado.'),
       );
-      await expect(service.forgotPassword('noexiste@test.com')).rejects.toThrow();
+      await expect(
+        service.forgotPassword('noexiste@test.com'),
+      ).rejects.toThrow();
     });
   });
 
@@ -207,14 +266,18 @@ describe('AuthService', () => {
       mockHttpService.post.mockReturnValue(
         of(axiosResponse({ active: false })),
       );
-      await expect(service.introspect('expired-token')).rejects.toThrow(UnauthorizedException);
+      await expect(service.introspect('expired-token')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('debe lanzar InternalServerErrorException en error de red', async () => {
       mockHttpService.post.mockReturnValue(
         throwError(() => ({ response: { status: 500, data: {} } })),
       );
-      await expect(service.introspect('any-token')).rejects.toThrow(InternalServerErrorException);
+      await expect(service.introspect('any-token')).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 });

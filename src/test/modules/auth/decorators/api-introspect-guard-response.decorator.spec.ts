@@ -14,10 +14,13 @@ describe('ApiIntrospectGuardResponse', () => {
     }
 
     const decorator = ApiIntrospectGuardResponse();
-    const descriptor = Object.getOwnPropertyDescriptor(DummyController.prototype, 'testMethod');
+    const descriptor = Object.getOwnPropertyDescriptor(
+      DummyController.prototype,
+      'testMethod',
+    );
 
     expect(() => {
-      decorator(DummyController.prototype, 'testMethod', descriptor!);
+      decorator(DummyController.prototype, 'testMethod', descriptor);
     }).not.toThrow();
   });
 });

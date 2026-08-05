@@ -39,19 +39,31 @@ describe('NotificationService', () => {
 
       service.sendToUser(10, payload);
 
-      expect(mockNotificationGateway.sendNotificationToUser).toHaveBeenCalledWith(10, payload);
+      expect(
+        mockNotificationGateway.sendNotificationToUser,
+      ).toHaveBeenCalledWith(10, payload);
     });
 
     it('debe delegar correctamente a diferentes usuarios', () => {
       const payload1 = buildPayload({ user_id: 10 });
-      const payload2 = buildPayload({ id: 2, user_id: 20, title: 'Otro aviso' });
+      const payload2 = buildPayload({
+        id: 2,
+        user_id: 20,
+        title: 'Otro aviso',
+      });
 
       service.sendToUser(10, payload1);
       service.sendToUser(20, payload2);
 
-      expect(mockNotificationGateway.sendNotificationToUser).toHaveBeenCalledTimes(2);
-      expect(mockNotificationGateway.sendNotificationToUser).toHaveBeenNthCalledWith(1, 10, payload1);
-      expect(mockNotificationGateway.sendNotificationToUser).toHaveBeenNthCalledWith(2, 20, payload2);
+      expect(
+        mockNotificationGateway.sendNotificationToUser,
+      ).toHaveBeenCalledTimes(2);
+      expect(
+        mockNotificationGateway.sendNotificationToUser,
+      ).toHaveBeenNthCalledWith(1, 10, payload1);
+      expect(
+        mockNotificationGateway.sendNotificationToUser,
+      ).toHaveBeenNthCalledWith(2, 20, payload2);
     });
   });
 
@@ -62,7 +74,10 @@ describe('NotificationService', () => {
     it('debe confirmar al gateway que la notificación fue leída', () => {
       service.confirmMarkRead(10, 99);
 
-      expect(mockNotificationGateway.confirmMarkRead).toHaveBeenCalledWith(10, 99);
+      expect(mockNotificationGateway.confirmMarkRead).toHaveBeenCalledWith(
+        10,
+        99,
+      );
     });
   });
 
@@ -73,7 +88,9 @@ describe('NotificationService', () => {
     it('debe confirmar al gateway que todas las notificaciones fueron leídas', () => {
       service.confirmMarkAllRead(10);
 
-      expect(mockNotificationGateway.confirmMarkAllRead).toHaveBeenCalledWith(10);
+      expect(mockNotificationGateway.confirmMarkAllRead).toHaveBeenCalledWith(
+        10,
+      );
     });
   });
 });

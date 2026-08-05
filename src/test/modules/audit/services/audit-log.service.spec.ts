@@ -16,7 +16,9 @@ const mockLoggingService = {
   sendLog: jest.fn(),
 };
 
-const buildWriteDto = (overrides: Partial<WriteAuditLogDto> = {}): WriteAuditLogDto => ({
+const buildWriteDto = (
+  overrides: Partial<WriteAuditLogDto> = {},
+): WriteAuditLogDto => ({
   schema_name: 'finance',
   table_name: 'transaction_record',
   record_id: 1,
@@ -114,7 +116,9 @@ describe('AuditLogService', () => {
     it('no debe propagar errores del sistema de logging remoto', async () => {
       const dto = buildWriteDto();
       mockAuditLogRepository.write.mockResolvedValue({ id: 1, ...dto });
-      mockLoggingService.sendLog.mockRejectedValue(new Error('Servicio de logs caído'));
+      mockLoggingService.sendLog.mockRejectedValue(
+        new Error('Servicio de logs caído'),
+      );
 
       await expect(service.write(dto)).resolves.toBeUndefined();
     });

@@ -46,7 +46,10 @@ describe('FinancialObjectiveController', () => {
 
       const result = await controller.create(10, dto, currentUser);
 
-      expect(mockFinancialObjectiveService.create).toHaveBeenCalledWith(10, dto);
+      expect(mockFinancialObjectiveService.create).toHaveBeenCalledWith(
+        10,
+        dto,
+      );
       expect(result).toEqual(created);
     });
   });
@@ -75,9 +78,13 @@ describe('FinancialObjectiveController', () => {
     });
 
     it('debe propagar NotFoundException si no existe', async () => {
-      mockFinancialObjectiveService.findOne.mockRejectedValue(new NotFoundException());
+      mockFinancialObjectiveService.findOne.mockRejectedValue(
+        new NotFoundException(),
+      );
 
-      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(NotFoundException);
+      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -89,7 +96,11 @@ describe('FinancialObjectiveController', () => {
 
       const result = await controller.update(10, 1, dto, currentUser);
 
-      expect(mockFinancialObjectiveService.update).toHaveBeenCalledWith(1, 10, dto);
+      expect(mockFinancialObjectiveService.update).toHaveBeenCalledWith(
+        1,
+        10,
+        dto,
+      );
       expect(result).toEqual(updated);
     });
   });

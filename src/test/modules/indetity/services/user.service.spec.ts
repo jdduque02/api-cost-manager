@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { ConfigService } from '@nestjs/config';
+import { I18nService } from 'nestjs-i18n';
 import { UserService } from '@identity/service/user.service';
 import { UserRepository } from '@identity/repositories/app-user.repositories';
 import { KeycloakAdminService } from '@auth/service/keycloak-admin.service';
@@ -8,6 +9,7 @@ import { CreateUserDto } from '@identity/dto/user/create-user.dto';
 import { UpdateUserDto } from '@identity/dto/user/update-user.dto';
 import { UserQueryDto } from '@identity/dto/user/user-query.dto';
 import { AppUser } from '@identity/entities/app-user.entity';
+import { EncryptionService } from '@shared/services/encryption.service';
 
 const mockUserRepository = {
   create: jest.fn(),
@@ -26,6 +28,15 @@ const mockCacheManager = {
   get: jest.fn(),
   set: jest.fn(),
   del: jest.fn(),
+};
+
+const mockEncryptionService = {
+  encryptField: jest.fn(),
+  decryptField: jest.fn(),
+};
+
+const mockI18nService = {
+  translate: jest.fn((_key: string) => ''),
 };
 
 const mockConfigService = {
@@ -58,6 +69,8 @@ describe('UserService', () => {
         { provide: KeycloakAdminService, useValue: mockKeycloakAdminService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: CACHE_MANAGER, useValue: mockCacheManager },
+        { provide: I18nService, useValue: mockI18nService },
+        { provide: EncryptionService, useValue: mockEncryptionService },
       ],
     }).compile();
 
@@ -73,7 +86,7 @@ describe('UserService', () => {
       username: 'newuser',
       email: 'new@test.com',
       password: 'secret123',
-    } as CreateUserDto;
+    };
 
     it('debe crear el usuario en Keycloak y en BD', async () => {
       const user = buildUser({ username: 'newuser', email: 'new@test.com' });
@@ -92,7 +105,9 @@ describe('UserService', () => {
       mockKeycloakAdminService.deleteUser.mockResolvedValue(undefined);
 
       await expect(service.createUser(dto)).rejects.toThrow('DB error');
-      expect(mockKeycloakAdminService.deleteUser).toHaveBeenCalledWith('kc-new-uuid');
+      expect(mockKeycloakAdminService.deleteUser).toHaveBeenCalledWith(
+        'kc-new-uuid',
+      );
     });
   });
 
@@ -116,8 +131,14 @@ describe('UserService', () => {
 
       const result = await service.findUser('1');
       expect(mockUserRepository.findById).toHaveBeenCalledWith('1');
-      expect(mockCacheManager.set).toHaveBeenCalledWith('user_1', user, 60000);
-      expect(result).toEqual(user);
+      expect(mockCacheManager.set).toHaveBeenCalledWith(
+        'user_1',
+        expect.objectContaining({ id: '1', username: 'testuser' }),
+        60000,
+      );
+      expect(result).toEqual(
+        expect.objectContaining({ id: '1', username: 'testuser' }),
+      );
     });
 
     it('debe retornar null si el usuario no existe en BD ni caché', async () => {
@@ -135,7 +156,7 @@ describe('UserService', () => {
   // ─────────────────────────────────────────────────────────────
   describe('updateUser', () => {
     it('debe actualizar usuario e invalidar caché', async () => {
-      const dto: UpdateUserDto = { username: 'updated' } as UpdateUserDto;
+      const dto: UpdateUserDto = { username: 'updated' };
       const updated = buildUser({ username: 'updated' });
       mockUserRepository.update.mockResolvedValue(updated);
 

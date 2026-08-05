@@ -35,7 +35,10 @@ describe('ObjectivePaymentRepository', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ObjectivePaymentRepository,
-        { provide: getRepositoryToken(ObjectivePayment), useValue: mockTypeOrmRepo },
+        {
+          provide: getRepositoryToken(ObjectivePayment),
+          useValue: mockTypeOrmRepo,
+        },
         { provide: I18nService, useValue: mockI18nService },
       ],
     }).compile();
@@ -61,7 +64,10 @@ describe('ObjectivePaymentRepository', () => {
 
       const result = await repo.create(10, dto);
 
-      expect(mockTypeOrmRepo.create).toHaveBeenCalledWith({ ...dto, user_id: 10 });
+      expect(mockTypeOrmRepo.create).toHaveBeenCalledWith({
+        ...dto,
+        user_id: 10,
+      });
       expect(result).toEqual(payment);
     });
   });

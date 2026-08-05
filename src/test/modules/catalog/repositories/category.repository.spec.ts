@@ -81,7 +81,9 @@ describe('CategoryRepository', () => {
       mockTypeOrmRepo.create.mockReturnValue(buildCategory());
       mockTypeOrmRepo.save.mockRejectedValue(new Error('timeout'));
 
-      await expect(repo.create(dto)).rejects.toThrow(InternalServerErrorException);
+      await expect(repo.create(dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
@@ -90,7 +92,10 @@ describe('CategoryRepository', () => {
   // ─────────────────────────────────────────────────────────────
   describe('findAll', () => {
     it('debe retornar categorías activas', async () => {
-      const categories = [buildCategory(), buildCategory({ id: 2, name: 'Transporte' })];
+      const categories = [
+        buildCategory(),
+        buildCategory({ id: 2, name: 'Transporte' }),
+      ];
       mockTypeOrmRepo.find.mockResolvedValue(categories);
 
       const result = await repo.findAll();
@@ -133,7 +138,9 @@ describe('CategoryRepository', () => {
 
       const result = await repo.update(1, { name: 'Comida' });
 
-      expect(mockTypeOrmRepo.merge).toHaveBeenCalledWith(category, { name: 'Comida' });
+      expect(mockTypeOrmRepo.merge).toHaveBeenCalledWith(category, {
+        name: 'Comida',
+      });
       expect(result.name).toBe('Comida');
     });
 

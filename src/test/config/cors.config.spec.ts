@@ -35,7 +35,10 @@ describe('getCorsConfig', () => {
 
     const config = getCorsConfig(mockConfigService as ConfigService);
 
-    expect(config.origin).toEqual(['https://example.com', 'https://api.example.com']);
+    expect(config.origin).toEqual([
+      'https://example.com',
+      'https://api.example.com',
+    ]);
     expect(config.credentials).toBe(true);
     expect(config.allowedHeaders).toContain('Cookie');
     expect(config.allowedHeaders).toContain('Set-Cookie');

@@ -25,7 +25,10 @@ const buildLiability = (overrides = {}) => ({
   ...overrides,
 });
 
-const currentUser = { sub: 'kc-uuid', username: 'testuser' } as unknown as IntrospectResponse;
+const currentUser = {
+  sub: 'kc-uuid',
+  username: 'testuser',
+} as unknown as IntrospectResponse;
 
 describe('FinancialLiabilityController', () => {
   let controller: FinancialLiabilityController;
@@ -53,7 +56,10 @@ describe('FinancialLiabilityController', () => {
 
       const result = await controller.create(10, dto, currentUser);
 
-      expect(mockFinancialLiabilityService.create).toHaveBeenCalledWith(10, dto);
+      expect(mockFinancialLiabilityService.create).toHaveBeenCalledWith(
+        10,
+        dto,
+      );
       expect(result).toEqual(created);
     });
   });
@@ -63,7 +69,10 @@ describe('FinancialLiabilityController', () => {
   // ─────────────────────────────────────────────────────────────
   describe('findAll', () => {
     it('debe retornar todos los pasivos del usuario', async () => {
-      const list = [buildLiability(), buildLiability({ id: 2, name: 'Tarjeta crédito' })];
+      const list = [
+        buildLiability(),
+        buildLiability({ id: 2, name: 'Tarjeta crédito' }),
+      ];
       mockFinancialLiabilityService.findAll.mockResolvedValue(list);
 
       const result = await controller.findAll(10, currentUser);
@@ -96,9 +105,13 @@ describe('FinancialLiabilityController', () => {
     });
 
     it('debe propagar NotFoundException si no existe', async () => {
-      mockFinancialLiabilityService.findOne.mockRejectedValue(new NotFoundException());
+      mockFinancialLiabilityService.findOne.mockRejectedValue(
+        new NotFoundException(),
+      );
 
-      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(NotFoundException);
+      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -114,7 +127,11 @@ describe('FinancialLiabilityController', () => {
 
       const result = await controller.update(10, 1, dto, currentUser);
 
-      expect(mockFinancialLiabilityService.update).toHaveBeenCalledWith(1, 10, dto);
+      expect(mockFinancialLiabilityService.update).toHaveBeenCalledWith(
+        1,
+        10,
+        dto,
+      );
       expect(result.current_balance).toBe(75000000);
     });
   });
@@ -126,15 +143,21 @@ describe('FinancialLiabilityController', () => {
     it('debe eliminar el pasivo sin excepción', async () => {
       mockFinancialLiabilityService.remove.mockResolvedValue(undefined);
 
-      await expect(controller.remove(10, 1, currentUser)).resolves.toBeUndefined();
+      await expect(
+        controller.remove(10, 1, currentUser),
+      ).resolves.toBeUndefined();
 
       expect(mockFinancialLiabilityService.remove).toHaveBeenCalledWith(1, 10);
     });
 
     it('debe propagar NotFoundException si no existe', async () => {
-      mockFinancialLiabilityService.remove.mockRejectedValue(new NotFoundException());
+      mockFinancialLiabilityService.remove.mockRejectedValue(
+        new NotFoundException(),
+      );
 
-      await expect(controller.remove(10, 999, currentUser)).rejects.toThrow(NotFoundException);
+      await expect(controller.remove(10, 999, currentUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

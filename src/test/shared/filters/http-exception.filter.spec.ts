@@ -39,7 +39,10 @@ describe('HttpExceptionFilter', () => {
       timestamp: '2026-04-19T00:00:00.000Z',
       path: '/x',
     };
-    const exception = new HttpException(alreadyFormatted, HttpStatus.UNAUTHORIZED);
+    const exception = new HttpException(
+      alreadyFormatted,
+      HttpStatus.UNAUTHORIZED,
+    );
 
     filter.catch(exception, host);
 
@@ -48,7 +51,10 @@ describe('HttpExceptionFilter', () => {
   });
 
   it('debe formatear correctamente cuando getResponse() es string', () => {
-    const exception = new HttpException('Mensaje plano', HttpStatus.BAD_REQUEST);
+    const exception = new HttpException(
+      'Mensaje plano',
+      HttpStatus.BAD_REQUEST,
+    );
 
     filter.catch(exception, host);
 
@@ -100,7 +106,9 @@ describe('HttpExceptionFilter', () => {
     filter.catch(exception, host);
 
     const body = response.json.mock.calls[0][0];
-    expect(response.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
+    expect(response.status).toHaveBeenCalledWith(
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
     expect(body.trace_id).toBe('trace-123');
   });
 });

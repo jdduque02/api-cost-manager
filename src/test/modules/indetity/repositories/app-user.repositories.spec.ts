@@ -1,8 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { QueryFailedError } from 'typeorm';
 import { UserRepository } from '@identity/repositories/app-user.repositories';
@@ -73,26 +70,31 @@ describe('UserRepository', () => {
       mockTypeOrmRepo.create.mockReturnValue(user);
       mockTypeOrmRepo.save.mockResolvedValue(user);
 
-      const result = await repo.create({ username: 'testuser', email: 'test@test.com', external_id: 'kc-uuid' });
+      const result = await repo.create({
+        username: 'testuser',
+        email: 'test@test.com',
+        external_id: 'kc-uuid',
+      });
       expect(mockTypeOrmRepo.create).toHaveBeenCalledTimes(1);
       expect(mockTypeOrmRepo.save).toHaveBeenCalledTimes(1);
       expect(result.username).toBe('testuser');
     });
 
     it('debe lanzar ConflictException si hay violación de unicidad (código 23505)', async () => {
-      const pgError = Object.assign(
-        Object.create(QueryFailedError.prototype),
-        {
-          message: 'duplicate key value violates unique constraint',
-          code: '23505',
-          detail: 'Key (email)=(test@test.com) already exists.',
-        },
-      );
+      const pgError = Object.assign(Object.create(QueryFailedError.prototype), {
+        message: 'duplicate key value violates unique constraint',
+        code: '23505',
+        detail: 'Key (email)=(test@test.com) already exists.',
+      });
       mockTypeOrmRepo.create.mockReturnValue(buildUser());
       mockTypeOrmRepo.save.mockRejectedValue(pgError);
 
       await expect(
-        repo.create({ username: 'testuser', email: 'test@test.com', external_id: 'kc-uuid' }),
+        repo.create({
+          username: 'testuser',
+          email: 'test@test.com',
+          external_id: 'kc-uuid',
+        }),
       ).rejects.toThrow(ConflictException);
     });
   });
@@ -159,13 +161,15 @@ describe('UserRepository', () => {
       mockTypeOrmRepo.merge.mockReturnValue(updated);
       mockTypeOrmRepo.save.mockResolvedValue(updated);
 
-      const result = await repo.update(1, { username: 'newname' } as any);
+      const result = await repo.update(1, { username: 'newname' });
       expect(result.username).toBe('newname');
     });
 
     it('debe lanzar NotFoundException si el usuario no existe', async () => {
       mockTypeOrmRepo.findOne.mockResolvedValue(null);
-      await expect(repo.update(99, {} as any)).rejects.toThrow(NotFoundException);
+      await expect(repo.update(99, {} as any)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

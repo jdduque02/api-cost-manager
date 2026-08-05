@@ -6,7 +6,9 @@ import { FinancialProfile } from '@identity/entities/financial-profile.entity';
 import { CreateFinancialProfileDto } from '@identity/dto/financial-profile/create-financial-profile.dto';
 import { UpdateFinancialProfileDto } from '@identity/dto/financial-profile/update-financial-profile.dto';
 
-const buildProfile = (overrides: Partial<FinancialProfile> = {}): FinancialProfile =>
+const buildProfile = (
+  overrides: Partial<FinancialProfile> = {},
+): FinancialProfile =>
   ({
     id: '1',
     user_id: 2,
@@ -37,7 +39,10 @@ describe('FinancialProfileRepository', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FinancialProfileRepository,
-        { provide: getRepositoryToken(FinancialProfile), useValue: mockTypeOrmRepo },
+        {
+          provide: getRepositoryToken(FinancialProfile),
+          useValue: mockTypeOrmRepo,
+        },
       ],
     }).compile();
 
@@ -56,7 +61,7 @@ describe('FinancialProfileRepository', () => {
       wants_ratio: 30,
       savings_ratio: 20,
       max_debt_ratio: 35,
-    } as Omit<CreateFinancialProfileDto, 'user_id'>;
+    };
 
     it('debe crear el perfil si el usuario no tiene uno', async () => {
       const profile = buildProfile();
@@ -106,7 +111,9 @@ describe('FinancialProfileRepository', () => {
       mockTypeOrmRepo.merge.mockReturnValue(updatedProfile);
       mockTypeOrmRepo.save.mockResolvedValue(updatedProfile);
 
-      const dto: UpdateFinancialProfileDto = { needs_ratio: 60 } as UpdateFinancialProfileDto;
+      const dto: UpdateFinancialProfileDto = {
+        needs_ratio: 60,
+      };
       const result = await repo.update(2, dto);
       expect(result.needs_ratio).toBe(60);
       expect(mockTypeOrmRepo.merge).toHaveBeenCalledWith(original, dto);
@@ -114,7 +121,9 @@ describe('FinancialProfileRepository', () => {
 
     it('debe lanzar NotFoundException si el perfil no existe', async () => {
       mockTypeOrmRepo.findOne.mockResolvedValue(null);
-      const dto: UpdateFinancialProfileDto = { needs_ratio: 60 } as UpdateFinancialProfileDto;
+      const dto: UpdateFinancialProfileDto = {
+        needs_ratio: 60,
+      };
       await expect(repo.update(99, dto)).rejects.toThrow(NotFoundException);
     });
   });

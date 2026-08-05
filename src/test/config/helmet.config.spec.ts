@@ -9,7 +9,9 @@ describe('getHelmetConfig', () => {
 
   it('debe tener crossOriginResourcePolicy con policy "cross-origin"', () => {
     const config = getHelmetConfig() as any;
-    expect(config.crossOriginResourcePolicy).toEqual({ policy: 'cross-origin' });
+    expect(config.crossOriginResourcePolicy).toEqual({
+      policy: 'cross-origin',
+    });
   });
 
   it('debe configurar contentSecurityPolicy con directivas básicas', () => {
@@ -51,6 +53,8 @@ describe('getHelmetConfig', () => {
 
   it('debe configurar referrerPolicy como strict-origin-when-cross-origin', () => {
     const config = getHelmetConfig() as any;
-    expect(config.referrerPolicy).toEqual({ policy: 'strict-origin-when-cross-origin' });
+    expect(config.referrerPolicy).toEqual({
+      policy: 'strict-origin-when-cross-origin',
+    });
   });
 });

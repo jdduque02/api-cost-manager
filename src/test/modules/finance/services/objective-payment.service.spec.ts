@@ -27,7 +27,10 @@ describe('ObjectivePaymentService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ObjectivePaymentService,
-        { provide: ObjectivePaymentRepository, useValue: mockObjectivePaymentRepository },
+        {
+          provide: ObjectivePaymentRepository,
+          useValue: mockObjectivePaymentRepository,
+        },
       ],
     }).compile();
 
@@ -47,7 +50,10 @@ describe('ObjectivePaymentService', () => {
 
       const result = await service.create(10, dto);
 
-      expect(mockObjectivePaymentRepository.create).toHaveBeenCalledWith(10, dto);
+      expect(mockObjectivePaymentRepository.create).toHaveBeenCalledWith(
+        10,
+        dto,
+      );
       expect(result).toEqual(created);
     });
   });
@@ -55,11 +61,15 @@ describe('ObjectivePaymentService', () => {
   describe('findByObjective', () => {
     it('debe retornar abonos del objetivo', async () => {
       const payments = [buildPayment(), buildPayment({ id: 2 })];
-      mockObjectivePaymentRepository.findByObjective.mockResolvedValue(payments);
+      mockObjectivePaymentRepository.findByObjective.mockResolvedValue(
+        payments,
+      );
 
       const result = await service.findByObjective(5, 10);
 
-      expect(mockObjectivePaymentRepository.findByObjective).toHaveBeenCalledWith(5, 10);
+      expect(
+        mockObjectivePaymentRepository.findByObjective,
+      ).toHaveBeenCalledWith(5, 10);
       expect(result).toHaveLength(2);
     });
   });
@@ -71,12 +81,17 @@ describe('ObjectivePaymentService', () => {
 
       const result = await service.findOne(1, 10);
 
-      expect(mockObjectivePaymentRepository.findById).toHaveBeenCalledWith(1, 10);
+      expect(mockObjectivePaymentRepository.findById).toHaveBeenCalledWith(
+        1,
+        10,
+      );
       expect(result).toEqual(payment);
     });
 
     it('debe propagar NotFoundException del repositorio', async () => {
-      mockObjectivePaymentRepository.findById.mockRejectedValue(new NotFoundException());
+      mockObjectivePaymentRepository.findById.mockRejectedValue(
+        new NotFoundException(),
+      );
 
       await expect(service.findOne(999, 10)).rejects.toThrow(NotFoundException);
     });

@@ -60,7 +60,10 @@ describe('SubcategoryController', () => {
 
       const result = await controller.findAll(10, undefined, currentUser);
 
-      expect(mockSubcategoryService.findAll).toHaveBeenCalledWith(10, undefined);
+      expect(mockSubcategoryService.findAll).toHaveBeenCalledWith(
+        10,
+        undefined,
+      );
       expect(result).toHaveLength(2);
     });
 
@@ -90,7 +93,9 @@ describe('SubcategoryController', () => {
     it('debe propagar NotFoundException si no existe', async () => {
       mockSubcategoryService.findOne.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(NotFoundException);
+      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -126,7 +131,9 @@ describe('SubcategoryController', () => {
     it('debe propagar NotFoundException si no existe', async () => {
       mockSubcategoryService.remove.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.remove(10, 999, currentUser)).rejects.toThrow(NotFoundException);
+      await expect(controller.remove(10, 999, currentUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

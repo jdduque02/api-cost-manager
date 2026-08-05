@@ -31,7 +31,10 @@ describe('FinancialLiabilityService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FinancialLiabilityService,
-        { provide: FinancialLiabilityRepository, useValue: mockFinancialLiabilityRepository },
+        {
+          provide: FinancialLiabilityRepository,
+          useValue: mockFinancialLiabilityRepository,
+        },
       ],
     }).compile();
 
@@ -41,20 +44,30 @@ describe('FinancialLiabilityService', () => {
 
   describe('create', () => {
     it('debe delegar al repositorio y retornar el pasivo creado', async () => {
-      const dto = { liability_type: 'credito_hipotecario', name: 'Crédito vivienda', current_balance: 80000000 };
+      const dto = {
+        liability_type: 'credito_hipotecario',
+        name: 'Crédito vivienda',
+        current_balance: 80000000,
+      };
       const liability = buildLiability();
       mockFinancialLiabilityRepository.create.mockResolvedValue(liability);
 
       const result = await service.create(10, dto);
 
-      expect(mockFinancialLiabilityRepository.create).toHaveBeenCalledWith(10, dto);
+      expect(mockFinancialLiabilityRepository.create).toHaveBeenCalledWith(
+        10,
+        dto,
+      );
       expect(result).toEqual(liability);
     });
   });
 
   describe('findAll', () => {
     it('debe retornar todos los pasivos del usuario', async () => {
-      const list = [buildLiability(), buildLiability({ id: 2, name: 'Tarjeta crédito' })];
+      const list = [
+        buildLiability(),
+        buildLiability({ id: 2, name: 'Tarjeta crédito' }),
+      ];
       mockFinancialLiabilityRepository.findAll.mockResolvedValue(list);
 
       const result = await service.findAll(10);
@@ -71,12 +84,17 @@ describe('FinancialLiabilityService', () => {
 
       const result = await service.findOne(1, 10);
 
-      expect(mockFinancialLiabilityRepository.findById).toHaveBeenCalledWith(1, 10);
+      expect(mockFinancialLiabilityRepository.findById).toHaveBeenCalledWith(
+        1,
+        10,
+      );
       expect(result).toEqual(liability);
     });
 
     it('debe propagar NotFoundException del repositorio', async () => {
-      mockFinancialLiabilityRepository.findById.mockRejectedValue(new NotFoundException());
+      mockFinancialLiabilityRepository.findById.mockRejectedValue(
+        new NotFoundException(),
+      );
 
       await expect(service.findOne(999, 10)).rejects.toThrow(NotFoundException);
     });
@@ -90,7 +108,11 @@ describe('FinancialLiabilityService', () => {
 
       const result = await service.update(1, 10, dto);
 
-      expect(mockFinancialLiabilityRepository.update).toHaveBeenCalledWith(1, 10, dto);
+      expect(mockFinancialLiabilityRepository.update).toHaveBeenCalledWith(
+        1,
+        10,
+        dto,
+      );
       expect(result.current_balance).toBe(75000000);
     });
   });
@@ -101,11 +123,16 @@ describe('FinancialLiabilityService', () => {
 
       await expect(service.remove(1, 10)).resolves.toBeUndefined();
 
-      expect(mockFinancialLiabilityRepository.softDelete).toHaveBeenCalledWith(1, 10);
+      expect(mockFinancialLiabilityRepository.softDelete).toHaveBeenCalledWith(
+        1,
+        10,
+      );
     });
 
     it('debe propagar NotFoundException del repositorio', async () => {
-      mockFinancialLiabilityRepository.softDelete.mockRejectedValue(new NotFoundException());
+      mockFinancialLiabilityRepository.softDelete.mockRejectedValue(
+        new NotFoundException(),
+      );
 
       await expect(service.remove(999, 10)).rejects.toThrow(NotFoundException);
     });

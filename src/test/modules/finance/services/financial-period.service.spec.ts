@@ -27,7 +27,10 @@ describe('FinancialPeriodService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FinancialPeriodService,
-        { provide: FinancialPeriodRepository, useValue: mockFinancialPeriodRepository },
+        {
+          provide: FinancialPeriodRepository,
+          useValue: mockFinancialPeriodRepository,
+        },
       ],
     }).compile();
 
@@ -43,14 +46,21 @@ describe('FinancialPeriodService', () => {
 
       const result = await service.create(10, dto);
 
-      expect(mockFinancialPeriodRepository.create).toHaveBeenCalledWith(10, dto);
+      expect(mockFinancialPeriodRepository.create).toHaveBeenCalledWith(
+        10,
+        dto,
+      );
       expect(result).toEqual(created);
     });
 
     it('debe propagar ConflictException si ya existe el período', async () => {
-      mockFinancialPeriodRepository.create.mockRejectedValue(new ConflictException());
+      mockFinancialPeriodRepository.create.mockRejectedValue(
+        new ConflictException(),
+      );
 
-      await expect(service.create(10, { year: 2026, month: 4 })).rejects.toThrow(ConflictException);
+      await expect(
+        service.create(10, { year: 2026, month: 4 }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
@@ -73,12 +83,17 @@ describe('FinancialPeriodService', () => {
 
       const result = await service.findOne(1, 10);
 
-      expect(mockFinancialPeriodRepository.findById).toHaveBeenCalledWith(1, 10);
+      expect(mockFinancialPeriodRepository.findById).toHaveBeenCalledWith(
+        1,
+        10,
+      );
       expect(result).toEqual(period);
     });
 
     it('debe propagar NotFoundException del repositorio', async () => {
-      mockFinancialPeriodRepository.findById.mockRejectedValue(new NotFoundException());
+      mockFinancialPeriodRepository.findById.mockRejectedValue(
+        new NotFoundException(),
+      );
 
       await expect(service.findOne(999, 10)).rejects.toThrow(NotFoundException);
     });
@@ -96,7 +111,9 @@ describe('FinancialPeriodService', () => {
     });
 
     it('debe propagar ConflictException si el período ya está cerrado', async () => {
-      mockFinancialPeriodRepository.close.mockRejectedValue(new ConflictException());
+      mockFinancialPeriodRepository.close.mockRejectedValue(
+        new ConflictException(),
+      );
 
       await expect(service.close(1, 10)).rejects.toThrow(ConflictException);
     });

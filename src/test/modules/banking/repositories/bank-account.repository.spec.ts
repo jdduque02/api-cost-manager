@@ -82,14 +82,18 @@ describe('BankAccountRepository', () => {
       mockTypeOrmRepo.create.mockReturnValue(buildAccount());
       mockTypeOrmRepo.save.mockRejectedValue(pgError);
 
-      await expect(repo.create(10, dto, encNum, encBal)).rejects.toThrow(ConflictException);
+      await expect(repo.create(10, dto, encNum, encBal)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('debe lanzar InternalServerErrorException para otros errores de BD', async () => {
       mockTypeOrmRepo.create.mockReturnValue(buildAccount());
       mockTypeOrmRepo.save.mockRejectedValue(new Error('connection timeout'));
 
-      await expect(repo.create(10, dto, encNum, encBal)).rejects.toThrow(InternalServerErrorException);
+      await expect(repo.create(10, dto, encNum, encBal)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
@@ -141,7 +145,9 @@ describe('BankAccountRepository', () => {
 
       const result = await repo.update(1, 10, { bank_name: 'Davivienda' });
 
-      expect(mockTypeOrmRepo.merge).toHaveBeenCalledWith(account, { bank_name: 'Davivienda' });
+      expect(mockTypeOrmRepo.merge).toHaveBeenCalledWith(account, {
+        bank_name: 'Davivienda',
+      });
       expect(result.bank_name).toBe('Davivienda');
     });
 

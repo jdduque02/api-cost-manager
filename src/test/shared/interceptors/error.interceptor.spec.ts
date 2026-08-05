@@ -1,4 +1,9 @@
-import { CallHandler, ExecutionContext, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  CallHandler,
+  ExecutionContext,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { firstValueFrom, throwError } from 'rxjs';
 import { ErrorsInterceptor } from '@shared/interceptors/error.interceptor';
 
@@ -25,10 +30,15 @@ describe('ErrorsInterceptor', () => {
   it('debe transformar HttpException no-500 y loggear WARNING', async () => {
     const interceptor = new ErrorsInterceptor(loggingService as any);
     const context = buildContext('/auth/refresh');
-    const sourceError = new HttpException('Token inválido', HttpStatus.UNAUTHORIZED);
+    const sourceError = new HttpException(
+      'Token inválido',
+      HttpStatus.UNAUTHORIZED,
+    );
     const next: CallHandler = { handle: () => throwError(() => sourceError) };
 
-    await expect(firstValueFrom(interceptor.intercept(context, next))).rejects.toMatchObject({
+    await expect(
+      firstValueFrom(interceptor.intercept(context, next)),
+    ).rejects.toMatchObject({
       response: {
         status: HttpStatus.UNAUTHORIZED,
         message: 'Token inválido',
@@ -49,7 +59,9 @@ describe('ErrorsInterceptor', () => {
       handle: () => throwError(() => new Error('db down')),
     };
 
-    await expect(firstValueFrom(interceptor.intercept(context, next))).rejects.toMatchObject({
+    await expect(
+      firstValueFrom(interceptor.intercept(context, next)),
+    ).rejects.toMatchObject({
       response: {
         status: HttpStatus.INTERNAL_SERVER_ERROR,
         path: '/user/1',
@@ -71,7 +83,9 @@ describe('ErrorsInterceptor', () => {
     );
     const next: CallHandler = { handle: () => throwError(() => sourceError) };
 
-    await expect(firstValueFrom(interceptor.intercept(context, next))).rejects.toMatchObject({
+    await expect(
+      firstValueFrom(interceptor.intercept(context, next)),
+    ).rejects.toMatchObject({
       response: {
         status: HttpStatus.BAD_REQUEST,
         details: ['campo requerido'],

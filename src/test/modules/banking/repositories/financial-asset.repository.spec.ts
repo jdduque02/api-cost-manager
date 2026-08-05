@@ -35,7 +35,10 @@ describe('FinancialAssetRepository', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FinancialAssetRepository,
-        { provide: getRepositoryToken(FinancialAsset), useValue: mockTypeOrmRepo },
+        {
+          provide: getRepositoryToken(FinancialAsset),
+          useValue: mockTypeOrmRepo,
+        },
       ],
     }).compile();
 
@@ -60,7 +63,10 @@ describe('FinancialAssetRepository', () => {
 
       const result = await repo.create(10, dto);
 
-      expect(mockTypeOrmRepo.create).toHaveBeenCalledWith({ ...dto, user_id: 10 });
+      expect(mockTypeOrmRepo.create).toHaveBeenCalledWith({
+        ...dto,
+        user_id: 10,
+      });
       expect(result).toEqual(asset);
     });
   });
@@ -70,7 +76,10 @@ describe('FinancialAssetRepository', () => {
   // ─────────────────────────────────────────────────────────────
   describe('findAll', () => {
     it('debe retornar activos del usuario sin soft-delete', async () => {
-      const list = [buildAsset(), buildAsset({ id: 2, name: 'CDT Davivienda' })];
+      const list = [
+        buildAsset(),
+        buildAsset({ id: 2, name: 'CDT Davivienda' }),
+      ];
       mockTypeOrmRepo.find.mockResolvedValue(list);
 
       const result = await repo.findAll(10);
@@ -121,7 +130,9 @@ describe('FinancialAssetRepository', () => {
     it('debe lanzar NotFoundException si no existe', async () => {
       mockTypeOrmRepo.findOne.mockResolvedValue(null);
 
-      await expect(repo.update(999, 10, dto)).rejects.toThrow(NotFoundException);
+      await expect(repo.update(999, 10, dto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

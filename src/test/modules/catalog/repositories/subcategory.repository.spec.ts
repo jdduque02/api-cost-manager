@@ -58,7 +58,10 @@ describe('SubcategoryRepository', () => {
 
       const result = await repo.create(10, dto);
 
-      expect(mockTypeOrmRepo.create).toHaveBeenCalledWith({ ...dto, user_id: 10 });
+      expect(mockTypeOrmRepo.create).toHaveBeenCalledWith({
+        ...dto,
+        user_id: 10,
+      });
       expect(result).toEqual(subcategory);
     });
 
@@ -77,7 +80,9 @@ describe('SubcategoryRepository', () => {
       mockTypeOrmRepo.create.mockReturnValue(buildSubcategory());
       mockTypeOrmRepo.save.mockRejectedValue(new Error('timeout'));
 
-      await expect(repo.create(10, dto)).rejects.toThrow(InternalServerErrorException);
+      await expect(repo.create(10, dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
@@ -86,7 +91,10 @@ describe('SubcategoryRepository', () => {
   // ─────────────────────────────────────────────────────────────
   describe('findAll', () => {
     it('debe retornar subcategorías del usuario sin filtro de categoría', async () => {
-      const list = [buildSubcategory(), buildSubcategory({ id: 2, name: 'Farmacia' })];
+      const list = [
+        buildSubcategory(),
+        buildSubcategory({ id: 2, name: 'Farmacia' }),
+      ];
       mockTypeOrmRepo.find.mockResolvedValue(list);
 
       const result = await repo.findAll(10);
@@ -153,7 +161,9 @@ describe('SubcategoryRepository', () => {
     it('debe lanzar NotFoundException si la subcategoría no existe', async () => {
       mockTypeOrmRepo.findOne.mockResolvedValue(null);
 
-      await expect(repo.update(999, 10, dto)).rejects.toThrow(NotFoundException);
+      await expect(repo.update(999, 10, dto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -164,7 +174,10 @@ describe('SubcategoryRepository', () => {
     it('debe desactivar la subcategoría (is_active = false)', async () => {
       const subcategory = buildSubcategory();
       mockTypeOrmRepo.findOne.mockResolvedValue(subcategory);
-      mockTypeOrmRepo.save.mockResolvedValue({ ...subcategory, is_active: false });
+      mockTypeOrmRepo.save.mockResolvedValue({
+        ...subcategory,
+        is_active: false,
+      });
 
       await repo.softDelete(1, 10);
 

@@ -94,7 +94,10 @@ describe('LoggingService', () => {
         .mockReturnValueOnce(undefined); // LOG_SERVICE_URL
 
       mockedFs.existsSync.mockReturnValue(true);
-      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => { cb(null); return undefined as any; });
+      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => {
+        cb(null);
+        return undefined;
+      });
 
       await service.sendLog({ message: 'test' }, 'ERROR', 'TestContext');
 
@@ -108,12 +111,17 @@ describe('LoggingService', () => {
         .mockReturnValueOnce(undefined);
 
       mockedFs.existsSync.mockReturnValue(false);
-      mockedFs.mkdirSync.mockReturnValue(undefined as any);
-      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => { cb(null); return undefined as any; });
+      mockedFs.mkdirSync.mockReturnValue(undefined);
+      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => {
+        cb(null);
+        return undefined;
+      });
 
       await service.sendLog({ message: 'test' }, 'WARN', 'TestContext');
 
-      expect(mockedFs.mkdirSync).toHaveBeenCalledWith(expect.any(String), { recursive: true });
+      expect(mockedFs.mkdirSync).toHaveBeenCalledWith(expect.any(String), {
+        recursive: true,
+      });
     });
 
     it('should save log locally when axios fails after retries', async () => {
@@ -121,9 +129,14 @@ describe('LoggingService', () => {
         .mockReturnValueOnce('false')
         .mockReturnValueOnce('http://log-service.example.com');
 
-      mockedAxios.post = jest.fn().mockRejectedValue(new Error('Network error'));
+      mockedAxios.post = jest
+        .fn()
+        .mockRejectedValue(new Error('Network error'));
       mockedFs.existsSync.mockReturnValue(true);
-      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => { cb(null); return undefined as any; });
+      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => {
+        cb(null);
+        return undefined;
+      });
 
       await service.sendLog({ message: 'test' }, 'ERROR', 'TestContext');
 
@@ -138,7 +151,10 @@ describe('LoggingService', () => {
         .mockReturnValueOnce(undefined);
 
       mockedFs.existsSync.mockReturnValue(true);
-      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => { cb(new Error('disk full')); return undefined as any; });
+      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => {
+        cb(new Error('disk full'));
+        return undefined;
+      });
 
       const loggerErrorSpy = jest
         .spyOn((service as any).logger, 'error')
@@ -159,7 +175,10 @@ describe('LoggingService', () => {
         .mockReturnValueOnce(undefined);
 
       mockedFs.existsSync.mockReturnValue(true);
-      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => { cb(null); return undefined as any; });
+      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => {
+        cb(null);
+        return undefined;
+      });
 
       const loggerErrorSpy = jest
         .spyOn((service as any).logger, 'error')
@@ -167,10 +186,11 @@ describe('LoggingService', () => {
 
       await service.sendLog({ message: 'test' }, 'WARN', 'TestContext');
 
-      expect(loggerErrorSpy).toHaveBeenCalledWith('LOG_SERVICE_URL is not defined');
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        'LOG_SERVICE_URL is not defined',
+      );
 
       loggerErrorSpy.mockRestore();
     });
   });
 });
-

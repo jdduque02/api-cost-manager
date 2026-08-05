@@ -5,6 +5,7 @@ import { BankAccountRepository } from '@banking/repositories/bank-account.reposi
 import { CreateBankAccountDto } from '@banking/dto/bank-account/create-bank-account.dto';
 import { UpdateBankAccountDto } from '@banking/dto/bank-account/update-bank-account.dto';
 import { BankAccount } from '@banking/entities/bank-account.entity';
+import { EncryptionService } from '@shared/services/encryption.service';
 
 const mockBankAccountRepository = {
   create: jest.fn(),
@@ -14,14 +15,24 @@ const mockBankAccountRepository = {
   softDelete: jest.fn(),
 };
 
+const mockEncryptionService = {
+  encryptField: jest.fn((value: string) => `enc:${value}`),
+  decryptField: jest.fn((value: string) =>
+    value.replace(/^enc:/, ''),
+  ),
+  encrypt: jest.fn((value: string) => value),
+  decrypt: jest.fn((value: string) => value),
+};
+
 const buildAccount = (overrides = {}): BankAccount =>
   ({
     id: 1,
     user_id: 10,
     bank_name: 'Bancolombia',
     account_type: 'ahorros',
-    encrypted_account_number: Buffer.from('123456789', 'utf8'),
-    encrypted_balance: Buffer.from('1500000', 'utf8'),
+    encrypted_account_number: 'enc:123456789',
+    encrypted_balance: 'enc:1500000',
+    currency: 'COP',
     is_primary: false,
     deleted_at: null,
     created_at: new Date(),
@@ -37,6 +48,7 @@ describe('BankAccountService', () => {
       providers: [
         BankAccountService,
         { provide: BankAccountRepository, useValue: mockBankAccountRepository },
+        { provide: EncryptionService, useValue: mockEncryptionService },
       ],
     }).compile();
 
@@ -56,18 +68,37 @@ describe('BankAccountService', () => {
     };
 
     it('debe cifrar account_number y balance antes de delegar al repositorio', async () => {
-      const account = buildAccount();
-      mockBankAccountRepository.create.mockResolvedValue(account);
+      mockBankAccountRepository.create.mockResolvedValue(buildAccount());
 
       const result = await service.create(10, dto);
 
+      expect(mockEncryptionService.encryptField).toHaveBeenCalledWith(
+        '123456789',
+        'banking',
+      );
+      expect(mockEncryptionService.encryptField).toHaveBeenCalledWith(
+        '1500000',
+        'banking',
+      );
       expect(mockBankAccountRepository.create).toHaveBeenCalledTimes(1);
-      const [userId, dtoArg, encNum, encBal] = mockBankAccountRepository.create.mock.calls[0];
+      const [userId, dtoArg, encNum, encBal] =
+        mockBankAccountRepository.create.mock.calls[0];
       expect(userId).toBe(10);
       expect(dtoArg).toEqual(dto);
-      expect(encNum).toBeInstanceOf(Buffer);
-      expect(encBal).toBeInstanceOf(Buffer);
-      expect(result).toEqual(account);
+      expect(encNum).toBe('enc:123456789');
+      expect(encBal).toBe('enc:1500000');
+      expect(result).toEqual({
+        id: 1,
+        user_id: 10,
+        bank_name: 'Bancolombia',
+        account_type: 'ahorros',
+        masked_account_number: '****6789',
+        display_balance: '1500000',
+        currency: 'COP',
+        is_primary: false,
+        created_at: expect.any(Date),
+        updated_at: expect.any(Date),
+      });
     });
   });
 
@@ -75,14 +106,15 @@ describe('BankAccountService', () => {
   // findAll
   // ─────────────────────────────────────────────────────────────
   describe('findAll', () => {
-    it('debe retornar todas las cuentas del usuario', async () => {
+    it('debe retornar las cuentas del usuario como DTOs', async () => {
       const accounts = [buildAccount()];
       mockBankAccountRepository.findAll.mockResolvedValue(accounts);
 
       const result = await service.findAll(10);
 
       expect(mockBankAccountRepository.findAll).toHaveBeenCalledWith(10);
-      expect(result).toEqual(accounts);
+      expect(result[0]).toHaveProperty('masked_account_number', '****6789');
+      expect(result[0]).toHaveProperty('display_balance', '1500000');
     });
   });
 
@@ -97,11 +129,13 @@ describe('BankAccountService', () => {
       const result = await service.findOne(1, 10);
 
       expect(mockBankAccountRepository.findById).toHaveBeenCalledWith(1, 10);
-      expect(result).toEqual(account);
+      expect(result).toHaveProperty('masked_account_number', '****6789');
     });
 
     it('debe propagar NotFoundException del repositorio', async () => {
-      mockBankAccountRepository.findById.mockRejectedValue(new NotFoundException());
+      mockBankAccountRepository.findById.mockRejectedValue(
+        new NotFoundException(),
+      );
 
       await expect(service.findOne(999, 10)).rejects.toThrow(NotFoundException);
     });
@@ -112,18 +146,22 @@ describe('BankAccountService', () => {
   // ─────────────────────────────────────────────────────────────
   describe('update', () => {
     it('debe actualizar campos básicos sin cifrado cuando no cambia account_number ni balance', async () => {
-      const dto: UpdateBankAccountDto = { bank_name: 'Davivienda', is_primary: true };
+      const dto: UpdateBankAccountDto = {
+        bank_name: 'Davivienda',
+        is_primary: true,
+      };
       const updated = buildAccount({ bank_name: 'Davivienda' });
       mockBankAccountRepository.update.mockResolvedValue(updated);
 
       const result = await service.update(1, 10, dto);
 
-      const [id, userId, partial] = mockBankAccountRepository.update.mock.calls[0];
+      const [id, userId, partial] =
+        mockBankAccountRepository.update.mock.calls[0];
       expect(id).toBe(1);
       expect(userId).toBe(10);
       expect(partial.bank_name).toBe('Davivienda');
       expect(partial.encrypted_account_number).toBeUndefined();
-      expect(result).toEqual(updated);
+      expect(result).toHaveProperty('bank_name', 'Davivienda');
     });
 
     it('debe cifrar account_number si se provee en la actualización', async () => {
@@ -132,8 +170,12 @@ describe('BankAccountService', () => {
 
       await service.update(1, 10, dto);
 
+      expect(mockEncryptionService.encryptField).toHaveBeenCalledWith(
+        '987654321',
+        'banking',
+      );
       const [, , partial] = mockBankAccountRepository.update.mock.calls[0];
-      expect(partial.encrypted_account_number).toBeInstanceOf(Buffer);
+      expect(partial.encrypted_account_number).toBe('enc:987654321');
     });
 
     it('debe cifrar balance si se provee en la actualización', async () => {
@@ -143,7 +185,7 @@ describe('BankAccountService', () => {
       await service.update(1, 10, dto);
 
       const [, , partial] = mockBankAccountRepository.update.mock.calls[0];
-      expect(partial.encrypted_balance).toBeInstanceOf(Buffer);
+      expect(partial.encrypted_balance).toBe('enc:2000000');
     });
   });
 

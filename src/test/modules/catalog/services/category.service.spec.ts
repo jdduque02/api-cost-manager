@@ -43,7 +43,10 @@ describe('CategoryService', () => {
   // ─────────────────────────────────────────────────────────────
   describe('create', () => {
     it('debe delegar al repositorio y retornar la categoría creada', async () => {
-      const dto = { name: 'Alimentación', group_type: TransactionTypeEnum.EXPENSE };
+      const dto = {
+        name: 'Alimentación',
+        group_type: TransactionTypeEnum.EXPENSE,
+      };
       const category = buildCategory();
       mockCategoryRepository.create.mockResolvedValue(category);
 
@@ -59,7 +62,10 @@ describe('CategoryService', () => {
   // ─────────────────────────────────────────────────────────────
   describe('findAll', () => {
     it('debe retornar todas las categorías', async () => {
-      const list = [buildCategory(), buildCategory({ id: 2, name: 'Transporte' })];
+      const list = [
+        buildCategory(),
+        buildCategory({ id: 2, name: 'Transporte' }),
+      ];
       mockCategoryRepository.findAll.mockResolvedValue(list);
 
       const result = await service.findAll();

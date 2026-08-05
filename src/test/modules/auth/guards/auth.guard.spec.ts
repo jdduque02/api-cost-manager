@@ -22,7 +22,10 @@ describe('AuthGuard', () => {
   });
 
   it('debe permitir el acceso con token activo', async () => {
-    mockAuthService.introspect.mockResolvedValue({ active: true, sub: 'user-uuid' });
+    mockAuthService.introspect.mockResolvedValue({
+      active: true,
+      sub: 'user-uuid',
+    });
     const ctx = buildContext('Bearer valid-token');
     const result = await guard.canActivate(ctx);
     expect(result).toBe(true);

@@ -36,11 +36,16 @@ describe('FinancialLiabilityRepository', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FinancialLiabilityRepository,
-        { provide: getRepositoryToken(FinancialLiability), useValue: mockTypeOrmRepo },
+        {
+          provide: getRepositoryToken(FinancialLiability),
+          useValue: mockTypeOrmRepo,
+        },
       ],
     }).compile();
 
-    repo = module.get<FinancialLiabilityRepository>(FinancialLiabilityRepository);
+    repo = module.get<FinancialLiabilityRepository>(
+      FinancialLiabilityRepository,
+    );
     jest.clearAllMocks();
   });
 
@@ -61,7 +66,10 @@ describe('FinancialLiabilityRepository', () => {
 
       const result = await repo.create(10, dto);
 
-      expect(mockTypeOrmRepo.create).toHaveBeenCalledWith({ ...dto, user_id: 10 });
+      expect(mockTypeOrmRepo.create).toHaveBeenCalledWith({
+        ...dto,
+        user_id: 10,
+      });
       expect(result).toEqual(liability);
     });
   });
@@ -71,7 +79,10 @@ describe('FinancialLiabilityRepository', () => {
   // ─────────────────────────────────────────────────────────────
   describe('findAll', () => {
     it('debe retornar pasivos del usuario sin soft-delete', async () => {
-      const list = [buildLiability(), buildLiability({ id: 2, name: 'Tarjeta crédito' })];
+      const list = [
+        buildLiability(),
+        buildLiability({ id: 2, name: 'Tarjeta crédito' }),
+      ];
       mockTypeOrmRepo.find.mockResolvedValue(list);
 
       const result = await repo.findAll(10);
@@ -122,7 +133,9 @@ describe('FinancialLiabilityRepository', () => {
     it('debe lanzar NotFoundException si no existe', async () => {
       mockTypeOrmRepo.findOne.mockResolvedValue(null);
 
-      await expect(repo.update(999, 10, dto)).rejects.toThrow(NotFoundException);
+      await expect(repo.update(999, 10, dto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

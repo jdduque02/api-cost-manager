@@ -13,7 +13,9 @@ const mockRepo = {
   remove: jest.fn(),
 };
 
-const buildProfile = (overrides: Partial<FinancialProfile> = {}): FinancialProfile =>
+const buildProfile = (
+  overrides: Partial<FinancialProfile> = {},
+): FinancialProfile =>
   ({
     id: '1',
     user_id: 2,
@@ -55,7 +57,7 @@ describe('FinancialProfileService', () => {
       wants_ratio: 30,
       savings_ratio: 20,
       max_debt_ratio: 35,
-    } as Omit<CreateFinancialProfileDto, 'user_id'>;
+    };
 
     it('debe crear perfil financiero correctamente', async () => {
       const profile = buildProfile();
@@ -100,7 +102,9 @@ describe('FinancialProfileService', () => {
   // ─────────────────────────────────────────────────────────────
   describe('update', () => {
     it('debe actualizar el perfil financiero', async () => {
-      const dto: UpdateFinancialProfileDto = { needs_ratio: 60 } as UpdateFinancialProfileDto;
+      const dto: UpdateFinancialProfileDto = {
+        needs_ratio: 60,
+      };
       const updated = buildProfile({ needs_ratio: 60 });
       mockRepo.update.mockResolvedValue(updated);
 
@@ -111,7 +115,9 @@ describe('FinancialProfileService', () => {
 
     it('debe propagar NotFoundException si el usuario no tiene perfil', async () => {
       mockRepo.update.mockRejectedValue(new NotFoundException());
-      const dto: UpdateFinancialProfileDto = { needs_ratio: 60 } as UpdateFinancialProfileDto;
+      const dto: UpdateFinancialProfileDto = {
+        needs_ratio: 60,
+      };
       await expect(service.update(99, dto)).rejects.toThrow(NotFoundException);
     });
   });

@@ -1,7 +1,4 @@
-import {
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { CategoryController } from '@catalog/controller/category.controller';
 import { CategoryService } from '@catalog/service/category.service';
 import { CreateCategoryDto } from '@catalog/dto/category/create-category.dto';
@@ -59,7 +56,9 @@ describe('CategoryController', () => {
     it('debe propagar ConflictException si ya existe la categoría', async () => {
       mockCategoryService.create.mockRejectedValue(new ConflictException());
 
-      await expect(controller.create(dto, currentUser)).rejects.toThrow(ConflictException);
+      await expect(controller.create(dto, currentUser)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -68,7 +67,10 @@ describe('CategoryController', () => {
   // ─────────────────────────────────────────────────────────────
   describe('findAll', () => {
     it('debe retornar todas las categorías activas', async () => {
-      const categories = [buildCategory(), buildCategory({ id: 2, name: 'Transporte' })];
+      const categories = [
+        buildCategory(),
+        buildCategory({ id: 2, name: 'Transporte' }),
+      ];
       mockCategoryService.findAll.mockResolvedValue(categories);
 
       const result = await controller.findAll(currentUser);
@@ -95,7 +97,9 @@ describe('CategoryController', () => {
     it('debe propagar NotFoundException si la categoría no existe', async () => {
       mockCategoryService.findOne.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.findOne(999, currentUser)).rejects.toThrow(NotFoundException);
+      await expect(controller.findOne(999, currentUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

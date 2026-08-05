@@ -24,7 +24,10 @@ const buildAsset = (overrides = {}) => ({
   ...overrides,
 });
 
-const currentUser = { sub: 'kc-uuid', username: 'testuser' } as unknown as IntrospectResponse;
+const currentUser = {
+  sub: 'kc-uuid',
+  username: 'testuser',
+} as unknown as IntrospectResponse;
 
 describe('FinancialAssetController', () => {
   let controller: FinancialAssetController;
@@ -95,9 +98,13 @@ describe('FinancialAssetController', () => {
     });
 
     it('debe propagar NotFoundException si no existe el activo', async () => {
-      mockFinancialAssetService.findOne.mockRejectedValue(new NotFoundException());
+      mockFinancialAssetService.findOne.mockRejectedValue(
+        new NotFoundException(),
+      );
 
-      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(NotFoundException);
+      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -125,15 +132,21 @@ describe('FinancialAssetController', () => {
     it('debe eliminar el activo sin excepción', async () => {
       mockFinancialAssetService.remove.mockResolvedValue(undefined);
 
-      await expect(controller.remove(10, 1, currentUser)).resolves.toBeUndefined();
+      await expect(
+        controller.remove(10, 1, currentUser),
+      ).resolves.toBeUndefined();
 
       expect(mockFinancialAssetService.remove).toHaveBeenCalledWith(1, 10);
     });
 
     it('debe propagar NotFoundException si no existe', async () => {
-      mockFinancialAssetService.remove.mockRejectedValue(new NotFoundException());
+      mockFinancialAssetService.remove.mockRejectedValue(
+        new NotFoundException(),
+      );
 
-      await expect(controller.remove(10, 999, currentUser)).rejects.toThrow(NotFoundException);
+      await expect(controller.remove(10, 999, currentUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

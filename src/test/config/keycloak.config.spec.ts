@@ -37,8 +37,8 @@ describe('getKeycloakConfig', () => {
   it('should return empty string for secret if KEYCLOAK_SECRET is missing', () => {
     (mockConfigService.get as jest.Mock).mockReturnValue(undefined);
     (mockConfigService.get as jest.Mock).mockImplementation((key: string) => {
-        if (key === 'KEYCLOAK_SECRET') return undefined;
-        return 'value';
+      if (key === 'KEYCLOAK_SECRET') return undefined;
+      return 'value';
     });
     const config = getKeycloakConfig(mockConfigService as ConfigService);
     expect(config.secret).toBe('');

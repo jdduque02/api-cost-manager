@@ -10,7 +10,9 @@ describe('extractBearerToken', () => {
 
   it('should throw UnauthorizedException if header is undefined', () => {
     expect(() => extractBearerToken(undefined)).toThrow(UnauthorizedException);
-    expect(() => extractBearerToken(undefined)).toThrow('Se requiere un Bearer token en el header Authorization.');
+    expect(() => extractBearerToken(undefined)).toThrow(
+      'Se requiere un Bearer token en el header Authorization.',
+    );
   });
 
   it('should throw UnauthorizedException if header does not start with Bearer', () => {

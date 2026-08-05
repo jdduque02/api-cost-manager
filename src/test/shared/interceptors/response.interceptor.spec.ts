@@ -16,7 +16,9 @@ describe('ResponseInterceptor', () => {
     const context = buildContext(200);
     const next = { handle: () => of({ id: 1, username: 'juan' }) };
 
-    const result = await firstValueFrom(interceptor.intercept(context, next as any));
+    const result = await firstValueFrom(
+      interceptor.intercept(context, next as any),
+    );
 
     expect(result.status).toBe(true);
     expect(result.message).toBe('Operación exitosa');
@@ -36,7 +38,9 @@ describe('ResponseInterceptor', () => {
     };
     const next = { handle: () => of(dto) };
 
-    const result = await firstValueFrom(interceptor.intercept(context, next as any));
+    const result = await firstValueFrom(
+      interceptor.intercept(context, next as any),
+    );
     expect(result).toBe(dto);
   });
 
@@ -45,7 +49,9 @@ describe('ResponseInterceptor', () => {
     const context = buildContext(204);
     const next = { handle: () => of(null) };
 
-    const result = await firstValueFrom(interceptor.intercept(context, next as any));
+    const result = await firstValueFrom(
+      interceptor.intercept(context, next as any),
+    );
 
     expect(result.status).toBe(true);
     expect(result.message).toBe('Operación completada sin contenido');
@@ -57,6 +63,8 @@ describe('ResponseInterceptor', () => {
     const context = buildContext(200);
     const next = { handle: () => throwError(() => new Error('boom')) };
 
-    await expect(firstValueFrom(interceptor.intercept(context, next as any))).rejects.toThrow('boom');
+    await expect(
+      firstValueFrom(interceptor.intercept(context, next as any)),
+    ).rejects.toThrow('boom');
   });
 });

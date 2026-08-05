@@ -97,9 +97,15 @@ describe('logging.interceptor units', () => {
 
   describe('FileLocalLogProvider', () => {
     it('debe guardar el log localmente en fallback-logs.json', async () => {
-      const accessSpy = jest.spyOn(fs.promises, 'access').mockResolvedValue(undefined as never);
-      const mkdirSpy = jest.spyOn(fs.promises, 'mkdir').mockResolvedValue(undefined as never);
-      const appendSpy = jest.spyOn(fs.promises, 'appendFile').mockResolvedValue(undefined as never);
+      const accessSpy = jest
+        .spyOn(fs.promises, 'access')
+        .mockResolvedValue(undefined);
+      const mkdirSpy = jest
+        .spyOn(fs.promises, 'mkdir')
+        .mockResolvedValue(undefined);
+      const appendSpy = jest
+        .spyOn(fs.promises, 'appendFile')
+        .mockResolvedValue(undefined);
 
       const provider = new FileLocalLogProvider();
       await provider.saveLog({
@@ -137,9 +143,9 @@ describe('logging.interceptor units', () => {
       };
 
       const service = new LoggingService(
-        remoteProvider as any,
-        localProvider as any,
-        configurationFactory as any,
+        remoteProvider,
+        localProvider,
+        configurationFactory,
       );
 
       await service.sendLog('evento', 'INFO', { a: 1 });
@@ -150,8 +156,8 @@ describe('logging.interceptor units', () => {
 
     it('debe lanzar error si tipo de log es inválido', async () => {
       const service = new LoggingService(
-        { sendLog: jest.fn() } as any,
-        { saveLog: jest.fn() } as any,
+        { sendLog: jest.fn() },
+        { saveLog: jest.fn() },
         {
           createLoggingConfig: jest.fn().mockReturnValue({
             logServiceUrl: 'http://logger:3000',
@@ -159,7 +165,7 @@ describe('logging.interceptor units', () => {
             serviceName: 'svc',
             maxRetries: 3,
           }),
-        } as any,
+        },
       );
 
       await expect(service.sendLog('evento', 'INVALID' as any)).rejects.toThrow(

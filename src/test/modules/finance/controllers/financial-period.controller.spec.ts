@@ -45,9 +45,13 @@ describe('FinancialPeriodController', () => {
     });
 
     it('debe propagar ConflictException si el período ya existe', async () => {
-      mockFinancialPeriodService.create.mockRejectedValue(new ConflictException());
+      mockFinancialPeriodService.create.mockRejectedValue(
+        new ConflictException(),
+      );
 
-      await expect(controller.create(10, dto, currentUser)).rejects.toThrow(ConflictException);
+      await expect(controller.create(10, dto, currentUser)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -75,9 +79,13 @@ describe('FinancialPeriodController', () => {
     });
 
     it('debe propagar NotFoundException si no existe', async () => {
-      mockFinancialPeriodService.findOne.mockRejectedValue(new NotFoundException());
+      mockFinancialPeriodService.findOne.mockRejectedValue(
+        new NotFoundException(),
+      );
 
-      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(NotFoundException);
+      await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -93,9 +101,13 @@ describe('FinancialPeriodController', () => {
     });
 
     it('debe propagar ConflictException si el período ya está cerrado', async () => {
-      mockFinancialPeriodService.close.mockRejectedValue(new ConflictException());
+      mockFinancialPeriodService.close.mockRejectedValue(
+        new ConflictException(),
+      );
 
-      await expect(controller.close(10, 1, currentUser)).rejects.toThrow(ConflictException);
+      await expect(controller.close(10, 1, currentUser)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 });

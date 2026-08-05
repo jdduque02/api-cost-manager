@@ -36,7 +36,10 @@ const mockCacheManager = {
   del: jest.fn(),
 };
 
-const axiosResponse = <T>(data: T, headers: Record<string, string> = {}): AxiosResponse<T> => ({
+const axiosResponse = <T>(
+  data: T,
+  headers: Record<string, string> = {},
+): AxiosResponse<T> => ({
   data,
   status: 200,
   statusText: 'OK',
@@ -70,7 +73,9 @@ describe('KeycloakAdminService', () => {
     it('debe retornar el access_token de administración', async () => {
       mockCacheManager.get.mockResolvedValue(null);
       mockCacheManager.set.mockResolvedValue(undefined);
-      mockHttpService.post.mockReturnValue(of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })));
+      mockHttpService.post.mockReturnValue(
+        of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })),
+      );
       const token = await (service as any).getAdminToken();
       expect(token).toBe(ADMIN_TOKEN);
     });
@@ -78,9 +83,14 @@ describe('KeycloakAdminService', () => {
     it('debe lanzar InternalServerErrorException si Keycloak falla', async () => {
       mockCacheManager.get.mockResolvedValue(null);
       mockHttpService.post.mockReturnValue(
-        throwError(() => ({ response: { status: 500, data: {} }, message: 'Network error' })),
+        throwError(() => ({
+          response: { status: 500, data: {} },
+          message: 'Network error',
+        })),
       );
-      await expect((service as any).getAdminToken()).rejects.toThrow(InternalServerErrorException);
+      await expect((service as any).getAdminToken()).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
@@ -88,18 +98,28 @@ describe('KeycloakAdminService', () => {
   // CREATE USER
   // ─────────────────────────────────────────────────────────────
   describe('createUser', () => {
-    const dto = { username: 'newuser', email: 'new@test.com', password: 'pass123' };
-    const locationHeader = { location: 'http://keycloak/realms/master/users/new-kc-id' };
+    const dto = {
+      username: 'newuser',
+      email: 'new@test.com',
+      password: 'pass123',
+    };
+    const locationHeader = {
+      location: 'http://keycloak/realms/master/users/new-kc-id',
+    };
 
     beforeEach(() => {
       // getAdminToken siempre exitoso
       mockCacheManager.get.mockResolvedValue(null);
       mockCacheManager.set.mockResolvedValue(undefined);
-      mockHttpService.post.mockReturnValueOnce(of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })));
+      mockHttpService.post.mockReturnValueOnce(
+        of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })),
+      );
     });
 
     it('debe crear el usuario y retornar su keycloakId', async () => {
-      mockHttpService.post.mockReturnValueOnce(of(axiosResponse({}, locationHeader)));
+      mockHttpService.post.mockReturnValueOnce(
+        of(axiosResponse({}, locationHeader)),
+      );
       const result = await service.createUser(dto);
       expect(result).toBe('new-kc-id');
     });
@@ -115,7 +135,9 @@ describe('KeycloakAdminService', () => {
       mockHttpService.post.mockReturnValueOnce(
         throwError(() => ({ response: { status: 500, data: {} } })),
       );
-      await expect(service.createUser(dto)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.createUser(dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
@@ -126,7 +148,9 @@ describe('KeycloakAdminService', () => {
     beforeEach(() => {
       mockCacheManager.get.mockResolvedValue(null);
       mockCacheManager.set.mockResolvedValue(undefined);
-      mockHttpService.post.mockReturnValueOnce(of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })));
+      mockHttpService.post.mockReturnValueOnce(
+        of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })),
+      );
     });
 
     it('debe eliminar el usuario de Keycloak sin lanzar excepción', async () => {
@@ -151,7 +175,9 @@ describe('KeycloakAdminService', () => {
     beforeEach(() => {
       mockCacheManager.get.mockResolvedValue(null);
       mockCacheManager.set.mockResolvedValue(undefined);
-      mockHttpService.post.mockReturnValueOnce(of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })));
+      mockHttpService.post.mockReturnValueOnce(
+        of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })),
+      );
     });
 
     it('debe retornar el keycloakId del usuario encontrado', async () => {
@@ -164,18 +190,18 @@ describe('KeycloakAdminService', () => {
 
     it('debe lanzar NotFoundException si no existe usuario con ese email', async () => {
       mockHttpService.get.mockReturnValue(of(axiosResponse([])));
-      await expect(service.findKeycloakIdByEmail('noexiste@test.com')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.findKeycloakIdByEmail('noexiste@test.com'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('debe lanzar InternalServerErrorException en error de red', async () => {
       mockHttpService.get.mockReturnValue(
         throwError(() => ({ response: { status: 500, data: {} } })),
       );
-      await expect(service.findKeycloakIdByEmail('test@test.com')).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(
+        service.findKeycloakIdByEmail('test@test.com'),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 
@@ -186,12 +212,16 @@ describe('KeycloakAdminService', () => {
     beforeEach(() => {
       mockCacheManager.get.mockResolvedValue(null);
       mockCacheManager.set.mockResolvedValue(undefined);
-      mockHttpService.post.mockReturnValueOnce(of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })));
+      mockHttpService.post.mockReturnValueOnce(
+        of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })),
+      );
     });
 
     it('debe enviar el email de reset sin lanzar excepción', async () => {
       mockHttpService.put.mockReturnValue(of(axiosResponse({})));
-      await expect(service.sendResetPasswordEmail('kc-id-123')).resolves.toBeUndefined();
+      await expect(
+        service.sendResetPasswordEmail('kc-id-123'),
+      ).resolves.toBeUndefined();
       expect(mockHttpService.put).toHaveBeenCalledTimes(1);
     });
 
