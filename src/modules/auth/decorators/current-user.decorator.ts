@@ -8,7 +8,9 @@ import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
  */
 export const CurrentUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): IntrospectResponse => {
-    const request = ctx.switchToHttp().getRequest<Request & { user: IntrospectResponse }>();
+    const request = ctx
+      .switchToHttp()
+      .getRequest<Request & { user: IntrospectResponse }>();
     return request.user;
   },
 );

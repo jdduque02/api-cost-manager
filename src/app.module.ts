@@ -2,9 +2,11 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
-import { APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { I18nModule } from 'nestjs-i18n';
 import { getI18nConfig } from '@config/i18n.config';
+import { getThrottlerConfig } from '@config/throttler.config';
 import { databaseConfig } from '@config/database.config';
 import { IdentityModule } from '@identity/identity.module';
 import { SharedModule } from '@shared/shared.module';
@@ -28,9 +30,14 @@ import { getKeycloakConfig } from '@config/keycloak.config';
 @Module({
   imports: [
     I18nModule.forRoot(getI18nConfig()),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: getThrottlerConfig,
+      inject: [ConfigService],
+    }),
     ConfigModule.forRoot({
-      isGlobal: true, 
-      envFilePath: '.env', 
+      isGlobal: true,
+      envFilePath: '.env',
       expandVariables: true,
     }),
     TypeOrmModule.forRootAsync(databaseConfig),
@@ -52,6 +59,10 @@ import { getKeycloakConfig } from '@config/keycloak.config';
     }),
   ],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,

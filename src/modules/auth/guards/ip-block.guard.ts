@@ -40,9 +40,7 @@ export class IpBlockGuard implements CanActivate {
       this.logger.warn(`Request bloqueada desde IP: ${ip}`);
       const response = context.switchToHttp().getResponse<Response>();
       response.setHeader('Retry-After', '900');
-      throw new BadRequestException(
-        this.i18n.t('auth.IP_BLOCKED'),
-      );
+      throw new BadRequestException(this.i18n.t('auth.IP_BLOCKED'));
     }
 
     return true;

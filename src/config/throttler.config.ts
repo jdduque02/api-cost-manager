@@ -1,7 +1,9 @@
 import { ThrottlerModuleOptions } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 
-export const getThrottlerConfig = (configService: ConfigService): ThrottlerModuleOptions => {
+export const getThrottlerConfig = (
+  configService: ConfigService,
+): ThrottlerModuleOptions => {
   const isProd = configService.get<string>('NODE_ENV') === 'PROD';
 
   return {
@@ -14,7 +16,10 @@ export const getThrottlerConfig = (configService: ConfigService): ThrottlerModul
       {
         name: 'auth',
         ttl: configService.get<number>('THROTTLE_AUTH_TTL_MS', 60_000),
-        limit: configService.get<number>('THROTTLE_AUTH_LIMIT', isProd ? 5 : 10),
+        limit: configService.get<number>(
+          'THROTTLE_AUTH_LIMIT',
+          isProd ? 5 : 10,
+        ),
       },
     ],
     storage: undefined,

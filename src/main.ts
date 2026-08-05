@@ -6,14 +6,18 @@ import helmet from 'helmet';
 import { getHelmetConfig } from '@config/helmet.config';
 import { getCorsConfig } from '@config/cors.config';
 import { getSwaggerConfig } from '@config/swagger.config';
-import { getSwaggerCustomCss, getSwaggerCustomJs } from '@config/swagger-ui.config';
+import {
+  getSwaggerCustomCss,
+  getSwaggerCustomJs,
+} from '@config/swagger-ui.config';
 import { I18nValidationPipe, I18nValidationExceptionFilter } from 'nestjs-i18n';
-import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import cookieParser from 'cookie-parser';
 import { ConfigService } from '@nestjs/config';
 import { getRabbitMQConfig } from '@config/rabbitmq.config';
+/* import { getCsrfProtection } from '@config/csrf.config'; */
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -45,6 +49,10 @@ async function bootstrap() {
   const cookieSecret = configService.get<string>('COOKIE_SECRET');
   if (!cookieSecret) throw new Error('COOKIE_SECRET env var no está definida.');
   app.use(cookieParser(cookieSecret));
+  // CSRF protection (double-submit cookie). Requires cookie-parser (above).
+  // The client must echo the `x-csrf-token` cookie back in the `x-csrf-token`
+  // header on state-changing requests (POST/PUT/PATCH/DELETE).
+  // app.use(getCsrfProtection(configService));
 
   // Global Prefix for all routes (e.g., /api/v1)
   const apiVersion = configService.get<string>('VERSION') ?? '1';
@@ -77,8 +85,12 @@ async function bootstrap() {
   const port = configService.get<number>('PORT') ?? 3000;
   await app.startAllMicroservices();
   await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}/api/v${swaggerVersion}`);
-  console.log(`Swagger Docs available at: http://localhost:${port}/api/v${swaggerVersion}/docs`);
+  console.log(
+    `Application is running on: http://localhost:${port}/api/v${swaggerVersion}`,
+  );
+  console.log(
+    `Swagger Docs available at: http://localhost:${port}/api/v${swaggerVersion}/docs`,
+  );
   console.log('RabbitMQ transport connected and listening for messages.');
 }
 bootstrap();

@@ -18,9 +18,18 @@ export class IpBlockService {
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly configService: ConfigService,
   ) {
-    this.maxAttempts = this.configService.get<number>('IP_BLOCK_MAX_ATTEMPTS', 5);
-    this.blockDurationMs = this.configService.get<number>('IP_BLOCK_DURATION_MS', 900_000); // 15 min
-    this.windowMs = this.configService.get<number>('IP_BLOCK_WINDOW_MS', 600_000); // 10 min
+    this.maxAttempts = this.configService.get<number>(
+      'IP_BLOCK_MAX_ATTEMPTS',
+      5,
+    );
+    this.blockDurationMs = this.configService.get<number>(
+      'IP_BLOCK_DURATION_MS',
+      900_000,
+    ); // 15 min
+    this.windowMs = this.configService.get<number>(
+      'IP_BLOCK_WINDOW_MS',
+      600_000,
+    ); // 10 min
   }
 
   async isBlocked(ip: string): Promise<boolean> {
@@ -29,7 +38,9 @@ export class IpBlockService {
     return !!blocked;
   }
 
-  async recordFailedAttempt(ip: string): Promise<{ blocked: boolean; remainingAttempts: number }> {
+  async recordFailedAttempt(
+    ip: string,
+  ): Promise<{ blocked: boolean; remainingAttempts: number }> {
     const attemptsKey = `${IpBlockService.ATTEMPTS_PREFIX}${ip}`;
     const current = await this.cacheManager.get<number>(attemptsKey);
     const attempts = (current ?? 0) + 1;
@@ -53,7 +64,9 @@ export class IpBlockService {
   async blockIp(ip: string): Promise<void> {
     const key = `${IpBlockService.KEY_PREFIX}${ip}`;
     await this.cacheManager.set(key, 'blocked', this.blockDurationMs);
-    this.logger.warn(`IP bloqueada: ${ip} por ${this.blockDurationMs / 1000}s (máximo ${this.maxAttempts} intentos)`);
+    this.logger.warn(
+      `IP bloqueada: ${ip} por ${this.blockDurationMs / 1000}s (máximo ${this.maxAttempts} intentos)`,
+    );
   }
 
   async getRemainingBlockTime(ip: string): Promise<number> {

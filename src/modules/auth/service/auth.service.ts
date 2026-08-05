@@ -22,6 +22,7 @@ import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 import { KeycloakTokenResponse } from '@auth/interfaces/KeycloakTokenResponse.dto';
 import { UserRepository } from '@identity/repositories/app-user.repositories';
 import { EncryptionService } from '@shared/services/encryption.service';
+import { IpBlockService } from '@shared/services/ip-block.service';
 
 @Injectable()
 export class AuthService {
@@ -40,6 +41,7 @@ export class AuthService {
     private readonly userRepository: UserRepository,
     @Inject(I18nService) private readonly i18n: I18nService,
     private readonly encryptionService: EncryptionService,
+    private readonly ipBlockService: IpBlockService,
   ) {
     this.baseUrl = this.configService.get<string>('KEYCLOAK_URL')!;
     this.realm = this.configService.get<string>('KEYCLOAK_REALM')!;
@@ -55,10 +57,11 @@ export class AuthService {
   // LOGIN — Resource Owner Password Credentials (ROPC)
   // ─────────────────────────────────────────────────────────────
 
-  async login(dto: LoginDto): Promise<KeycloakTokenResponse> {
+  async login(dto: LoginDto, ip: string): Promise<KeycloakTokenResponse> {
     if (!this.encryptionService.isEncrypted(dto.password)) {
       throw new BadRequestException(
-        this.i18n.t('auth.CREDENTIALS_INVALID') + ' La contraseña debe estar encriptada con AES-256-GCM. Usa POST /auth/encrypt.',
+        this.i18n.t('auth.CREDENTIALS_INVALID') +
+          ' La contraseña debe estar encriptada con AES-256-GCM. Usa POST /auth/encrypt.',
       );
     }
 
@@ -83,6 +86,7 @@ export class AuthService {
         ),
       );
       this.logger.log(`Login exitoso para: ${dto.username}`);
+      await this.ipBlockService.resetAttempts(ip);
 
       const user = await this.userRepository.findByUsername(dto.username);
       const data = response.data;
@@ -92,7 +96,14 @@ export class AuthService {
     } catch (error: any) {
       const status = error?.response?.status;
       if (status === 401 || status === 400) {
-        throw new UnauthorizedException(this.i18n.t('auth.CREDENTIALS_INVALID'));
+        const { blocked, remainingAttempts } =
+          await this.ipBlockService.recordFailedAttempt(ip);
+        this.logger.warn(
+          `Login fallido para: ${dto.username} desde IP ${ip} (${remainingAttempts} intentos restantes${blocked ? ', IP bloqueada' : ''})`,
+        );
+        throw new UnauthorizedException(
+          this.i18n.t('auth.CREDENTIALS_INVALID'),
+        );
       }
       this.logger.error('[login]', error?.response?.data);
       throw new InternalServerErrorException(
@@ -221,7 +232,9 @@ export class AuthService {
     const now = Math.floor(Date.now() / 1000);
     const expiresInSeconds = data.exp ? data.exp - now : undefined;
 
-    const user = await this.userRepository.findByUsername(data.preferred_username);
+    const user = await this.userRepository.findByUsername(
+      data.preferred_username,
+    );
 
     return {
       active: true,
@@ -240,15 +253,23 @@ export class AuthService {
   // CHANGE PASSWORD — cambia la contraseña del usuario autenticado
   // ─────────────────────────────────────────────────────────────
 
-  async changePassword(
-    userId: string,
-    dto: ChangePasswordDto,
-  ): Promise<void> {
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
     const user = await this.userRepository.findById(userId);
 
     if (!user.external_id) {
       throw new InternalServerErrorException(
         this.i18n.t('auth.KEYCLOAK_ID_MISSING'),
+      );
+    }
+
+    const isValid = await this.keycloakAdminService.verifyPassword(
+      user.username,
+      dto.currentPassword,
+    );
+
+    if (!isValid) {
+      throw new BadRequestException(
+        this.i18n.t('auth.CURRENT_PASSWORD_INVALID'),
       );
     }
 
@@ -292,7 +313,23 @@ export class AuthService {
   // REVOKE SESSION — cierra una sesión específica
   // ─────────────────────────────────────────────────────────────
 
-  async revokeSession(sessionId: string): Promise<void> {
+  async revokeSession(userId: string, sessionId: string): Promise<void> {
+    const user = await this.userRepository.findById(userId);
+
+    if (!user.external_id) {
+      throw new InternalServerErrorException(
+        this.i18n.t('auth.KEYCLOAK_ID_MISSING'),
+      );
+    }
+
+    const sessions = await this.keycloakAdminService.getUserSessions(
+      user.external_id,
+    );
+
+    if (!sessions.some((s) => s.id === sessionId)) {
+      throw new NotFoundException(this.i18n.t('auth.SESSION_NOT_FOUND'));
+    }
+
     await this.keycloakAdminService.revokeSession(sessionId);
     this.logger.log(`Sesion revocada: ${sessionId}`);
   }

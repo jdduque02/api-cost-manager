@@ -21,6 +21,13 @@ export function getCsrfProtection(configService: ConfigService) {
      */
     getSecret: () => {
       const secret = configService.get<string>('CSRF_SECRET');
+      const env = configService.get<string>('NODE_ENV', 'LOCAL');
+      const isProd = env === 'PROD' || env === 'DEPLOY' || env === 'production';
+      if (isProd && !secret) {
+        throw new Error(
+          'CSRF_SECRET debe definirse en entornos de producción.',
+        );
+      }
       return secret ?? 'csrf-super-secret';
     },
 

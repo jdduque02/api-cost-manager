@@ -1,4 +1,20 @@
-import { Controller, Post, Get, Delete, Body, Param, HttpCode, HttpStatus, UseGuards, Inject } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Delete,
+  Body,
+  Param,
+  Req,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  Inject,
+  ForbiddenException,
+} from '@nestjs/common';
+import type { Request } from 'express';
+import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import { I18nService } from 'nestjs-i18n';
 import {
   ApiTags,
@@ -14,6 +30,7 @@ import {
 import { ApiIntrospectGuardResponse } from '@auth/decorators/api-introspect-guard-response.decorator';
 import { BearerToken } from '@auth/decorators/bearer-token.decorator';
 import { AuthGuard } from '@auth/guards/auth.guard';
+import { IpBlockGuard } from '@auth/guards/ip-block.guard';
 import { CurrentUser } from '@auth/decorators/current-user.decorator';
 import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 import { AuthService } from '@auth/service/auth.service';
@@ -34,10 +51,13 @@ import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly configService: ConfigService,
     @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
   @Post('login')
+  @UseGuards(IpBlockGuard)
+  @Throttle({ auth: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Autenticar usuario y obtener tokens',
@@ -76,11 +96,12 @@ export class AuthController {
     description: 'Error de comunicación con Keycloak.',
     type: ErrorResponseDto,
   })
-  login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  login(@Body() loginDto: LoginDto, @Req() req: Request) {
+    return this.authService.login(loginDto, this.extractIp(req));
   }
 
   @Post('refresh')
+  @Throttle({ auth: { limit: 20, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Renovar sesión con refresh token' })
   @ApiResponse({
@@ -115,6 +136,8 @@ export class AuthController {
   }
 
   @Post('forgot-password')
+  @UseGuards(IpBlockGuard)
+  @Throttle({ auth: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Solicitar reset de contraseña por email' })
   @ApiNoContentResponse({
@@ -161,10 +184,7 @@ export class AuthController {
     @Body() dto: ChangePasswordDto,
     @CurrentUser() currentUser: IntrospectResponse,
   ) {
-    await this.authService.changePassword(
-      String(currentUser.userId),
-      dto,
-    );
+    await this.authService.changePassword(String(currentUser.userId), dto);
     return { message: this.i18n.t('auth.PASSWORD_CHANGED') };
   }
 
@@ -198,8 +218,11 @@ export class AuthController {
     description: 'Error al revocar la sesión.',
     type: ErrorResponseDto,
   })
-  async revokeSession(@Param('sessionId') sessionId: string) {
-    await this.authService.revokeSession(sessionId);
+  async revokeSession(
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() currentUser: IntrospectResponse,
+  ) {
+    await this.authService.revokeSession(String(currentUser.userId), sessionId);
   }
 
   @Get('access-history')
@@ -221,12 +244,14 @@ export class AuthController {
   }
 
   @Post('encrypt')
+  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Encriptar una contraseña con AES-256-GCM',
     description:
       'Encripta una contraseña en texto plano usando la clave ENC_IDENTITY_KEY del servidor. ' +
-      'El resultado se puede enviar directamente en el campo password de POST /auth/login.',
+      'El resultado se puede enviar directamente en el campo password de POST /auth/login. ' +
+      'Solo disponible en entornos de desarrollo (APP_DEV=true o NODE_ENV != PROD).',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -238,7 +263,28 @@ export class AuthController {
     type: ErrorResponseDto,
   })
   encryptPassword(@Body() dto: EncryptPasswordDto) {
+    const env = this.configService.get<string>('NODE_ENV', 'LOCAL');
+    const appDev = this.configService.get<string>('APP_DEV', 'false');
+    const isProd = env === 'PROD' || env === 'DEPLOY' || env === 'production';
+    if (isProd && appDev !== 'true') {
+      throw new ForbiddenException(this.i18n.t('auth.ENCRYPT_DISABLED'));
+    }
     const encrypted = this.authService.encryptPassword(dto.password);
     return { encrypted_password: encrypted };
+  }
+
+  private extractIp(request: Request): string {
+    const forwarded = request.headers['x-forwarded-for'];
+    if (forwarded) {
+      const ip = Array.isArray(forwarded)
+        ? forwarded[0]
+        : forwarded.split(',')[0].trim();
+      return ip;
+    }
+    const realIp = request.headers['x-real-ip'];
+    if (realIp) {
+      return Array.isArray(realIp) ? realIp[0] : realIp;
+    }
+    return request.ip ?? request.socket?.remoteAddress ?? 'unknown';
   }
 }
