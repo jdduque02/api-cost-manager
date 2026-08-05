@@ -16,6 +16,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@auth/guards/auth.guard';
+import { OwnershipGuard } from '@auth/guards/ownership.guard';
 import { ApiIntrospectGuardResponse } from '@auth/decorators/api-introspect-guard-response.decorator';
 import { CurrentUser } from '@auth/decorators/current-user.decorator';
 import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
@@ -25,7 +26,7 @@ import { TaxSummaryResponseDto } from '@intelligence/dto/tax-summary-response.dt
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 
 @ApiTags('intelligence')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, OwnershipGuard)
 @ApiIntrospectGuardResponse()
 @Controller('users/:userId/intelligence')
 export class IntelligenceController {

@@ -9,7 +9,11 @@ import { IntelligenceController } from '@intelligence/controller/intelligence.co
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([FinancialSummary, SummaryCategoryBreakdown, TaxSummary]),
+    TypeOrmModule.forFeature([
+      FinancialSummary,
+      SummaryCategoryBreakdown,
+      TaxSummary,
+    ]),
     AuthModule,
   ],
   controllers: [IntelligenceController],

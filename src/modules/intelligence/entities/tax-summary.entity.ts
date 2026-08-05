@@ -35,15 +35,36 @@ export class TaxSummary {
   total_liabilities!: number;
 
   /** GENERATED STORED: total_assets - total_liabilities */
-  @Column({ type: 'numeric', precision: 15, scale: 2, insert: false, update: false, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    insert: false,
+    update: false,
+    nullable: true,
+  })
   patrimony!: number;
 
   /** GENERATED STORED: total_income / uvt_value */
-  @Column({ type: 'numeric', precision: 10, scale: 4, insert: false, update: false, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 4,
+    insert: false,
+    update: false,
+    nullable: true,
+  })
   income_in_uvt!: number;
 
   /** GENERATED STORED: total_assets / uvt_value */
-  @Column({ type: 'numeric', precision: 10, scale: 4, insert: false, update: false, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 4,
+    insert: false,
+    update: false,
+    nullable: true,
+  })
   assets_in_uvt!: number;
 
   @Column({ type: 'numeric', precision: 10, scale: 2 })

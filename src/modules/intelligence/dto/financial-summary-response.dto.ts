@@ -4,7 +4,10 @@ export class FinancialInsightDto {
   @ApiProperty({ example: 'overspending' })
   type!: string;
 
-  @ApiProperty({ example: 'medium', enum: ['low', 'medium', 'high', 'critical'] })
+  @ApiProperty({
+    example: 'medium',
+    enum: ['low', 'medium', 'high', 'critical'],
+  })
   severity!: string;
 
   @ApiProperty({ example: 'Gasto excesivo en entretenimiento' })

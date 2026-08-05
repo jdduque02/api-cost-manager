@@ -19,40 +19,64 @@ export class IntelligenceService {
     @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
-  async findFinancialSummary(userId: number): Promise<FinancialSummaryResponseDto> {
+  async findFinancialSummary(
+    userId: number,
+  ): Promise<FinancialSummaryResponseDto> {
     const summary = await this.financialSummaryRepo.findOne({
       where: { user_id: userId, deleted_at: IsNull() },
       order: { calculated_at: 'DESC' },
     });
     if (!summary) {
-      throw new NotFoundException(this.i18n.t('intelligence.FINANCIAL_SUMMARY_NOT_FOUND', { args: { userId } }));
+      throw new NotFoundException(
+        this.i18n.t('intelligence.FINANCIAL_SUMMARY_NOT_FOUND', {
+          args: { userId },
+        }),
+      );
     }
     return this.mapFinancialSummary(summary);
   }
 
-  async findFinancialSummaryByPeriod(userId: number, periodId: number): Promise<FinancialSummaryResponseDto> {
+  async findFinancialSummaryByPeriod(
+    userId: number,
+    periodId: number,
+  ): Promise<FinancialSummaryResponseDto> {
     const summary = await this.financialSummaryRepo.findOne({
-      where: { user_id: userId, financial_period_id: periodId, deleted_at: IsNull() },
+      where: {
+        user_id: userId,
+        financial_period_id: periodId,
+        deleted_at: IsNull(),
+      },
     });
     if (!summary) {
-      throw new NotFoundException(this.i18n.t('intelligence.FINANCIAL_SUMMARY_PERIOD_NOT_FOUND', { args: { periodId } }));
+      throw new NotFoundException(
+        this.i18n.t('intelligence.FINANCIAL_SUMMARY_PERIOD_NOT_FOUND', {
+          args: { periodId },
+        }),
+      );
     }
     return this.mapFinancialSummary(summary);
   }
 
-  async findTaxSummary(userId: number, fiscalYear?: number): Promise<TaxSummaryResponseDto> {
+  async findTaxSummary(
+    userId: number,
+    fiscalYear?: number,
+  ): Promise<TaxSummaryResponseDto> {
     const year = fiscalYear ?? new Date().getFullYear();
     const summary = await this.taxSummaryRepo.findOne({
       where: { user_id: userId, fiscal_year: year },
       order: { created_at: 'DESC' },
     });
     if (!summary) {
-      throw new NotFoundException(this.i18n.t('intelligence.TAX_SUMMARY_NOT_FOUND', { args: { year } }));
+      throw new NotFoundException(
+        this.i18n.t('intelligence.TAX_SUMMARY_NOT_FOUND', { args: { year } }),
+      );
     }
     return this.mapTaxSummary(summary);
   }
 
-  private mapFinancialSummary(entity: FinancialSummary): FinancialSummaryResponseDto {
+  private mapFinancialSummary(
+    entity: FinancialSummary,
+  ): FinancialSummaryResponseDto {
     return {
       id: entity.id,
       user_id: entity.user_id,
