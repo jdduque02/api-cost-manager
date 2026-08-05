@@ -17,10 +17,18 @@ export class AuditLogResponseDto {
   @ApiProperty({ enum: AuditActionEnum })
   action!: AuditActionEnum;
 
-  @ApiPropertyOptional({ type: 'object', additionalProperties: true, nullable: true })
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: true,
+    nullable: true,
+  })
   old_data!: Record<string, unknown> | null;
 
-  @ApiPropertyOptional({ type: 'object', additionalProperties: true, nullable: true })
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: true,
+    nullable: true,
+  })
   new_data!: Record<string, unknown> | null;
 
   @ApiPropertyOptional({ example: 5, nullable: true })

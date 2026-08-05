@@ -54,7 +54,9 @@ export class NewsItemRepository {
   async findById(id: number): Promise<NewsItem> {
     const item = await this.repo.findOne({ where: { id } });
     if (!item) {
-      throw new NotFoundException(this.i18n.t('news.NOT_FOUND', { args: { id } }));
+      throw new NotFoundException(
+        this.i18n.t('news.NOT_FOUND', { args: { id } }),
+      );
     }
     return item;
   }
@@ -63,7 +65,9 @@ export class NewsItemRepository {
     const item = await this.findById(id);
     const payload: Record<string, any> = { ...dto };
     if (dto.published_at !== undefined) {
-      payload.published_at = dto.published_at ? new Date(dto.published_at) : null;
+      payload.published_at = dto.published_at
+        ? new Date(dto.published_at)
+        : null;
     }
     Object.assign(item, payload);
     const saved = await this.repo.save(item);

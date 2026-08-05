@@ -50,7 +50,7 @@ export class NewsItemController {
     type: ErrorResponseDto,
   })
   async create(@Body() dto: CreateNewsItemDto): Promise<NewsItemResponseDto> {
-    return this.newsItemService.create(dto) as Promise<NewsItemResponseDto>;
+    return this.newsItemService.create(dto);
   }
 
   @Get()
@@ -67,7 +67,7 @@ export class NewsItemController {
     type: ErrorResponseDto,
   })
   async findAll(@Query() query: NewsQueryDto): Promise<NewsItemResponseDto[]> {
-    return this.newsItemService.findAll(query) as Promise<NewsItemResponseDto[]>;
+    return this.newsItemService.findAll(query);
   }
 
   @Get(':id')
@@ -86,8 +86,10 @@ export class NewsItemController {
     description: 'Error al obtener la noticia.',
     type: ErrorResponseDto,
   })
-  async findById(@Param('id', ParseIntPipe) id: number): Promise<NewsItemResponseDto> {
-    return this.newsItemService.findById(id) as Promise<NewsItemResponseDto>;
+  async findById(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<NewsItemResponseDto> {
+    return this.newsItemService.findById(id);
   }
 
   @Patch(':id')
@@ -110,7 +112,7 @@ export class NewsItemController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateNewsItemDto,
   ): Promise<NewsItemResponseDto> {
-    return this.newsItemService.update(id, dto) as Promise<NewsItemResponseDto>;
+    return this.newsItemService.update(id, dto);
   }
 
   @Delete(':id')

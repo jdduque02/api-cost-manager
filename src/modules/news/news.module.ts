@@ -7,10 +7,7 @@ import { NewsItemService } from './service/news-item.service';
 import { NewsItemRepository } from './repositories/news-item.repository';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([NewsItem]),
-    AuthModule,
-  ],
+  imports: [TypeOrmModule.forFeature([NewsItem]), AuthModule],
   controllers: [NewsItemController],
   providers: [NewsItemService, NewsItemRepository],
   exports: [NewsItemService],

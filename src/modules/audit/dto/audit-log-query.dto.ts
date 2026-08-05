@@ -1,15 +1,28 @@
-import { IsEnum, IsInt, IsOptional, IsPositive, IsString, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsPositive,
+  IsString,
+  Min,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { AuditActionEnum } from '@shared/enums';
 
 export class AuditLogQueryDto {
-  @ApiPropertyOptional({ description: 'Esquema de la tabla auditada.', example: 'finance' })
+  @ApiPropertyOptional({
+    description: 'Esquema de la tabla auditada.',
+    example: 'finance',
+  })
   @IsOptional()
   @IsString()
   schema_name?: string;
 
-  @ApiPropertyOptional({ description: 'Nombre de la tabla auditada.', example: 'transaction_record' })
+  @ApiPropertyOptional({
+    description: 'Nombre de la tabla auditada.',
+    example: 'transaction_record',
+  })
   @IsOptional()
   @IsString()
   table_name?: string;
@@ -21,19 +34,28 @@ export class AuditLogQueryDto {
   @IsPositive()
   record_id?: number;
 
-  @ApiPropertyOptional({ description: 'ID del usuario que realizó el cambio.', example: 1 })
+  @ApiPropertyOptional({
+    description: 'ID del usuario que realizó el cambio.',
+    example: 1,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @IsPositive()
   changed_by?: number;
 
-  @ApiPropertyOptional({ enum: AuditActionEnum, description: 'Tipo de acción auditada.' })
+  @ApiPropertyOptional({
+    enum: AuditActionEnum,
+    description: 'Tipo de acción auditada.',
+  })
   @IsOptional()
   @IsEnum(AuditActionEnum)
   action?: AuditActionEnum;
 
-  @ApiPropertyOptional({ example: 1, description: 'Número de página (desde 1).' })
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Número de página (desde 1).',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -41,7 +63,10 @@ export class AuditLogQueryDto {
   @Min(1)
   page?: number = 1;
 
-  @ApiPropertyOptional({ example: 20, description: 'Resultados por página (máx. 100).' })
+  @ApiPropertyOptional({
+    example: 20,
+    description: 'Resultados por página (máx. 100).',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()

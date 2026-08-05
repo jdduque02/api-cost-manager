@@ -8,10 +8,7 @@ import { AuditLogRepository } from '@audit/repositories/audit-log.repository';
 
 @Global()
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([AuditLog]),
-    AuthModule,
-  ],
+  imports: [TypeOrmModule.forFeature([AuditLog]), AuthModule],
   controllers: [AuditLogController],
   providers: [AuditLogService, AuditLogRepository],
   exports: [AuditLogService],

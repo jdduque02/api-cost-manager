@@ -51,7 +51,9 @@ export class AuditLogService {
       )
       .catch((err: Error) => {
         // El error del log remoto/local nunca debe propagarse
-        this.logger.warn(`No se pudo reenviar audit log al sistema global: ${err.message}`);
+        this.logger.warn(
+          `No se pudo reenviar audit log al sistema global: ${err.message}`,
+        );
       });
   }
 }
