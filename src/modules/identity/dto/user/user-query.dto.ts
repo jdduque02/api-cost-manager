@@ -1,5 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum SortOrder {
@@ -7,12 +15,18 @@ export enum SortOrder {
   DESC = 'DESC',
 }
 
-export const USER_SORT_FIELDS = ['username', 'email', 'created_at', 'updated_at'] as const;
+export const USER_SORT_FIELDS = [
+  'username',
+  'email',
+  'created_at',
+  'updated_at',
+] as const;
 export type UserSortField = (typeof USER_SORT_FIELDS)[number];
 
 export class UserQueryDto {
   @ApiPropertyOptional({
-    description: 'Texto a buscar en username o email (insensible a mayúsculas).',
+    description:
+      'Texto a buscar en username o email (insensible a mayúsculas).',
     example: 'juan',
   })
   @IsOptional()
@@ -37,14 +51,22 @@ export class UserQueryDto {
   @IsEnum(SortOrder)
   order?: SortOrder = SortOrder.DESC;
 
-  @ApiPropertyOptional({ description: 'Número de página (desde 1).', example: 1, default: 1 })
+  @ApiPropertyOptional({
+    description: 'Número de página (desde 1).',
+    example: 1,
+    default: 1,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number = 1;
 
-  @ApiPropertyOptional({ description: 'Resultados por página (máx. 100).', example: 20, default: 20 })
+  @ApiPropertyOptional({
+    description: 'Resultados por página (máx. 100).',
+    example: 20,
+    default: 20,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()

@@ -108,7 +108,8 @@ export class CreateFinancialProfileDto {
   metadata?: Record<string, unknown>;
 
   @ApiPropertyOptional({
-    description: 'Ingreso mensual del usuario en pesos colombianos (se almacena encriptado).',
+    description:
+      'Ingreso mensual del usuario en pesos colombianos (se almacena encriptado).',
     example: 3500000,
     minimum: 0,
   })

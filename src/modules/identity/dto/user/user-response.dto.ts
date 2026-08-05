@@ -49,7 +49,7 @@ export class UserResponseDto {
   @Expose()
   updated_at!: Date;
 
-  @Expose()
+  @Expose({ groups: ['detail'] })
   @Type(() => FinancialProfileResponseDto)
   financial_profile!: FinancialProfileResponseDto;
 

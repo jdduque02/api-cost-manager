@@ -59,7 +59,7 @@ export class FinancialProfile {
   @UpdateDateColumn({ type: 'timestamp', nullable: true })
   updated_at!: Date;
 
-  @OneToOne(() => AppUser, ({financial_profile}) => financial_profile, {
+  @OneToOne(() => AppUser, ({ financial_profile }) => financial_profile, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'user_id' })

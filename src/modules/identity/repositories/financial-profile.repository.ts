@@ -25,10 +25,15 @@ export class FinancialProfileRepository {
     private readonly encryptionService: EncryptionService,
   ) {}
 
-  async create(userId: string, dto: Omit<CreateFinancialProfileDto, 'user_id'>): Promise<FinancialProfile> {
+  async create(
+    userId: string,
+    dto: Omit<CreateFinancialProfileDto, 'user_id'>,
+  ): Promise<FinancialProfile> {
     const existing = await this.repo.findOne({ where: { user_id: userId } });
     if (existing) {
-      throw new ConflictException(this.i18n.t('financial_profile.ALREADY_EXISTS', { args: { userId } }));
+      throw new ConflictException(
+        this.i18n.t('financial_profile.ALREADY_EXISTS', { args: { userId } }),
+      );
     }
 
     const profileData: Record<string, unknown> = { ...dto, user_id: userId };
@@ -51,12 +56,17 @@ export class FinancialProfileRepository {
   async findByUserId(userId: string): Promise<FinancialProfile> {
     const profile = await this.repo.findOne({ where: { user_id: userId } });
     if (!profile) {
-      throw new NotFoundException(this.i18n.t('financial_profile.NOT_FOUND', { args: { userId } }));
+      throw new NotFoundException(
+        this.i18n.t('financial_profile.NOT_FOUND', { args: { userId } }),
+      );
     }
     return this.decryptMonthlyIncome(profile);
   }
 
-  async update(userId: string, dto: UpdateFinancialProfileDto): Promise<FinancialProfile> {
+  async update(
+    userId: string,
+    dto: UpdateFinancialProfileDto,
+  ): Promise<FinancialProfile> {
     const profile = await this.findByUserId(userId);
 
     const updateData: Record<string, unknown> = { ...dto };
@@ -68,7 +78,7 @@ export class FinancialProfileRepository {
       );
     }
 
-    const updated = this.repo.merge(profile, updateData as Partial<FinancialProfile>);
+    const updated = this.repo.merge(profile, updateData);
     const result = await this.repo.save(updated);
     this.logger.log(`Perfil financiero actualizado para usuario ID: ${userId}`);
     return this.decryptMonthlyIncome(result);
@@ -89,7 +99,9 @@ export class FinancialProfileRepository {
       this.SCHEMA,
     );
     const result = { ...profile };
-    (result as Record<string, unknown>).monthly_income = decrypted ? Number(decrypted) : null;
+    (result as Record<string, unknown>).monthly_income = decrypted
+      ? Number(decrypted)
+      : null;
     return result;
   }
 }

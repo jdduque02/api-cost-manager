@@ -5,10 +5,18 @@ import { UpdateFinancialProfileDto } from '@identity/dto/financial-profile/updat
 
 @Injectable()
 export class FinancialProfileService {
-  constructor(private readonly financialProfileRepository: FinancialProfileRepository) {}
+  constructor(
+    private readonly financialProfileRepository: FinancialProfileRepository,
+  ) {}
 
-  create(userId: string, createFinancialProfileDto: Omit<CreateFinancialProfileDto, 'user_id'>) {
-    return this.financialProfileRepository.create(userId, createFinancialProfileDto);
+  create(
+    userId: string,
+    createFinancialProfileDto: Omit<CreateFinancialProfileDto, 'user_id'>,
+  ) {
+    return this.financialProfileRepository.create(
+      userId,
+      createFinancialProfileDto,
+    );
   }
 
   findByUserId(userId: string) {
@@ -16,7 +24,10 @@ export class FinancialProfileService {
   }
 
   update(userId: string, updateFinancialProfileDto: UpdateFinancialProfileDto) {
-    return this.financialProfileRepository.update(userId, updateFinancialProfileDto);
+    return this.financialProfileRepository.update(
+      userId,
+      updateFinancialProfileDto,
+    );
   }
 
   remove(userId: string) {

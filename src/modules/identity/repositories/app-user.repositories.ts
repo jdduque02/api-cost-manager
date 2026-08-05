@@ -38,17 +38,24 @@ export class UserRepository {
   // CREATE
   // ─────────────────────────────────────────────────────────────
 
-  async create(dto: Omit<CreateUserDto, 'password'> & DeepPartial<AppUser>): Promise<AppUser> {
+  async create(
+    dto: Omit<CreateUserDto, 'password'> & DeepPartial<AppUser>,
+  ): Promise<AppUser> {
     try {
       const encrypted = this.encryptSensitiveFields(dto);
       const user = this.repo.create(encrypted) as unknown as AppUser;
       const savedUser = await this.repo.save(user);
       const decrypted = this.decryptSensitiveFields(savedUser);
 
-      this.logger.log(`Usuario creado exitosamente: ${savedUser.username} (ID: ${savedUser.id})`);
+      this.logger.log(
+        `Usuario creado exitosamente: ${savedUser.username} (ID: ${savedUser.id})`,
+      );
       return decrypted;
     } catch (error) {
-      this.logger.error(`Error al crear usuario: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error al crear usuario: ${error.message}`,
+        error.stack,
+      );
       this.handleDbError(error, 'crear usuario');
     }
   }
@@ -57,10 +64,20 @@ export class UserRepository {
   // READ
   // ─────────────────────────────────────────────────────────────
 
-  async findAll(query: UserQueryDto): Promise<{ data: AppUser[]; total: number }> {
-    const { search, sortBy = 'created_at', order = 'DESC', page = 1, limit = 20 } = query;
+  async findAll(
+    query: UserQueryDto,
+  ): Promise<{ data: AppUser[]; total: number }> {
+    const {
+      search,
+      sortBy = 'created_at',
+      order = 'DESC',
+      page = 1,
+      limit = 20,
+    } = query;
 
-    this.logger.debug(`Buscando usuarios: search="${search}" sortBy=${sortBy} order=${order} página=${page} límite=${limit}`);
+    this.logger.debug(
+      `Buscando usuarios: search="${search}" sortBy=${sortBy} order=${order} página=${page} límite=${limit}`,
+    );
 
     const qb = this.repo
       .createQueryBuilder('u')
@@ -68,10 +85,9 @@ export class UserRepository {
       .where('u.is_active = true');
 
     if (search?.trim()) {
-      qb.andWhere(
-        '(u.username ILIKE :search OR u.email ILIKE :search)',
-        { search: `${search.trim()}%` },
-      );
+      qb.andWhere('(u.username ILIKE :search OR u.email ILIKE :search)', {
+        search: `${search.trim()}%`,
+      });
     }
 
     qb.orderBy(`u.${sortBy}`, order)
@@ -79,8 +95,7 @@ export class UserRepository {
       .skip((page - 1) * limit);
 
     const [data, total] = await qb.getManyAndCount();
-    const decrypted = data.map((u) => this.decryptSensitiveFields(u));
-    return { data: decrypted, total };
+    return { data, total };
   }
 
   async findById(id: string): Promise<AppUser> {
@@ -90,14 +105,20 @@ export class UserRepository {
     });
 
     if (!user) {
-      this.logger.warn(`Intento fallido de buscar usuario inexistente por ID: ${id}`);
-      throw new NotFoundException(this.i18n.t('identity.USER_NOT_FOUND', { args: { id } }));
+      this.logger.warn(
+        `Intento fallido de buscar usuario inexistente por ID: ${id}`,
+      );
+      throw new NotFoundException(
+        this.i18n.t('identity.USER_NOT_FOUND', { args: { id } }),
+      );
     }
     return this.decryptSensitiveFields(user);
   }
 
   async findByExternalId(externalId: string): Promise<AppUser | null> {
-    return this.repo.findOne({ where: { external_id: externalId, deleted_at: IsNull() } });
+    return this.repo.findOne({
+      where: { external_id: externalId, deleted_at: IsNull() },
+    });
   }
 
   async findByUsername(username: string): Promise<AppUser> {
@@ -106,7 +127,9 @@ export class UserRepository {
     });
 
     if (!user) {
-      throw new NotFoundException(this.i18n.t('identity.USERNAME_NOT_FOUND', { args: { username } }));
+      throw new NotFoundException(
+        this.i18n.t('identity.USERNAME_NOT_FOUND', { args: { username } }),
+      );
     }
 
     return user;
@@ -121,7 +144,7 @@ export class UserRepository {
 
     try {
       const encrypted = this.encryptSensitiveFields(updateUserDto);
-      const updated = this.repo.merge(user, encrypted) as unknown as AppUser;
+      const updated = this.repo.merge(user, encrypted);
       const result = await this.repo.save(updated);
       const decrypted = this.decryptSensitiveFields(result);
 
@@ -145,15 +168,20 @@ export class UserRepository {
   async restore(id: string): Promise<AppUser> {
     try {
       const user = await this.repo.findOne({
-        where: { id } as FindOptionsWhere<AppUser>,
+        where: { id },
         withDeleted: true,
       });
 
-      if (!user) throw new NotFoundException(this.i18n.t('identity.USER_NOT_FOUND', { args: { id } }));
+      if (!user)
+        throw new NotFoundException(
+          this.i18n.t('identity.USER_NOT_FOUND', { args: { id } }),
+        );
 
       if (!user.deleted_at) {
         this.logger.warn(`Intento de restaurar usuario no eliminado ID: ${id}`);
-        throw new ConflictException(this.i18n.t('identity.USER_NOT_DELETED', { args: { id } }));
+        throw new ConflictException(
+          this.i18n.t('identity.USER_NOT_DELETED', { args: { id } }),
+        );
       }
 
       await this.repo.restore(id);
@@ -169,9 +197,12 @@ export class UserRepository {
   // ─────────────────────────────────────────────────────────────
 
   private readonly SCHEMA = 'identity';
-  private readonly SENSITIVE_FIELDS = ['phone', 'address', 'full_name', 'document_id'] as const;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private readonly SENSITIVE_FIELDS = [
+    'phone',
+    'address',
+    'full_name',
+    'document_id',
+  ] as const;
   private encryptSensitiveFields(data: any): any {
     if (!data || typeof data !== 'object') return data;
     const result = { ...data };
@@ -210,13 +241,18 @@ export class UserRepository {
       const pg = error as any;
 
       if (pg.code === PG_UNIQUE_VIOLATION) {
-        this.logger.warn(`Conflicto de unicidad al ${contextAction}: ${pg.detail}`);
+        this.logger.warn(
+          `Conflicto de unicidad al ${contextAction}: ${pg.detail}`,
+        );
         throw new ConflictException(this.i18n.t('identity.USER_DUPLICATE'));
       }
     }
 
     // Registro del error completo para el desarrollador en consola/logs de servidor
-    this.logger.error(`Error crítico al ${contextAction}:`, error instanceof Error ? error.stack : error);
+    this.logger.error(
+      `Error crítico al ${contextAction}:`,
+      error instanceof Error ? error.stack : error,
+    );
 
     throw new InternalServerErrorException(this.i18n.t('identity.DB_ERROR'));
   }

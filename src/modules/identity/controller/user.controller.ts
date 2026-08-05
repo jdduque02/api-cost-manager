@@ -7,7 +7,6 @@ import {
   Param,
   HttpCode,
   HttpStatus,
-  ParseIntPipe,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -26,12 +25,12 @@ import {
 import { UserService } from '@identity/service/user.service';
 import { CreateUserDto } from '@identity/dto/user/create-user.dto';
 import { UpdateUserDto } from '@identity/dto/user/update-user.dto';
+import { UserQueryDto } from '@identity/dto/user/user-query.dto';
 import { UserResponseDto } from '@identity/dto/user/user-response.dto';
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 import { AuthGuard } from '@auth/guards/auth.guard';
+import { OwnershipGuard } from '@auth/guards/ownership.guard';
 import { ApiIntrospectGuardResponse } from '@auth/decorators/api-introspect-guard-response.decorator';
-import { CurrentUser } from '@auth/decorators/current-user.decorator';
-import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 
 @ApiTags('identity')
 @ApiExtraModels(UserResponseDto)
@@ -102,15 +101,12 @@ export class UserController {
     description: 'Token inválido o ausente.',
     type: ErrorResponseDto,
   })
-  async findAll(
-    @Query('page', new ParseIntPipe({ optional: true })) page = 1,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit = 20,
-  ) {
-    return this.userService.findAllUsers({ page, limit: Math.min(limit, 100) });
+  async findAll(@Query() query: UserQueryDto) {
+    return this.userService.findAllUsers(query);
   }
 
   @Get(':id')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, OwnershipGuard)
   @ApiIntrospectGuardResponse()
   @ApiOperation({ summary: 'Obtener usuario por ID' })
   @ApiResponse({
@@ -122,16 +118,12 @@ export class UserController {
     description: 'Usuario no encontrado.',
     type: ErrorResponseDto,
   })
-  async getUser(
-    @Param('id') id: string,
-    @CurrentUser() currentUser: IntrospectResponse,
-  ) {
-    await this.userService.assertOwnership(id, currentUser.sub);
+  async getUser(@Param('id') id: string) {
     return this.userService.findUser(id);
   }
 
   @Patch(':id')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, OwnershipGuard)
   @ApiIntrospectGuardResponse()
   @ApiOperation({ summary: 'Actualizar información del usuario' })
   @ApiResponse({
@@ -154,9 +146,7 @@ export class UserController {
   async updateUser(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
-    @CurrentUser() currentUser: IntrospectResponse,
   ) {
-    await this.userService.assertOwnership(id, currentUser.sub);
     return this.userService.updateUser(id, updateUserDto);
   }
 }

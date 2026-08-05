@@ -1,13 +1,17 @@
-import { Injectable, Inject, Logger, ForbiddenException } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { I18nService } from 'nestjs-i18n';
+import { plainToInstance } from 'class-transformer';
 import { UserRepository } from '@identity/repositories/app-user.repositories';
 import { KeycloakAdminService } from '@auth/service/keycloak-admin.service';
 import { CreateUserDto } from '@identity/dto/user/create-user.dto';
 import { UpdateUserDto } from '@identity/dto/user/update-user.dto';
 import { UserQueryDto } from '@identity/dto/user/user-query.dto';
+import { UserResponseDto } from '@identity/dto/user/user-response.dto';
+import { AppUser } from '@identity/entities/app-user.entity';
+import { EncryptionService } from '@shared/services/encryption.service';
 
 @Injectable()
 export class UserService {
@@ -19,6 +23,7 @@ export class UserService {
     private readonly configService: ConfigService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     @Inject(I18nService) private readonly i18n: I18nService,
+    private readonly encryptionService: EncryptionService,
   ) {}
 
   async createUser(dto: CreateUserDto) {
@@ -30,12 +35,18 @@ export class UserService {
 
     try {
       const { password: _pw, ...userPayload } = dto;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const user = await this.userRepository.create({ ...userPayload, external_id: keycloakId } as any);
+
+      const user = await this.userRepository.create({
+        ...userPayload,
+        external_id: keycloakId,
+      } as any);
       this.logger.log(`Usuario creado y sincronizado con Keycloak: ${user.id}`);
-      return user;
+      return this.toDetailDto(user);
     } catch (error) {
-      console.error(error);
+      this.logger.error(
+        '[createUser] Error al crear usuario; revirtiendo en Keycloak',
+        error instanceof Error ? error.stack : undefined,
+      );
       await this.keycloakAdminService.deleteUser(keycloakId);
       throw error;
     }
@@ -55,10 +66,12 @@ export class UserService {
     this.logger.log(`Usuario no encontrado en caché, consultando DB: ${id}`);
     const user = await this.userRepository.findById(id);
 
-    // 3. Guarda en Redis
+    // 3. Guarda en Redis la representación pública (sin PII sensible)
     if (user) {
+      const dto = this.toDetailDto(user);
       const ttl = this.configService.get<number>('USER_CACHE_TTL_MS', 60000);
-      await this.cacheManager.set(cacheKey, user, ttl);
+      await this.cacheManager.set(cacheKey, dto, ttl);
+      return dto;
     }
 
     return user;
@@ -66,26 +79,32 @@ export class UserService {
 
   async updateUser(id: string, dto: UpdateUserDto) {
     const { password: _pw, ...updatePayload } = dto;
-    const user = await this.userRepository.update(id, updatePayload as UpdateUserDto);
+    const user = await this.userRepository.update(id, updatePayload);
     await this.cacheManager.del(`user_${id}`);
     this.logger.log(`Cache invalidado para usuario ID: ${id}`);
-    return user;
+    return this.toDetailDto(user);
   }
 
   async findAllUsers(query: UserQueryDto) {
-    return this.userRepository.findAll(query);
+    const { data, total } = await this.userRepository.findAll(query);
+    return { data: data.map((u) => this.toPublicDto(u)), total };
   }
 
-  /**
-   * Verifica que el keycloakId del token sea el propietario del userId del path.
-   * Lanza ForbiddenException si no coincide.
-   */
-  async assertOwnership(userId: string, externalId: string | undefined): Promise<void> {
-    if (!externalId) throw new ForbiddenException(this.i18n.t('identity.OWNERSHIP_FAIL'));
-    const user = await this.userRepository.findByExternalId(externalId);
-    console.log(user?.id, userId);
-    if (user?.id !== userId) {
-      throw new ForbiddenException(this.i18n.t('identity.FORBIDDEN'));
+  private toPublicDto(user: AppUser): UserResponseDto {
+    return plainToInstance(UserResponseDto, user);
+  }
+
+  private toDetailDto(user: AppUser): UserResponseDto {
+    const profile = user.financial_profile;
+    if (profile?.monthly_income) {
+      const decrypted = this.encryptionService.decryptField(
+        profile.monthly_income,
+        'finance',
+      );
+      (profile as { monthly_income?: number | null }).monthly_income = decrypted
+        ? Number(decrypted)
+        : null;
     }
+    return plainToInstance(UserResponseDto, user, { groups: ['detail'] });
   }
 }

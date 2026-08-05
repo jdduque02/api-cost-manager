@@ -34,16 +34,15 @@ export class CreateUserDto {
   email!: string;
 
   @ApiProperty({
-    description: 'Contraseña inicial del usuario (mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial).',
+    description:
+      'Contraseña inicial del usuario (mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial).',
     example: 'ContraseñaSegura123!',
     minLength: 8,
   })
   @IsString()
   @IsNotEmpty()
   @MinLength(8)
-  @Matches(
-    /((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/,
-  )
+  @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/)
   password!: string;
 
   @ApiPropertyOptional({
@@ -84,7 +83,8 @@ export class CreateUserDto {
   is_active?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Número de teléfono o celular del usuario (se almacena encriptado).',
+    description:
+      'Número de teléfono o celular del usuario (se almacena encriptado).',
     example: '+57 310 123 4567',
     maxLength: 200,
   })
