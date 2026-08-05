@@ -16,7 +16,10 @@ export class FinancialAssetRepository {
     @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
-  async create(userId: number, dto: CreateFinancialAssetDto): Promise<FinancialAsset> {
+  async create(
+    userId: number,
+    dto: CreateFinancialAssetDto,
+  ): Promise<FinancialAsset> {
     const asset = this.repo.create({ ...dto, user_id: userId });
     const saved = await this.repo.save(asset);
     this.logger.log(`Activo financiero creado para usuario ID: ${userId}`);
@@ -24,20 +27,34 @@ export class FinancialAssetRepository {
   }
 
   async findAll(userId: number): Promise<FinancialAsset[]> {
-    return this.repo.find({ where: { user_id: userId, deleted_at: IsNull() }, order: { created_at: 'DESC' } });
+    return this.repo.find({
+      where: { user_id: userId, deleted_at: IsNull() },
+      order: { created_at: 'DESC' },
+    });
   }
 
   async findById(id: number, userId: number): Promise<FinancialAsset> {
-    const asset = await this.repo.findOne({ where: { id, user_id: userId, deleted_at: IsNull() } });
-    if (!asset) throw new NotFoundException(this.i18n.t('banking.ASSET_NOT_FOUND', { args: { id } }));
+    const asset = await this.repo.findOne({
+      where: { id, user_id: userId, deleted_at: IsNull() },
+    });
+    if (!asset)
+      throw new NotFoundException(
+        this.i18n.t('banking.ASSET_NOT_FOUND', { args: { id } }),
+      );
     return asset;
   }
 
-  async update(id: number, userId: number, dto: UpdateFinancialAssetDto): Promise<FinancialAsset> {
+  async update(
+    id: number,
+    userId: number,
+    dto: UpdateFinancialAssetDto,
+  ): Promise<FinancialAsset> {
     const asset = await this.findById(id, userId);
     const updated = this.repo.merge(asset, dto);
     const saved = await this.repo.save(updated);
-    this.logger.log(`Activo financiero ID ${id} actualizado para usuario ID: ${userId}`);
+    this.logger.log(
+      `Activo financiero ID ${id} actualizado para usuario ID: ${userId}`,
+    );
     return saved;
   }
 
@@ -63,6 +80,8 @@ export class FinancialAssetRepository {
   async softDelete(id: number, userId: number): Promise<void> {
     const asset = await this.findById(id, userId);
     await this.repo.softRemove(asset);
-    this.logger.log(`Activo financiero ID ${id} eliminado (soft) para usuario ID: ${userId}`);
+    this.logger.log(
+      `Activo financiero ID ${id} eliminado (soft) para usuario ID: ${userId}`,
+    );
   }
 }

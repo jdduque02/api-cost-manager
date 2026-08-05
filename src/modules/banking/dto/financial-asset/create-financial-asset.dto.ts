@@ -1,15 +1,28 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class CreateFinancialAssetDto {
-  @ApiProperty({ description: 'Tipo de activo financiero.', example: 'acciones' })
+  @ApiProperty({
+    description: 'Tipo de activo financiero.',
+    example: 'acciones',
+  })
   @IsString()
   @IsNotEmpty()
   @MaxLength(50)
   asset_type!: string;
 
-  @ApiProperty({ description: 'Nombre descriptivo del activo.', example: 'Acciones Ecopetrol' })
+  @ApiProperty({
+    description: 'Nombre descriptivo del activo.',
+    example: 'Acciones Ecopetrol',
+  })
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
@@ -21,7 +34,11 @@ export class CreateFinancialAssetDto {
   @Min(0)
   current_value!: number;
 
-  @ApiPropertyOptional({ description: 'Rendimiento anual actual del activo en % (ej: 11.5 = 11.5% anual).', example: 11.5 })
+  @ApiPropertyOptional({
+    description:
+      'Rendimiento anual actual del activo en % (ej: 11.5 = 11.5% anual).',
+    example: 11.5,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -34,13 +51,19 @@ export class CreateFinancialAssetDto {
   @MaxLength(3)
   currency?: string;
 
-  @ApiPropertyOptional({ description: 'Ticker/símbolo de cotización (ej: NU, USDT, BTC).', example: 'NU' })
+  @ApiPropertyOptional({
+    description: 'Ticker/símbolo de cotización (ej: NU, USDT, BTC).',
+    example: 'NU',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(20)
   symbol?: string;
 
-  @ApiPropertyOptional({ description: 'Proveedor de cotización: yahoo o coingecko.', example: 'yahoo' })
+  @ApiPropertyOptional({
+    description: 'Proveedor de cotización: yahoo o coingecko.',
+    example: 'yahoo',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(20)

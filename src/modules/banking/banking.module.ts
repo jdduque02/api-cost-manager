@@ -36,6 +36,10 @@ import { FinancialLiabilityRepository } from '@banking/repositories/financial-li
     FinancialAssetRepository,
     FinancialLiabilityRepository,
   ],
-  exports: [BankAccountService, FinancialAssetService, FinancialLiabilityService],
+  exports: [
+    BankAccountService,
+    FinancialAssetService,
+    FinancialLiabilityService,
+  ],
 })
 export class BankingModule {}

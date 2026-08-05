@@ -10,8 +10,8 @@ import {
 
 /**
  * SENSIBLE: Los campos encrypted_account_number y encrypted_balance
- * están cifrados con pgp_sym_encrypt (pgcrypto).
- * NUNCA descifrar fuera de CryptoService.
+ * se cifran con AES-256-GCM vía EncryptionService (esquema 'banking').
+ * NUNCA leer en claro fuera de EncryptionService.
  */
 @Entity({ name: 'bank_account', schema: 'banking' })
 export class BankAccount {
@@ -28,11 +28,11 @@ export class BankAccount {
   @Column({ type: 'varchar', length: 50 })
   account_type!: string;
 
-  @Column({ type: 'bytea' })
-  encrypted_account_number!: Buffer;
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  encrypted_account_number!: string | null;
 
-  @Column({ type: 'bytea' })
-  encrypted_balance!: Buffer;
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  encrypted_balance!: string | null;
 
   @Column({ type: 'varchar', length: 3, default: 'COP' })
   currency!: string;

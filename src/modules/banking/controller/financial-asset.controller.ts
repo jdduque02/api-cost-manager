@@ -20,6 +20,7 @@ import {
   ApiInternalServerErrorResponse,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@auth/guards/auth.guard';
+import { OwnershipGuard } from '@auth/guards/ownership.guard';
 import { ApiIntrospectGuardResponse } from '@auth/decorators/api-introspect-guard-response.decorator';
 import { CurrentUser } from '@auth/decorators/current-user.decorator';
 import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
@@ -30,7 +31,7 @@ import { FinancialAssetResponseDto } from '@banking/dto/financial-asset/financia
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 
 @ApiTags('banking')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, OwnershipGuard)
 @ApiIntrospectGuardResponse()
 @Controller('users/:userId/financial-assets')
 export class FinancialAssetController {
@@ -77,7 +78,9 @@ export class FinancialAssetController {
 
   @Get('quotes')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Consultar valor en línea de acciones/divisas registradas' })
+  @ApiOperation({
+    summary: 'Consultar valor en línea de acciones/divisas registradas',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Cotizaciones en vivo de los activos con símbolo registrado.',

@@ -13,10 +13,16 @@ export class BankAccountResponseDto {
   @ApiProperty({ example: 'ahorros' })
   account_type!: string;
 
-  @ApiProperty({ description: 'Número de cuenta enmascarado (últimos 4 dígitos).', example: '****6789' })
+  @ApiProperty({
+    description: 'Número de cuenta enmascarado (últimos 4 dígitos).',
+    example: '****6789',
+  })
   masked_account_number!: string;
 
-  @ApiProperty({ description: 'Saldo visible de la cuenta.', example: '1500000' })
+  @ApiProperty({
+    description: 'Saldo visible de la cuenta.',
+    example: '1500000',
+  })
   display_balance!: string;
 
   @ApiProperty({ example: 'COP' })

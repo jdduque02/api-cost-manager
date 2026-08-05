@@ -4,19 +4,29 @@ import { CreateBankAccountDto } from '@banking/dto/bank-account/create-bank-acco
 import { UpdateBankAccountDto } from '@banking/dto/bank-account/update-bank-account.dto';
 import { BankAccount } from '@banking/entities/bank-account.entity';
 import { BankAccountResponseDto } from '@banking/dto/bank-account/bank-account-response.dto';
+import { EncryptionService } from '@shared/services/encryption.service';
 
 @Injectable()
 export class BankAccountService {
   private readonly logger = new Logger(BankAccountService.name);
 
-  constructor(private readonly bankAccountRepository: BankAccountRepository) {}
+  constructor(
+    private readonly bankAccountRepository: BankAccountRepository,
+    private readonly encryptionService: EncryptionService,
+  ) {}
 
   private toResponseDto(entity: BankAccount): BankAccountResponseDto {
-    const displayBalance = entity.encrypted_balance
-      ? Buffer.from(entity.encrypted_balance).toString('utf8')
+    const rawBalance = entity.encrypted_balance
+      ? this.encryptionService.decryptField(entity.encrypted_balance, 'banking')
       : '0';
-    const maskedNumber = entity.encrypted_account_number
-      ? '****' + Buffer.from(entity.encrypted_account_number).toString('utf8').slice(-4)
+    const rawAccountNumber = entity.encrypted_account_number
+      ? this.encryptionService.decryptField(
+          entity.encrypted_account_number,
+          'banking',
+        )
+      : '';
+    const maskedNumber = rawAccountNumber
+      ? '****' + rawAccountNumber.slice(-4)
       : '****0000';
 
     return {
@@ -25,7 +35,7 @@ export class BankAccountService {
       bank_name: entity.bank_name,
       account_type: entity.account_type,
       masked_account_number: maskedNumber,
-      display_balance: displayBalance,
+      display_balance: rawBalance ?? '0',
       currency: entity.currency,
       is_primary: entity.is_primary,
       created_at: entity.created_at,
@@ -33,10 +43,24 @@ export class BankAccountService {
     };
   }
 
-  async create(userId: number, dto: CreateBankAccountDto): Promise<BankAccountResponseDto> {
-    const encryptedAccountNumber = Buffer.from(dto.account_number, 'utf8');
-    const encryptedBalance = Buffer.from(String(dto.balance), 'utf8');
-    const entity = await this.bankAccountRepository.create(userId, dto, encryptedAccountNumber, encryptedBalance);
+  async create(
+    userId: number,
+    dto: CreateBankAccountDto,
+  ): Promise<BankAccountResponseDto> {
+    const encryptedAccountNumber = this.encryptionService.encryptField(
+      dto.account_number,
+      'banking',
+    );
+    const encryptedBalance = this.encryptionService.encryptField(
+      String(dto.balance),
+      'banking',
+    );
+    const entity = await this.bankAccountRepository.create(
+      userId,
+      dto,
+      encryptedAccountNumber,
+      encryptedBalance,
+    );
     return this.toResponseDto(entity);
   }
 
@@ -50,15 +74,29 @@ export class BankAccountService {
     return this.toResponseDto(entity);
   }
 
-  async update(id: number, userId: number, dto: UpdateBankAccountDto): Promise<BankAccountResponseDto> {
+  async update(
+    id: number,
+    userId: number,
+    dto: UpdateBankAccountDto,
+  ): Promise<BankAccountResponseDto> {
     const partial: Partial<BankAccount> = {
       bank_name: dto.bank_name,
       account_type: dto.account_type,
       currency: dto.currency,
       is_primary: dto.is_primary,
     };
-    if (dto.account_number) partial.encrypted_account_number = Buffer.from(dto.account_number, 'utf8');
-    if (dto.balance !== undefined) partial.encrypted_balance = Buffer.from(String(dto.balance), 'utf8');
+    if (dto.account_number) {
+      partial.encrypted_account_number = this.encryptionService.encryptField(
+        dto.account_number,
+        'banking',
+      );
+    }
+    if (dto.balance !== undefined) {
+      partial.encrypted_balance = this.encryptionService.encryptField(
+        String(dto.balance),
+        'banking',
+      );
+    }
     const entity = await this.bankAccountRepository.update(id, userId, partial);
     return this.toResponseDto(entity);
   }

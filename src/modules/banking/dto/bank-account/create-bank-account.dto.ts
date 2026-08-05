@@ -1,4 +1,11 @@
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -9,13 +16,19 @@ export class CreateBankAccountDto {
   @MaxLength(100)
   bank_name!: string;
 
-  @ApiProperty({ description: 'Tipo de cuenta (ahorros, corriente, etc.).', example: 'ahorros' })
+  @ApiProperty({
+    description: 'Tipo de cuenta (ahorros, corriente, etc.).',
+    example: 'ahorros',
+  })
   @IsString()
   @IsNotEmpty()
   @MaxLength(50)
   account_type!: string;
 
-  @ApiProperty({ description: 'Número de cuenta (se almacenará cifrado).', example: '123456789' })
+  @ApiProperty({
+    description: 'Número de cuenta (se almacenará cifrado).',
+    example: '123456789',
+  })
   @IsString()
   @IsNotEmpty()
   account_number!: string;
@@ -25,13 +38,19 @@ export class CreateBankAccountDto {
   @IsNumber()
   balance!: number;
 
-  @ApiPropertyOptional({ description: 'Código de moneda ISO 4217.', example: 'COP' })
+  @ApiPropertyOptional({
+    description: 'Código de moneda ISO 4217.',
+    example: 'COP',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(3)
   currency?: string;
 
-  @ApiPropertyOptional({ description: 'Indica si es la cuenta principal del usuario.', example: false })
+  @ApiPropertyOptional({
+    description: 'Indica si es la cuenta principal del usuario.',
+    example: false,
+  })
   @IsOptional()
   @IsBoolean()
   is_primary?: boolean;

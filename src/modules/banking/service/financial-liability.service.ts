@@ -7,7 +7,9 @@ import { UpdateFinancialLiabilityDto } from '@banking/dto/financial-liability/up
 export class FinancialLiabilityService {
   private readonly logger = new Logger(FinancialLiabilityService.name);
 
-  constructor(private readonly financialLiabilityRepository: FinancialLiabilityRepository) {}
+  constructor(
+    private readonly financialLiabilityRepository: FinancialLiabilityRepository,
+  ) {}
 
   async create(userId: number, dto: CreateFinancialLiabilityDto) {
     return this.financialLiabilityRepository.create(userId, dto);

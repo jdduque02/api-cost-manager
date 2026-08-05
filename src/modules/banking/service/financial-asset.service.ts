@@ -43,7 +43,12 @@ export class FinancialAssetService {
       results
         .filter((r) => r.success)
         .map((r) =>
-          this.financialAssetRepository.updateQuote(r.asset_id, userId, r.price, r.currency),
+          this.financialAssetRepository.updateQuote(
+            r.asset_id,
+            userId,
+            r.price,
+            r.currency,
+          ),
         ),
     );
     return results;

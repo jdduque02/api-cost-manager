@@ -24,7 +24,12 @@ export class BankAccountRepository {
     @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
-  async create(userId: number, dto: CreateBankAccountDto, encryptedAccountNumber: Buffer, encryptedBalance: Buffer): Promise<BankAccount> {
+  async create(
+    userId: number,
+    dto: CreateBankAccountDto,
+    encryptedAccountNumber: string | null,
+    encryptedBalance: string | null,
+  ): Promise<BankAccount> {
     try {
       const account = this.repo.create({
         user_id: userId,
@@ -44,34 +49,57 @@ export class BankAccountRepository {
   }
 
   async findAll(userId: number): Promise<BankAccount[]> {
-    return this.repo.find({ where: { user_id: userId, deleted_at: IsNull() }, order: { created_at: 'DESC' } });
+    return this.repo.find({
+      where: { user_id: userId, deleted_at: IsNull() },
+      order: { created_at: 'DESC' },
+    });
   }
 
   async findById(id: number, userId: number): Promise<BankAccount> {
-    const account = await this.repo.findOne({ where: { id, user_id: userId, deleted_at: IsNull() } });
-    if (!account) throw new NotFoundException(this.i18n.t('banking.BANK_ACCOUNT_NOT_FOUND', { args: { id } }));
+    const account = await this.repo.findOne({
+      where: { id, user_id: userId, deleted_at: IsNull() },
+    });
+    if (!account)
+      throw new NotFoundException(
+        this.i18n.t('banking.BANK_ACCOUNT_NOT_FOUND', { args: { id } }),
+      );
     return account;
   }
 
-  async update(id: number, userId: number, dto: Partial<BankAccount>): Promise<BankAccount> {
+  async update(
+    id: number,
+    userId: number,
+    dto: Partial<BankAccount>,
+  ): Promise<BankAccount> {
     const account = await this.findById(id, userId);
     const updated = this.repo.merge(account, dto);
     const saved = await this.repo.save(updated);
-    this.logger.log(`Cuenta bancaria ID ${id} actualizada para usuario ID: ${userId}`);
+    this.logger.log(
+      `Cuenta bancaria ID ${id} actualizada para usuario ID: ${userId}`,
+    );
     return saved;
   }
 
   async softDelete(id: number, userId: number): Promise<void> {
     const account = await this.findById(id, userId);
     await this.repo.softRemove(account);
-    this.logger.log(`Cuenta bancaria ID ${id} eliminada (soft) para usuario ID: ${userId}`);
+    this.logger.log(
+      `Cuenta bancaria ID ${id} eliminada (soft) para usuario ID: ${userId}`,
+    );
   }
 
   private handleDbError(error: unknown): never {
-    if (error instanceof QueryFailedError && (error as any).code === PG_UNIQUE_VIOLATION) {
-      throw new ConflictException(this.i18n.t('banking.BANK_ACCOUNT_DUPLICATE'));
+    if (
+      error instanceof QueryFailedError &&
+      (error as any).code === PG_UNIQUE_VIOLATION
+    ) {
+      throw new ConflictException(
+        this.i18n.t('banking.BANK_ACCOUNT_DUPLICATE'),
+      );
     }
     this.logger.error(`Error de base de datos: ${(error as Error).message}`);
-    throw new InternalServerErrorException(this.i18n.t('banking.PROCESSING_ERROR'));
+    throw new InternalServerErrorException(
+      this.i18n.t('banking.PROCESSING_ERROR'),
+    );
   }
 }

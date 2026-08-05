@@ -40,7 +40,10 @@ export class MarketDataService {
 
   constructor(private readonly httpService: HttpService) {}
 
-  async fetchQuote(symbol: string, source: QuoteSource = 'yahoo'): Promise<LiveQuote> {
+  async fetchQuote(
+    symbol: string,
+    source: QuoteSource = 'yahoo',
+  ): Promise<LiveQuote> {
     if (source === 'coingecko') {
       return this.fetchCoinGecko(symbol);
     }
@@ -75,7 +78,9 @@ export class MarketDataService {
             success: true,
           };
         } catch (err) {
-          this.logger.warn(`Fallo cotización ${symbol}: ${(err as Error).message}`);
+          this.logger.warn(
+            `Fallo cotización ${symbol}: ${(err as Error).message}`,
+          );
           return {
             asset_id: asset.id,
             name: asset.name,
@@ -91,12 +96,18 @@ export class MarketDataService {
 
   private async fetchYahoo(symbol: string): Promise<LiveQuote> {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1d`;
-    const res = await firstValueFrom(this.httpService.get(url, { timeout: 8000 }));
+    const res = await firstValueFrom(
+      this.httpService.get(url, { timeout: 8000 }),
+    );
     const meta = res.data?.chart?.result?.[0]?.meta;
     if (!meta || typeof meta.regularMarketPrice !== 'number') {
       throw new Error(`No se pudo obtener la cotización de ${symbol}`);
     }
-    return { symbol, price: meta.regularMarketPrice, currency: meta.currency ?? 'USD' };
+    return {
+      symbol,
+      price: meta.regularMarketPrice,
+      currency: meta.currency ?? 'USD',
+    };
   }
 
   private async fetchCoinGecko(symbol: string): Promise<LiveQuote> {
@@ -105,7 +116,9 @@ export class MarketDataService {
       throw new Error(`Símbolo cripto no soportado: ${symbol}`);
     }
     const url = `https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`;
-    const res = await firstValueFrom(this.httpService.get(url, { timeout: 8000 }));
+    const res = await firstValueFrom(
+      this.httpService.get(url, { timeout: 8000 }),
+    );
     const price = res.data?.[id]?.usd;
     if (typeof price !== 'number') {
       throw new Error(`No se pudo obtener la cotización de ${symbol}`);
