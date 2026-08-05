@@ -9,7 +9,8 @@ export function extractBearerToken(authorization: string | undefined): string {
   if (!authorization?.startsWith('Bearer ')) {
     const i18n = I18nContext.current();
     throw new UnauthorizedException(
-      i18n?.t('shared.BEARER_REQUIRED') ?? 'Se requiere un Bearer token en el header Authorization.',
+      i18n?.t('shared.BEARER_REQUIRED') ??
+        'Se requiere un Bearer token en el header Authorization.',
     );
   }
   return authorization.slice(7);

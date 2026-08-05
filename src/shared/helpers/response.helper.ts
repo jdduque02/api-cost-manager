@@ -33,13 +33,13 @@ interface ErrorApiResponse<TBody = unknown> extends BaseApiResponse {
  * Tipo union para todas las posibles respuestas
  */
 type ApiResponse<TData = unknown, TErrorBody = unknown> =
-  | SuccessApiResponse<TData>
-  | ErrorApiResponse<TErrorBody>;
+  SuccessApiResponse<TData> | ErrorApiResponse<TErrorBody>;
 
 /**
  * Tipo para objetos de error que pueden tener diferentes estructuras
  */
-type ErrorLike = Error | { message: string } | { error: string } | string | unknown;
+type ErrorLike =
+  Error | { message: string } | { error: string } | string | unknown;
 
 /**
  * Opciones para personalizar la respuesta de éxito
@@ -91,8 +91,12 @@ export class ResponseHelper {
    * @param options - Opciones para personalizar la respuesta
    * @returns Objeto de respuesta exitosa tipado
    */
-  static success<TData>(body: TData, options: SuccessOptions = {}): SuccessApiResponse<TData> {
-    const { message = this.DEFAULT_SUCCESS_MESSAGE, status = HttpStatus.OK } = options;
+  static success<TData>(
+    body: TData,
+    options: SuccessOptions = {},
+  ): SuccessApiResponse<TData> {
+    const { message = this.DEFAULT_SUCCESS_MESSAGE, status = HttpStatus.OK } =
+      options;
 
     return {
       ok: true,
@@ -115,7 +119,11 @@ export class ResponseHelper {
     message: string,
     options: ErrorOptions<TBody> = {},
   ): ErrorApiResponse<TBody> {
-    const { status = HttpStatus.INTERNAL_SERVER_ERROR, body = null, error } = options;
+    const {
+      status = HttpStatus.INTERNAL_SERVER_ERROR,
+      body = null,
+      error,
+    } = options;
 
     return {
       ok: false,
@@ -137,7 +145,9 @@ export class ResponseHelper {
   static validationError(
     validationErrors: string[] | Record<string, string[]>,
     message: string = 'shared.VALIDATION_ERRORS',
-  ): ErrorApiResponse<{ validationErrors: string[] | Record<string, string[]> }> {
+  ): ErrorApiResponse<{
+    validationErrors: string[] | Record<string, string[]>;
+  }> {
     return this.error(message, {
       status: HttpStatus.BAD_REQUEST,
       body: { validationErrors },
@@ -171,7 +181,9 @@ export class ResponseHelper {
    * @param message - Mensaje personalizado (opcional)
    * @returns Respuesta de error 401
    */
-  static unauthorized(message: string = 'shared.UNAUTHORIZED'): ErrorApiResponse<null> {
+  static unauthorized(
+    message: string = 'shared.UNAUTHORIZED',
+  ): ErrorApiResponse<null> {
     return this.error(message, {
       status: HttpStatus.UNAUTHORIZED,
     });
@@ -183,7 +195,9 @@ export class ResponseHelper {
    * @param message - Mensaje personalizado (opcional)
    * @returns Respuesta de error 403
    */
-  static forbidden(message: string = 'shared.FORBIDDEN'): ErrorApiResponse<null> {
+  static forbidden(
+    message: string = 'shared.FORBIDDEN',
+  ): ErrorApiResponse<null> {
     return this.error(message, {
       status: HttpStatus.FORBIDDEN,
     });

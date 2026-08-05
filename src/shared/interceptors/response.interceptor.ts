@@ -10,7 +10,7 @@ import {
 import { Observable } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { Request, Response } from 'express';
-import { I18nService, I18nContext } from 'nestjs-i18n';
+import { I18nService } from 'nestjs-i18n';
 import { ApiResponseDto } from '@shared/dto/api-response.dto';
 
 /**
@@ -24,22 +24,41 @@ function isApiResponseDto(data: unknown): data is ApiResponseDto {
     typeof (data as Record<string, unknown>).status === 'boolean' &&
     'message' in data &&
     typeof (data as Record<string, unknown>).message === 'string' &&
-    'data' in data && Array.isArray((data as Record<string, unknown>).data) &&
+    'data' in data &&
+    Array.isArray((data as Record<string, unknown>).data) &&
     'timestamp' in data
   );
 }
 
+/**
+ * Guard de tipo para detectar respuestas paginadas `{ data: T[], total }`.
+ */
+function isPaginatedResponse(
+  data: unknown,
+): data is { data: unknown[]; total: number } {
+  return (
+    data !== null &&
+    typeof data === 'object' &&
+    'data' in data &&
+    Array.isArray((data as Record<string, unknown>).data) &&
+    'total' in data &&
+    typeof (data as Record<string, unknown>).total === 'number'
+  );
+}
+
 @Injectable()
-export class ResponseInterceptor<TData = unknown>
-  implements NestInterceptor<TData, ApiResponseDto<TData>>
-{
+export class ResponseInterceptor<TData = unknown> implements NestInterceptor<
+  TData,
+  ApiResponseDto<TData>
+> {
   private readonly logger = new Logger(ResponseInterceptor.name);
 
-  constructor(
-    @Inject(I18nService) private readonly i18n: I18nService,
-  ) {}
+  constructor(@Inject(I18nService) private readonly i18n: I18nService) {}
 
-  intercept(context: ExecutionContext, next: CallHandler<TData>): Observable<ApiResponseDto<TData>> {
+  intercept(
+    context: ExecutionContext,
+    next: CallHandler<TData>,
+  ): Observable<ApiResponseDto<TData>> {
     const request = context.switchToHttp().getRequest<Request>();
     const response = context.switchToHttp().getResponse<Response>();
     const startTime = Date.now();
@@ -57,15 +76,32 @@ export class ResponseInterceptor<TData = unknown>
     );
   }
 
-  private transformResponse(data: TData, response: Response): ApiResponseDto<any> {
+  private transformResponse(
+    data: TData,
+    response: Response,
+  ): ApiResponseDto<TData> {
     // Si ya tiene la estructura del ApiResponseDto
     if (isApiResponseDto(data)) {
-      return data;
+      return data as unknown as ApiResponseDto<TData>;
+    }
+
+    // Respuestas paginadas { data, total } conservan el total a nivel raíz
+    if (isPaginatedResponse(data)) {
+      const message = this.getSuccessMessageByStatus(response.statusCode);
+      return ApiResponseDto.paginated(
+        data.data,
+        data.total,
+        message,
+      ) as unknown as ApiResponseDto<TData>;
     }
 
     // Adaptar los datos para enviarlos como arreglo como dicta el ApiResponseDto
-    const arrayData = Array.isArray(data) ? data : data ? [data] : [];
-    
+    const arrayData: TData[] = Array.isArray(data)
+      ? (data as unknown as TData[])
+      : data != null
+        ? [data]
+        : [];
+
     // Obtener mensaje basado en el status code de HTTP
     const message = this.getSuccessMessageByStatus(response.statusCode);
 

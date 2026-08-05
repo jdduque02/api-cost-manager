@@ -90,7 +90,9 @@ export class HttpRemoteLogProvider implements IRemoteLogProvider {
           retry(config.maxRetries),
           catchError((error) => {
             this.logger.error(`Error en petición HTTP: ${error.message}`);
-            return throwError(() => new Error(`Error enviando log remoto: ${error.message}`));
+            return throwError(
+              () => new Error(`Error enviando log remoto: ${error.message}`),
+            );
           }),
         ),
       );
@@ -163,9 +165,16 @@ export class ConfigurationFactory implements IConfigurationFactory {
 
   createLoggingConfig(): LoggingConfig {
     return {
-      logServiceUrl: this.configService.get<string>('LOG_SERVICE_URL', 'http://localhost:3000'),
-      isDevEnvironment: this.configService.get<string>('APP_DEV', 'false') === 'true',
-      serviceName: this.configService.get<string>('SERVICE_NAME', 'module-service'),
+      logServiceUrl: this.configService.get<string>(
+        'LOG_SERVICE_URL',
+        'http://localhost:3000',
+      ),
+      isDevEnvironment:
+        this.configService.get<string>('APP_DEV', 'false') === 'true',
+      serviceName: this.configService.get<string>(
+        'SERVICE_NAME',
+        'module-service',
+      ),
       maxRetries: this.configService.get<number>('LOG_MAX_RETRIES', 3),
     };
   }
@@ -273,7 +282,9 @@ export class LoggingService {
     const severity = LogSeverity[type];
 
     if (!severity) {
-      throw new Error(`Tipo de log inválido: ${type}. Tipos válidos: INFO, ERROR, WARN, DEBUG`);
+      throw new Error(
+        `Tipo de log inválido: ${type}. Tipos válidos: INFO, ERROR, WARN, DEBUG`,
+      );
     }
 
     await this.processLog(severity, message, data);
@@ -331,7 +342,9 @@ export class LoggingService {
       await this.remoteLogProvider.sendLog(logData);
       this.logger.debug(`Log enviado remotamente: ${message}`);
     } catch (error) {
-      this.logger.warn(`Error enviando log remoto, guardando localmente: ${error.message}`);
+      this.logger.warn(
+        `Error enviando log remoto, guardando localmente: ${error.message}`,
+      );
       try {
         await this.localLogProvider.saveLog(logData);
       } catch (localError) {
@@ -385,7 +398,11 @@ import { ConfigModule } from '@nestjs/config';
       ) => {
         return new LoggingService(remoteProvider, localProvider, configFactory);
       },
-      inject: ['IRemoteLogProvider', 'ILocalLogProvider', 'IConfigurationFactory'],
+      inject: [
+        'IRemoteLogProvider',
+        'ILocalLogProvider',
+        'IConfigurationFactory',
+      ],
     },
   ],
   exports: [LoggingService],

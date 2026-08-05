@@ -76,7 +76,10 @@ export class ErrorsInterceptor implements NestInterceptor {
           }
         } else if (err && typeof err === 'object' && 'stack' in err) {
           const errorWithStack = err as Error;
-          stackTrace = typeof errorWithStack.stack === 'string' ? errorWithStack.stack : undefined;
+          stackTrace =
+            typeof errorWithStack.stack === 'string'
+              ? errorWithStack.stack
+              : undefined;
         }
 
         const logData = {
@@ -86,11 +89,16 @@ export class ErrorsInterceptor implements NestInterceptor {
           details,
           timestamp,
           path,
-          trace_id: status === HttpStatus.INTERNAL_SERVER_ERROR ? traceId : undefined,
+          trace_id:
+            status === HttpStatus.INTERNAL_SERVER_ERROR ? traceId : undefined,
           stack: stackTrace,
         };
 
-        void this.loggingService.sendLog(logData, status === HttpStatus.INTERNAL_SERVER_ERROR ? 'ERROR' : 'WARNING', 'ErrorsInterceptor');
+        void this.loggingService.sendLog(
+          logData,
+          status === HttpStatus.INTERNAL_SERVER_ERROR ? 'ERROR' : 'WARNING',
+          'ErrorsInterceptor',
+        );
 
         if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
           return throwError(
@@ -106,7 +114,11 @@ export class ErrorsInterceptor implements NestInterceptor {
           );
         } else {
           return throwError(
-            () => new HttpException({ status, error, message, details, timestamp, path }, status),
+            () =>
+              new HttpException(
+                { status, error, message, details, timestamp, path },
+                status,
+              ),
           );
         }
       }),

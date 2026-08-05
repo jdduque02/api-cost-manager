@@ -54,10 +54,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
     if (typeof responseData === 'string') {
       message = responseData;
     } else if (typeof responseData === 'object' && responseData !== null) {
-      const resp = responseData as { message?: string | string[]; error?: string };
+      const resp = responseData as {
+        message?: string | string[];
+        error?: string;
+      };
       if (Array.isArray(resp.message)) {
         // Errores de validación (class-validator)
-        message = i18n?.t('shared.INVALID_INPUT') ?? 'Datos de entrada inválidos.';
+        message =
+          i18n?.t('shared.INVALID_INPUT') ?? 'Datos de entrada inválidos.';
         details = resp.message;
       } else {
         message = resp.message ?? message;

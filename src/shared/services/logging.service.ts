@@ -10,7 +10,7 @@ import * as path from 'node:path';
 export class LoggingService {
   private readonly logger = new Logger(LoggingService.name);
 
-  constructor(private readonly configService: ConfigService) { }
+  constructor(private readonly configService: ConfigService) {}
 
   async sendLog(data: unknown, severity: string = 'INFO', context: string) {
     console.log('log data', data);
@@ -20,7 +20,9 @@ export class LoggingService {
       context,
       source:
         'cost-manager' +
-        (this.configService.get<string>('APP_DEV', 'false') === 'true' ? '_dev' : ''),
+        (this.configService.get<string>('APP_DEV', 'false') === 'true'
+          ? '_dev'
+          : ''),
     };
 
     const logServiceUrl = this.configService.get<string>('LOG_SERVICE_URL');
