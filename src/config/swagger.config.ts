@@ -51,7 +51,8 @@ export const getSwaggerConfig = (
       in: 'header',
       required: false,
       schema: { type: 'string', enum: ['es', 'en'], default: 'es' },
-      description: 'Idioma para los mensajes de respuesta. Por defecto: es (español).',
+      description:
+        'Idioma para los mensajes de respuesta. Por defecto: es (español).',
     });
 
   return builder.build();
