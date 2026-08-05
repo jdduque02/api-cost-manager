@@ -22,6 +22,9 @@
     "PASSWORD_CHANGED": "Contraseña cambiada exitosamente.",
     "SESSIONS_ERROR": "Error al obtener las sesiones activas.",
     "SESSION_REVOKE_ERROR": "Error al revocar la sesión.",
+    "SESSION_NOT_FOUND": "La sesión no existe o no pertenece al usuario.",
+    "CURRENT_PASSWORD_INVALID": "La contraseña actual es incorrecta.",
+    "ENCRYPT_DISABLED": "Este endpoint solo está disponible en entornos de desarrollo.",
     "EVENTS_ERROR": "Error al obtener el historial de accesos."
   },
   "identity": {
@@ -82,6 +85,7 @@
     "AUTH_TOKEN_REQUIRED": "Token de autenticación requerido.",
     "AUTH_TOKEN_INVALID": "Token inválido o expirado.",
     "NOT_FOUND": "Notificación con id {id} no encontrada.",
+    "FORBIDDEN_SUBSCRIBE": "No puedes suscribirte a las notificaciones de otro usuario.",
     "UPCOMING_DEDUCTION": "Deducción próxima",
     "UPCOMING_INCOME": "Ingreso próximo",
     "UPCOMING_INVESTMENT": "Inversión próxima",

@@ -22,6 +22,9 @@
     "PASSWORD_CHANGED": "Password changed successfully.",
     "SESSIONS_ERROR": "Error fetching active sessions.",
     "SESSION_REVOKE_ERROR": "Error revoking session.",
+    "SESSION_NOT_FOUND": "Session does not exist or does not belong to the user.",
+    "CURRENT_PASSWORD_INVALID": "The current password is incorrect.",
+    "ENCRYPT_DISABLED": "This endpoint is only available in development environments.",
     "EVENTS_ERROR": "Error fetching access history."
   },
   "identity": {
@@ -82,6 +85,7 @@
     "AUTH_TOKEN_REQUIRED": "Authentication token required.",
     "AUTH_TOKEN_INVALID": "Invalid or expired token.",
     "NOT_FOUND": "Notification with id {id} not found.",
+    "FORBIDDEN_SUBSCRIBE": "You cannot subscribe to another user's notifications.",
     "UPCOMING_DEDUCTION": "Upcoming deduction",
     "UPCOMING_INCOME": "Upcoming income",
     "UPCOMING_INVESTMENT": "Upcoming investment",
