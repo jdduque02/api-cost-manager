@@ -9,7 +9,14 @@ import {
   WebSocketServer,
   WsException,
 } from '@nestjs/websockets';
-import { Inject, Logger, UseFilters, UsePipes, ValidationPipe, forwardRef } from '@nestjs/common';
+import {
+  Inject,
+  Logger,
+  UseFilters,
+  UsePipes,
+  ValidationPipe,
+  forwardRef,
+} from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { ConfigService } from '@nestjs/config';
 import { I18nService } from 'nestjs-i18n';
@@ -28,7 +35,10 @@ import { AuthService } from '@auth/service/auth.service';
 @WebSocketGateway({
   namespace: '/notifications',
   cors: {
-    origin: (origin: string, callback: (err: Error | null, allow?: boolean) => void) => {
+    origin: (
+      origin: string,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
       // La validación de origen se delega a la misma configuración CORS del HTTP server
       callback(null, true);
     },
@@ -53,7 +63,9 @@ export class NotificationGateway
   ) {}
 
   afterInit(server: Server): void {
-    this.logger.log(`NotificationGateway inicializado — namespace: /notifications`);
+    this.logger.log(
+      `NotificationGateway inicializado — namespace: /notifications`,
+    );
 
     // Middleware de autenticación: valida el token JWT con Keycloak antes de permitir conexión
     server.use(async (socket: Socket, next) => {
@@ -62,7 +74,9 @@ export class NotificationGateway
         socket.handshake.headers?.authorization?.replace('Bearer ', '');
 
       if (!token) {
-        return next(new WsException(this.i18n.t('notification.AUTH_TOKEN_REQUIRED')));
+        return next(
+          new WsException(this.i18n.t('notification.AUTH_TOKEN_REQUIRED')),
+        );
       }
 
       try {
@@ -98,6 +112,11 @@ export class NotificationGateway
     @MessageBody() payload: SubscribePayload,
     @ConnectedSocket() client: Socket,
   ): void {
+    const authenticatedUserId = client.data.user?.userId as number | undefined;
+    if (!authenticatedUserId || payload.user_id !== authenticatedUserId) {
+      throw new WsException(this.i18n.t('notification.FORBIDDEN_SUBSCRIBE'));
+    }
+
     const room = NOTIFICATION_ROOMS.user(payload.user_id);
     client.join(room);
     client.data.user_id = payload.user_id;
@@ -112,6 +131,11 @@ export class NotificationGateway
     @MessageBody() payload: SubscribePayload,
     @ConnectedSocket() client: Socket,
   ): void {
+    const authenticatedUserId = client.data.user?.userId as number | undefined;
+    if (!authenticatedUserId || payload.user_id !== authenticatedUserId) {
+      throw new WsException(this.i18n.t('notification.FORBIDDEN_SUBSCRIBE'));
+    }
+
     const room = NOTIFICATION_ROOMS.user(payload.user_id);
     client.leave(room);
     this.logger.log(`Cliente ${client.id} salió de sala ${room}`);
@@ -163,7 +187,9 @@ export class NotificationGateway
    */
   confirmMarkRead(userId: number, notificationId: number): void {
     const room = NOTIFICATION_ROOMS.user(userId);
-    this.server.to(room).emit(NOTIFICATION_EVENTS.MARK_READ, { notification_id: notificationId });
+    this.server
+      .to(room)
+      .emit(NOTIFICATION_EVENTS.MARK_READ, { notification_id: notificationId });
   }
 
   /**

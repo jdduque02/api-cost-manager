@@ -16,7 +16,10 @@ export class NotificationService {
 
   // ── CRUD REST ──────────────────────────────────────────────
 
-  async create(userId: number, dto: CreateNotificationDto): Promise<Notification> {
+  async create(
+    userId: number,
+    dto: CreateNotificationDto,
+  ): Promise<Notification> {
     const notification = await this.notificationRepository.create(userId, dto);
     const payload: NotificationPayload = {
       id: notification.id,
@@ -33,7 +36,10 @@ export class NotificationService {
     return notification;
   }
 
-  async findAll(userId: number, query?: NotificationQueryDto): Promise<Notification[]> {
+  async findAll(
+    userId: number,
+    query?: NotificationQueryDto,
+  ): Promise<Notification[]> {
     return this.notificationRepository.findAll(userId, {
       is_read: query?.is_read,
       is_active: query?.is_active,
@@ -44,12 +50,19 @@ export class NotificationService {
     return this.notificationRepository.findById(id, userId);
   }
 
-  async update(id: number, userId: number, dto: UpdateNotificationDto): Promise<Notification> {
-    return this.notificationRepository.update(id, userId, dto as Partial<Notification>);
+  async update(
+    id: number,
+    userId: number,
+    dto: UpdateNotificationDto,
+  ): Promise<Notification> {
+    return this.notificationRepository.update(id, userId, dto);
   }
 
   async markAsRead(id: number, userId: number): Promise<Notification> {
-    const notification = await this.notificationRepository.markAsRead(id, userId);
+    const notification = await this.notificationRepository.markAsRead(
+      id,
+      userId,
+    );
     this.gateway.confirmMarkRead(userId, notification.id);
     return notification;
   }
@@ -74,7 +87,10 @@ export class NotificationService {
     dto: CreateNotificationDto,
     reference: string,
   ): Promise<Notification | null> {
-    const existing = await this.notificationRepository.findByReference(userId, reference);
+    const existing = await this.notificationRepository.findByReference(
+      userId,
+      reference,
+    );
     if (existing) return null;
     return this.create(userId, { ...dto, reference });
   }

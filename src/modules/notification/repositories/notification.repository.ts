@@ -21,7 +21,10 @@ export class NotificationRepository {
     @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
 
-  async create(userId: number, dto: CreateNotificationDto): Promise<Notification> {
+  async create(
+    userId: number,
+    dto: CreateNotificationDto,
+  ): Promise<Notification> {
     const notification = this.repo.create({
       user_id: userId,
       title: dto.title,
@@ -35,11 +38,17 @@ export class NotificationRepository {
     return saved;
   }
 
-  async findByReference(userId: number, reference: string): Promise<Notification | null> {
+  async findByReference(
+    userId: number,
+    reference: string,
+  ): Promise<Notification | null> {
     return this.repo.findOne({ where: { user_id: userId, reference } });
   }
 
-  async findAll(userId: number, filters?: { is_read?: boolean; is_active?: boolean }): Promise<Notification[]> {
+  async findAll(
+    userId: number,
+    filters?: { is_read?: boolean; is_active?: boolean },
+  ): Promise<Notification[]> {
     const where: Record<string, any> = { user_id: userId };
     if (filters?.is_read !== undefined) where.is_read = filters.is_read;
     if (filters?.is_active !== undefined) where.is_active = filters.is_active;
@@ -47,16 +56,27 @@ export class NotificationRepository {
   }
 
   async findById(id: number, userId: number): Promise<Notification> {
-    const notification = await this.repo.findOne({ where: { id, user_id: userId } });
-    if (!notification) throw new NotFoundException(this.i18n.t('notification.NOT_FOUND', { args: { id } }));
+    const notification = await this.repo.findOne({
+      where: { id, user_id: userId },
+    });
+    if (!notification)
+      throw new NotFoundException(
+        this.i18n.t('notification.NOT_FOUND', { args: { id } }),
+      );
     return notification;
   }
 
-  async update(id: number, userId: number, dto: Partial<Notification>): Promise<Notification> {
+  async update(
+    id: number,
+    userId: number,
+    dto: Partial<Notification>,
+  ): Promise<Notification> {
     const notification = await this.findById(id, userId);
     const updated = this.repo.merge(notification, dto);
     const saved = await this.repo.save(updated);
-    this.logger.log(`Notificación ID ${id} actualizada para usuario ID: ${userId}`);
+    this.logger.log(
+      `Notificación ID ${id} actualizada para usuario ID: ${userId}`,
+    );
     return saved;
   }
 
@@ -64,7 +84,9 @@ export class NotificationRepository {
     const notification = await this.findById(id, userId);
     notification.is_read = true;
     const saved = await this.repo.save(notification);
-    this.logger.log(`Notificación ID ${id} marcada como leída para usuario ID: ${userId}`);
+    this.logger.log(
+      `Notificación ID ${id} marcada como leída para usuario ID: ${userId}`,
+    );
     return saved;
   }
 
@@ -73,12 +95,16 @@ export class NotificationRepository {
       { user_id: userId, is_read: false },
       { is_read: true },
     );
-    this.logger.log(`Todas las notificaciones marcadas como leídas para usuario ID: ${userId}`);
+    this.logger.log(
+      `Todas las notificaciones marcadas como leídas para usuario ID: ${userId}`,
+    );
   }
 
   async remove(id: number, userId: number): Promise<void> {
     const notification = await this.findById(id, userId);
     await this.repo.remove(notification);
-    this.logger.log(`Notificación ID ${id} eliminada para usuario ID: ${userId}`);
+    this.logger.log(
+      `Notificación ID ${id} eliminada para usuario ID: ${userId}`,
+    );
   }
 }

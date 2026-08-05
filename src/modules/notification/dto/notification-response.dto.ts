@@ -22,7 +22,10 @@ export class NotificationResponseDto {
   @ApiPropertyOptional({ example: '2026-08-01T09:00:00.000Z', nullable: true })
   scheduled_at!: Date | null;
 
-  @ApiPropertyOptional({ example: 'fixed:reminder:42:2026-08-15', nullable: true })
+  @ApiPropertyOptional({
+    example: 'fixed:reminder:42:2026-08-15',
+    nullable: true,
+  })
   reference!: string | null;
 
   @ApiProperty({ example: '2026-07-28T10:00:00.000Z' })

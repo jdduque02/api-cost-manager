@@ -3,13 +3,19 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class NotificationQueryDto {
-  @ApiPropertyOptional({ description: 'Filtrar por notificaciones no leídas', example: false })
+  @ApiPropertyOptional({
+    description: 'Filtrar por notificaciones no leídas',
+    example: false,
+  })
   @IsOptional()
   @Type(() => Boolean)
   @IsBoolean()
   is_read?: boolean;
 
-  @ApiPropertyOptional({ description: 'Filtrar por notificaciones activas', example: true })
+  @ApiPropertyOptional({
+    description: 'Filtrar por notificaciones activas',
+    example: true,
+  })
   @IsOptional()
   @Type(() => Boolean)
   @IsBoolean()

@@ -16,9 +16,12 @@ export class WsExceptionFilter extends BaseWsExceptionFilter {
         ? exception.getError()
         : exception instanceof Error
           ? exception.message
-          : i18n?.t('notification.WS_INTERNAL_ERROR') ?? 'Error interno del WebSocket';
+          : (i18n?.t('notification.WS_INTERNAL_ERROR') ??
+            'Error interno del WebSocket');
 
-    this.logger.error(`WebSocket error [${client.id}]: ${JSON.stringify(message)}`);
+    this.logger.error(
+      `WebSocket error [${client.id}]: ${JSON.stringify(message)}`,
+    );
 
     client.emit('exception', {
       status: 'error',
