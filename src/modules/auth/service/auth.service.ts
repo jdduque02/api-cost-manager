@@ -10,6 +10,9 @@ import {
 } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, IsNull, MoreThan } from 'typeorm';
+import { createHash, createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import { I18nService } from 'nestjs-i18n';
 import { firstValueFrom } from 'rxjs';
 import { LoginDto } from '@auth/dto/login.dto';
@@ -23,6 +26,12 @@ import { KeycloakTokenResponse } from '@auth/interfaces/KeycloakTokenResponse.dt
 import { UserRepository } from '@identity/repositories/app-user.repositories';
 import { EncryptionService } from '@shared/services/encryption.service';
 import { IpBlockService } from '@shared/services/ip-block.service';
+import { PasswordResetOtp } from '@auth/entities/password-reset-otp.entity';
+import { MailService } from '@mail/service/mail.service';
+
+const OTP_TTL_MS = 10 * 60 * 1000; // 10 min
+const OTP_MAX_ATTEMPTS = 3;
+const RESET_TOKEN_TTL_MS = 15 * 60 * 1000; // 15 min
 
 @Injectable()
 export class AuthService {
@@ -42,6 +51,10 @@ export class AuthService {
     @Inject(I18nService) private readonly i18n: I18nService,
     private readonly encryptionService: EncryptionService,
     private readonly ipBlockService: IpBlockService,
+    @InjectRepository(PasswordResetOtp)
+    private readonly otpRepo: Repository<PasswordResetOtp>,
+    @Inject(forwardRef(() => MailService))
+    private readonly mailService: MailService,
   ) {
     this.baseUrl = this.configService.get<string>('KEYCLOAK_URL')!;
     this.realm = this.configService.get<string>('KEYCLOAK_REALM')!;
@@ -168,16 +181,182 @@ export class AuthService {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // FORGOT PASSWORD — envía email de recuperación via Keycloak
+  // FORGOT PASSWORD — genera un código OTP y lo envía por email
+  // (react.email). Reemplaza el flujo execute-actions-email de Keycloak.
+  // No revela si el correo existe: responde 204 igualmente.
   // ─────────────────────────────────────────────────────────────
 
   async forgotPassword(email: string): Promise<void> {
-    // Busca el keycloak_id por email en Keycloak Admin API
+    let keycloakId: string;
+    try {
+      keycloakId = await this.keycloakAdminService.findKeycloakIdByEmail(email);
+    } catch {
+      this.logger.warn(`Recuperación solicitada para email no registrado: ${email}`);
+      return;
+    }
+
+    const user = await this.userRepository.findByExternalId(keycloakId);
+    if (!user) {
+      this.logger.warn(
+        `Email ${email} existe en Keycloak pero no en app_user; no se envía OTP.`,
+      );
+      return;
+    }
+
+    const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    const codeHash = createHash('sha256').update(code).digest('hex');
+    const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+    // Invalida códigos previos no consumidos del mismo usuario.
+    await this.otpRepo.update(
+      { user_id: Number(user.id), consumed_at: IsNull() },
+      { consumed_at: new Date() },
+    );
+    await this.otpRepo.save(
+      this.otpRepo.create({
+        user_id: Number(user.id),
+        code_hash: codeHash,
+        expires_at: expiresAt,
+      }),
+    );
+
+    await this.mailService.sendOtp(email, code, user.username ?? undefined);
+    this.logger.log(`OTP generado y enviado a: ${email}`);
+  }
+
+  /**
+   * Valida el código OTP. En caso de éxito devuelve un token de reset
+   * (firma HMAC con expiración) para poder cambiar la contraseña sin
+   * autenticarse.
+   */
+  async verifyOtp(
+    email: string,
+    code: string,
+  ): Promise<{ reset_token: string; expires_in_seconds: number }> {
+    const user = await this.findUserByEmail(email);
+
+    const otp = await this.otpRepo.findOne({
+      where: {
+        user_id: Number(user.id),
+        consumed_at: IsNull(),
+        expires_at: MoreThan(new Date()),
+      },
+      order: { created_at: 'DESC' },
+    });
+
+    const expectedHash = createHash('sha256').update(code).digest('hex');
+    const matches = otp ? this.safeEqual(expectedHash, otp.code_hash) : false;
+    if (!otp || !matches) {
+      if (otp) {
+        otp.attempts += 1;
+        if (otp.attempts >= OTP_MAX_ATTEMPTS) {
+          otp.consumed_at = new Date();
+          await this.otpRepo.save(otp);
+          throw new BadRequestException(
+            this.i18n.t('auth.OTP_ATTEMPTS_EXCEEDED'),
+          );
+        }
+        await this.otpRepo.save(otp);
+      }
+      throw new BadRequestException(this.i18n.t('auth.OTP_INVALID'));
+    }
+
+    otp.consumed_at = new Date();
+    await this.otpRepo.save(otp);
+
+    const expiresAt = Date.now() + RESET_TOKEN_TTL_MS;
+    return {
+      reset_token: this.signResetToken(Number(user.id), expiresAt),
+      expires_in_seconds: Math.floor(RESET_TOKEN_TTL_MS / 1000),
+    };
+  }
+
+  /**
+   * Cambia la contraseña en Keycloak usando el token de reset obtenido tras
+   * verificar el OTP. El token es de un solo uso (el OTP ya fue consumido).
+   */
+  async resetPassword(
+    email: string,
+    resetToken: string,
+    newPassword: string,
+  ): Promise<void> {
+    const userId = this.verifyResetToken(resetToken);
+    const user = await this.userRepository.findById(String(userId));
+    if (!user.external_id) {
+      throw new InternalServerErrorException(
+        this.i18n.t('auth.KEYCLOAK_ID_MISSING'),
+      );
+    }
+
+    await this.keycloakAdminService.changePassword(user.external_id, newPassword);
+
+    // Consume cualquier OTP pendiente del usuario.
+    await this.otpRepo.update(
+      { user_id: Number(user.id), consumed_at: IsNull() },
+      { consumed_at: new Date() },
+    );
+
+    this.logger.log(`Contraseña restablecida vía OTP para usuario: ${userId}`);
+  }
+
+  private async findUserByEmail(email: string) {
     const keycloakId =
       await this.keycloakAdminService.findKeycloakIdByEmail(email);
-    // Dispara la acción UPDATE_PASSWORD → Keycloak envía el email
-    await this.keycloakAdminService.sendResetPasswordEmail(keycloakId);
-    this.logger.log(`Email de recuperación enviado a: ${email}`);
+    const user = await this.userRepository.findByExternalId(keycloakId);
+    if (!user) {
+      throw new NotFoundException(this.i18n.t('auth.USER_NOT_FOUND'));
+    }
+    return user;
+  }
+
+  // ── Token de reset (HMAC) ──────────────────────────────────
+
+  private get resetSecret(): string {
+    return (
+      this.configService.get<string>('OTP_SECRET') ??
+      this.configService.get<string>('KEYCLOAK_SECRET') ??
+      'cost-manager-reset-default-secret'
+    );
+  }
+
+  private signResetToken(userId: number, expiresAt: number): string {
+    const payload = `${userId}.${expiresAt}`;
+    const sig = createHmac('sha256', this.resetSecret)
+      .update(payload)
+      .digest('hex');
+    return `${payload}.${sig}`;
+  }
+
+  private verifyResetToken(token: string): number {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new BadRequestException(this.i18n.t('auth.RESET_TOKEN_INVALID'));
+    }
+    const [userIdStr, expiresAtStr, sig] = parts;
+    const payload = `${userIdStr}.${expiresAtStr}`;
+    const expected = createHmac('sha256', this.resetSecret)
+      .update(payload)
+      .digest('hex');
+
+    if (!this.safeEqual(expected, sig)) {
+      throw new BadRequestException(this.i18n.t('auth.RESET_TOKEN_INVALID'));
+    }
+    const expiresAt = Number(expiresAtStr);
+    if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) {
+      throw new BadRequestException(this.i18n.t('auth.RESET_TOKEN_EXPIRED'));
+    }
+    const userId = Number(userIdStr);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      throw new BadRequestException(this.i18n.t('auth.RESET_TOKEN_INVALID'));
+    }
+    return userId;
+  }
+
+  private safeEqual(a: string, b: string): boolean {
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) return false;
+    return timingSafeEqual(bufA, bufB);
   }
 
   // ─────────────────────────────────────────────────────────────

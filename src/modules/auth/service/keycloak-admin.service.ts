@@ -134,6 +134,42 @@ export class KeycloakAdminService {
     }
   }
 
+  /**
+   * Actualiza atributos del usuario en Keycloak (email, username, etc.).
+   * PUT /admin/realms/{realm}/users/{keycloakId}
+   */
+  async updateUser(
+    keycloakId: string,
+    patch: { email?: string; username?: string },
+  ): Promise<void> {
+    const token = await this.getAdminToken();
+    try {
+      await firstValueFrom(
+        this.httpService.put(`${this.adminUrl}/users/${keycloakId}`, patch, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      );
+      this.logger.log(`Usuario actualizado en Keycloak: ${keycloakId}`);
+    } catch (error: any) {
+      if (error?.response?.status === 409) {
+        throw new ConflictException(this.i18n.t('auth.USER_EXISTS_KEYCLOAK'));
+      }
+      if (error?.response?.status === 403) {
+        this.logger.error(
+          '[updateUser] Keycloak 403 Forbidden — Verificar permisos realm-admin.',
+          error?.response?.data,
+        );
+        throw new InternalServerErrorException(
+          this.i18n.t('auth.USER_UPDATE_ERROR'),
+        );
+      }
+      this.logger.error('[updateUser]', error?.response?.data);
+      throw new InternalServerErrorException(
+        this.i18n.t('auth.USER_UPDATE_ERROR'),
+      );
+    }
+  }
+
   async deleteUser(keycloakId: string): Promise<void> {
     const token = await this.getAdminToken();
     try {

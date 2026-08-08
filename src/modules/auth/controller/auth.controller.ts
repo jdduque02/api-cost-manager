@@ -38,6 +38,9 @@ import { LoginDto } from '@auth/dto/login.dto';
 import { RefreshTokenDto } from '@auth/dto/refresh-token.dto';
 import { ForgotPasswordDto } from '@auth/dto/forgot-password.dto';
 import { ChangePasswordDto } from '@auth/dto/change-password.dto';
+import { VerifyOtpDto } from '@auth/dto/verify-otp.dto';
+import { VerifyOtpResponseDto } from '@auth/dto/verify-otp-response.dto';
+import { ResetPasswordDto } from '@auth/dto/reset-password.dto';
 import { SessionResponseDto } from '@auth/dto/session-response.dto';
 import { EventResponseDto } from '@auth/dto/event-response.dto';
 import { EncryptPasswordDto } from '@auth/dto/encrypt-password.dto';
@@ -154,6 +157,63 @@ export class AuthController {
   })
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     await this.authService.forgotPassword(dto.email);
+  }
+
+  @Post('verify-otp')
+  @UseGuards(IpBlockGuard)
+  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Verificar código OTP de recuperación de contraseña',
+    description:
+      'Recibe el código enviado por email en POST /auth/forgot-password. ' +
+      'En caso de éxito devuelve un reset_token (firma HMAC, válido 15 min) ' +
+      'para usar en POST /auth/reset-password. Cada OTP admite 3 intentos.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Código válido. Se devuelve el token de reset.',
+    type: VerifyOtpResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Código inválido, expirado o intentos agotados.',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Error al validar el código.',
+    type: ErrorResponseDto,
+  })
+  verifyOtp(@Body() dto: VerifyOtpDto): Promise<VerifyOtpResponseDto> {
+    return this.authService.verifyOtp(dto.email, dto.code);
+  }
+
+  @Post('reset-password')
+  @UseGuards(IpBlockGuard)
+  @Throttle({ auth: { limit: 5, ttl: 60_000 } })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Restablecer contraseña usando el token de reset (OTP)',
+    description:
+      'Cambia la contraseña en Keycloak con el reset_token obtenido en ' +
+      'POST /auth/verify-otp. El token es de un solo uso.',
+  })
+  @ApiNoContentResponse({
+    description: 'Contraseña actualizada exitosamente.',
+  })
+  @ApiBadRequestResponse({
+    description: 'Token inválido, expirado o nueva contraseña débil.',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Error al cambiar la contraseña.',
+    type: ErrorResponseDto,
+  })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.authService.resetPassword(
+      dto.email,
+      dto.reset_token,
+      dto.new_password,
+    );
   }
 
   @Post('introspect')

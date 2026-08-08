@@ -79,6 +79,18 @@ export class UserService {
 
   async updateUser(id: string, dto: UpdateUserDto) {
     const { password: _pw, ...updatePayload } = dto;
+
+    // Sincronizar correo con Keycloak si cambió (para que el restablecimiento
+    // de contraseña y la identidad del usuario sigan coherentes).
+    if (updatePayload.email) {
+      const current = await this.userRepository.findById(id);
+      if (current.email !== updatePayload.email) {
+        await this.keycloakAdminService.updateUser(current.external_id, {
+          email: updatePayload.email,
+        });
+      }
+    }
+
     const user = await this.userRepository.update(id, updatePayload);
     await this.cacheManager.del(`user_${id}`);
     this.logger.log(`Cache invalidado para usuario ID: ${id}`);
