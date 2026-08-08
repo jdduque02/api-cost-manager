@@ -1,17 +1,38 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { I18nService } from 'nestjs-i18n';
 import { ObjectivePaymentRepository } from '@finance/repositories/objective-payment.repository';
 import { ObjectivePayment } from '@finance/entities/objective-payment.entity';
+import { FinancialObjective } from '@finance/entities/financial-objective.entity';
 import { CreateObjectivePaymentDto } from '@finance/dto/objective-payment/create-objective-payment.dto';
 
-const mockTypeOrmRepo = {
+const mockPaymentRepo = {
   create: jest.fn(),
   save: jest.fn(),
   find: jest.fn(),
   findOne: jest.fn(),
-  remove: jest.fn(),
+  findOneBy: jest.fn(),
+  softRemove: jest.fn(),
+};
+
+const mockObjectiveRepo = {
+  findOneBy: jest.fn(),
+  save: jest.fn(),
+};
+
+const mockManager = {
+  getRepository: jest.fn((entity) => {
+    if (entity === FinancialObjective) return mockObjectiveRepo;
+    return mockPaymentRepo;
+  }),
+};
+
+const mockDataSource = {
+  transaction: jest.fn((cb: (manager: typeof mockManager) => unknown) =>
+    cb(mockManager),
+  ),
 };
 
 const mockI18nService = {
@@ -28,6 +49,17 @@ const buildPayment = (overrides = {}): ObjectivePayment =>
     ...overrides,
   }) as unknown as ObjectivePayment;
 
+const buildObjective = (overrides = {}): FinancialObjective =>
+  ({
+    id: 5,
+    user_id: 10,
+    target_amount: 1000,
+    current_balance: 800,
+    is_completed: false,
+    completed_at: null,
+    ...overrides,
+  }) as unknown as FinancialObjective;
+
 describe('ObjectivePaymentRepository', () => {
   let repo: ObjectivePaymentRepository;
 
@@ -37,9 +69,10 @@ describe('ObjectivePaymentRepository', () => {
         ObjectivePaymentRepository,
         {
           provide: getRepositoryToken(ObjectivePayment),
-          useValue: mockTypeOrmRepo,
+          useValue: mockPaymentRepo,
         },
         { provide: I18nService, useValue: mockI18nService },
+        { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
 
@@ -54,21 +87,49 @@ describe('ObjectivePaymentRepository', () => {
     const dto: CreateObjectivePaymentDto = {
       objective_id: 5,
       amount: 200,
-      payment_date: new Date('2024-01-15'),
+      payment_date: '2024-01-15',
     };
 
-    it('debe crear y guardar el pago exitosamente', async () => {
+    it('debe validar la meta, guardar el pago e incrementar el saldo', async () => {
       const payment = buildPayment();
-      mockTypeOrmRepo.create.mockReturnValue(payment);
-      mockTypeOrmRepo.save.mockResolvedValue(payment);
+      const objective = buildObjective({ current_balance: 800 });
+      mockObjectiveRepo.findOneBy.mockResolvedValue(objective);
+      mockPaymentRepo.create.mockReturnValue(payment);
+      mockPaymentRepo.save.mockResolvedValue(payment);
 
       const result = await repo.create(10, dto);
 
-      expect(mockTypeOrmRepo.create).toHaveBeenCalledWith({
+      expect(mockObjectiveRepo.findOneBy).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 5, user_id: 10 }),
+      );
+      expect(mockPaymentRepo.create).toHaveBeenCalledWith({
         ...dto,
         user_id: 10,
       });
+      expect(objective.current_balance).toBe(1000);
+      expect(objective.is_completed).toBe(true);
+      expect(mockObjectiveRepo.save).toHaveBeenCalledWith(objective);
       expect(result).toEqual(payment);
+    });
+
+    it('debe lanzar NotFoundException si la meta no existe o no es del usuario', async () => {
+      mockObjectiveRepo.findOneBy.mockResolvedValue(null);
+
+      await expect(repo.create(10, dto)).rejects.toThrow(NotFoundException);
+      expect(mockPaymentRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('no debe marcar la meta como completada si el saldo no alcanza el objetivo', async () => {
+      const payment = buildPayment();
+      const objective = buildObjective({ current_balance: 100 });
+      mockObjectiveRepo.findOneBy.mockResolvedValue(objective);
+      mockPaymentRepo.create.mockReturnValue(payment);
+      mockPaymentRepo.save.mockResolvedValue(payment);
+
+      await repo.create(10, dto);
+
+      expect(objective.current_balance).toBe(300);
+      expect(objective.is_completed).toBe(false);
     });
   });
 
@@ -78,14 +139,16 @@ describe('ObjectivePaymentRepository', () => {
   describe('findByObjective', () => {
     it('debe retornar los pagos del objetivo', async () => {
       const list = [buildPayment(), buildPayment({ id: 2, amount: 300 })];
-      mockTypeOrmRepo.find.mockResolvedValue(list);
+      mockPaymentRepo.find.mockResolvedValue(list);
 
       const result = await repo.findByObjective(5, 10);
 
-      expect(mockTypeOrmRepo.find).toHaveBeenCalledWith({
-        where: { objective_id: 5, user_id: 10 },
-        order: { payment_date: 'DESC' },
-      });
+      expect(mockPaymentRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ objective_id: 5, user_id: 10 }),
+          order: { payment_date: 'DESC' },
+        }),
+      );
       expect(result).toHaveLength(2);
     });
   });
@@ -96,7 +159,7 @@ describe('ObjectivePaymentRepository', () => {
   describe('findById', () => {
     it('debe retornar el pago existente', async () => {
       const payment = buildPayment();
-      mockTypeOrmRepo.findOne.mockResolvedValue(payment);
+      mockPaymentRepo.findOne.mockResolvedValue(payment);
 
       const result = await repo.findById(1, 10);
 
@@ -104,7 +167,7 @@ describe('ObjectivePaymentRepository', () => {
     });
 
     it('debe lanzar NotFoundException si no existe', async () => {
-      mockTypeOrmRepo.findOne.mockResolvedValue(null);
+      mockPaymentRepo.findOne.mockResolvedValue(null);
 
       await expect(repo.findById(999, 10)).rejects.toThrow(NotFoundException);
     });
@@ -114,18 +177,25 @@ describe('ObjectivePaymentRepository', () => {
   // remove
   // ─────────────────────────────────────────────────────────────
   describe('remove', () => {
-    it('debe eliminar el pago del repositorio', async () => {
+    it('debe eliminar el pago (soft) y revertir el saldo de la meta', async () => {
       const payment = buildPayment();
-      mockTypeOrmRepo.findOne.mockResolvedValue(payment);
-      mockTypeOrmRepo.remove.mockResolvedValue(undefined);
+      const objective = buildObjective({ current_balance: 1000 });
+      mockPaymentRepo.findOneBy.mockResolvedValue(payment);
+      mockPaymentRepo.softRemove.mockResolvedValue(payment);
+      mockObjectiveRepo.findOneBy.mockResolvedValue(objective);
 
       await repo.remove(1, 10);
 
-      expect(mockTypeOrmRepo.remove).toHaveBeenCalledWith(payment);
+      expect(mockPaymentRepo.findOneBy).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1, user_id: 10 }),
+      );
+      expect(mockPaymentRepo.softRemove).toHaveBeenCalledWith(payment);
+      expect(objective.current_balance).toBe(800);
+      expect(mockObjectiveRepo.save).toHaveBeenCalledWith(objective);
     });
 
     it('debe lanzar NotFoundException si no existe el pago', async () => {
-      mockTypeOrmRepo.findOne.mockResolvedValue(null);
+      mockPaymentRepo.findOneBy.mockResolvedValue(null);
 
       await expect(repo.remove(999, 10)).rejects.toThrow(NotFoundException);
     });

@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { I18nService } from 'nestjs-i18n';
 import { FinancialObjectiveService } from '@finance/service/financial-objective.service';
 import { FinancialObjectiveRepository } from '@finance/repositories/financial-objective.repository';
 import { FinancialProfileRepository } from '@identity/repositories/financial-profile.repository';
+import { UserRepository } from '@identity/repositories/app-user.repositories';
 import { AuditLogService } from '@audit/service/audit-log.service';
 import { CreateFinancialObjectiveDto } from '@finance/dto/financial-objective/create-financial-objective.dto';
 import { UpdateFinancialObjectiveDto } from '@finance/dto/financial-objective/update-financial-objective.dto';
@@ -51,6 +52,7 @@ describe('FinancialObjectiveService', () => {
           provide: FinancialProfileRepository,
           useValue: mockFinancialProfileRepository,
         },
+        { provide: UserRepository, useValue: { findById: jest.fn() } },
         { provide: AuditLogService, useValue: mockAuditLogService },
         { provide: I18nService, useValue: mockI18nService },
       ],
@@ -141,6 +143,58 @@ describe('FinancialObjectiveService', () => {
         1,
         10,
       );
+    });
+  });
+
+  describe('calculateQuota', () => {
+    it('mensual: usa meses calendario y días por periodo', async () => {
+      const result = await service.calculateQuota(10, {
+        target_amount: 1000000,
+        current_balance: 0,
+        start_date: '2026-01-01',
+        end_date: '2027-12-31',
+        frequency: 'monthly' as never,
+      });
+
+      expect(result.total_periods).toBe(24);
+      expect(result.days_in_period).toBe(31);
+      expect(result.quota_amount).toBe(41666.67);
+    });
+
+    it('weekly: calcula cuotas por semana completa', async () => {
+      const result = await service.calculateQuota(10, {
+        target_amount: 100000,
+        current_balance: 0,
+        start_date: '2026-01-01',
+        end_date: '2026-01-28',
+        frequency: 'weekly' as never,
+      });
+
+      expect(result.total_periods).toBe(4);
+      expect(result.days_in_period).toBe(7);
+      expect(result.quota_amount).toBe(25000);
+    });
+
+    it('sin end_date retorna recomendación sin calcular cuotas', async () => {
+      const result = await service.calculateQuota(10, {
+        target_amount: 1000000,
+        frequency: 'monthly' as never,
+      });
+
+      expect(result.total_periods).toBe(0);
+      expect(result.quota_amount).toBe(0);
+      expect(result.recommendations.length).toBeGreaterThan(0);
+    });
+
+    it('rechaza rango de fechas inválido', async () => {
+      await expect(
+        service.calculateQuota(10, {
+          target_amount: 1000000,
+          start_date: '2026-02-01',
+          end_date: '2026-01-01',
+          frequency: 'monthly' as never,
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

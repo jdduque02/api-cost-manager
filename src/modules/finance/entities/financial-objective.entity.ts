@@ -59,6 +59,10 @@ export class FinancialObjective {
   @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true })
   current_profitability!: number | null;
 
+  @Column({ type: 'bigint', nullable: true })
+  @Index('idx_financial_objective_account')
+  account_id!: number | null;
+
   @Column({
     type: 'enum',
     enum: FrequencyEnum,
@@ -83,7 +87,7 @@ export class FinancialObjective {
   quota_calculation!: Record<string, unknown> | null;
 
   @Column({ type: 'timestamp', nullable: true })
-  completed_at!: Date;
+  completed_at!: Date | null;
 
   @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;

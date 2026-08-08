@@ -1,17 +1,19 @@
-import {
-  ConflictException,
-  Injectable,
-  Inject,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { I18nService } from 'nestjs-i18n';
 import { IsNull, Repository } from 'typeorm';
 import { FinancialObjective } from '@finance/entities/financial-objective.entity';
 import { CreateFinancialObjectiveDto } from '@finance/dto/financial-objective/create-financial-objective.dto';
 import { UpdateFinancialObjectiveDto } from '@finance/dto/financial-objective/update-financial-objective.dto';
+import { BankAccount } from '@banking/entities/bank-account.entity';
 import { EncryptionService } from '@shared/services/encryption.service';
+import {
+  applyCompletion,
+  computeObjectiveProgress,
+} from '@shared/helpers/financial-objective.helper';
+
+export type FinancialObjectiveWithProgress = FinancialObjective &
+  ReturnType<typeof computeObjectiveProgress>;
 
 @Injectable()
 export class FinancialObjectiveRepository {
@@ -20,6 +22,8 @@ export class FinancialObjectiveRepository {
   constructor(
     @InjectRepository(FinancialObjective)
     private readonly repo: Repository<FinancialObjective>,
+    @InjectRepository(BankAccount)
+    private readonly bankAccountRepo: Repository<BankAccount>,
     @Inject(I18nService) private readonly i18n: I18nService,
     private readonly encryptionService: EncryptionService,
   ) {}
@@ -29,21 +33,26 @@ export class FinancialObjectiveRepository {
   async create(
     userId: number,
     dto: CreateFinancialObjectiveDto,
-  ): Promise<FinancialObjective> {
-    const encrypted = { ...dto };
-    if (encrypted.bank !== undefined && encrypted.bank !== null) {
-      encrypted.bank = this.encryptionService.encryptField(
-        encrypted.bank,
+  ): Promise<FinancialObjectiveWithProgress> {
+    const payload = await this.resolveAccountLink(userId, { ...dto });
+    if (payload.bank !== undefined && payload.bank !== null) {
+      payload.bank = this.encryptionService.encryptField(
+        payload.bank,
         this.SCHEMA,
       ) as unknown as string;
     }
-    const objective = this.repo.create({ ...encrypted, user_id: userId });
+    const objective = this.repo.create({
+      ...payload,
+      user_id: userId,
+      current_balance: payload.current_balance ?? 0,
+    });
+    applyCompletion(objective);
     const saved = await this.repo.save(objective);
     this.logger.log(`Objetivo financiero creado para usuario ID: ${userId}`);
     return this.decryptBank(saved);
   }
 
-  async findAll(userId: number): Promise<FinancialObjective[]> {
+  async findAll(userId: number): Promise<FinancialObjectiveWithProgress[]> {
     const objectives = await this.repo.find({
       where: { user_id: userId, deleted_at: IsNull() },
       order: { created_at: 'DESC' },
@@ -51,7 +60,10 @@ export class FinancialObjectiveRepository {
     return objectives.map((o) => this.decryptBank(o));
   }
 
-  async findById(id: number, userId: number): Promise<FinancialObjective> {
+  async findById(
+    id: number,
+    userId: number,
+  ): Promise<FinancialObjectiveWithProgress> {
     const objective = await this.repo.findOne({
       where: { id, user_id: userId, deleted_at: IsNull() },
     });
@@ -66,23 +78,89 @@ export class FinancialObjectiveRepository {
     id: number,
     userId: number,
     dto: UpdateFinancialObjectiveDto,
-  ): Promise<FinancialObjective> {
+  ): Promise<FinancialObjectiveWithProgress> {
     const objective = await this.findById(id, userId);
 
-    const encrypted = { ...dto };
-    if (encrypted.bank !== undefined && encrypted.bank !== null) {
-      encrypted.bank = this.encryptionService.encryptField(
-        encrypted.bank,
+    const payload = await this.resolveAccountLink(userId, { ...dto });
+    if (payload.bank !== undefined && payload.bank !== null) {
+      payload.bank = this.encryptionService.encryptField(
+        payload.bank,
         this.SCHEMA,
       ) as unknown as string;
     }
 
-    const updated = this.repo.merge(objective, encrypted);
-    const saved = await this.repo.save(updated);
+    // Si el usuario marca explícitamente el completado se respeta; de lo
+    // contrario se reevalúa automáticamente según saldo actual vs objetivo.
+    const merged = this.repo.merge(objective, payload);
+    if (dto.is_completed !== undefined || dto.completed_at !== undefined) {
+      const completed = dto.is_completed ?? true;
+      merged.is_completed = completed;
+      merged.completed_at = completed
+        ? dto.completed_at
+          ? new Date(dto.completed_at)
+          : new Date()
+        : null;
+    } else {
+      applyCompletion(merged);
+    }
+
+    const saved = await this.repo.save(merged);
     this.logger.log(
       `Objetivo financiero ID ${id} actualizado para usuario ID: ${userId}`,
     );
     return this.decryptBank(saved);
+  }
+
+  /**
+   * Si el DTO trae account_id, resuelve la cuenta bancaria del usuario y
+   * autocompleta bank (nombre del banco) y current_profitability (tasa anual)
+   * cuando no se enviaron explícitamente.
+   */
+  private async resolveAccountLink(
+    userId: number,
+    payload: Partial<CreateFinancialObjectiveDto> & { account_id?: number },
+  ): Promise<Partial<CreateFinancialObjectiveDto> & { account_id?: number }> {
+    const accountId = payload.account_id;
+    if (accountId === undefined || accountId === null) return payload;
+
+    const account = await this.bankAccountRepo.findOne({
+      where: { id: Number(accountId), user_id: userId, deleted_at: IsNull() },
+    });
+    if (!account) return payload;
+
+    if (payload.bank === undefined || payload.bank === null) {
+      payload.bank = account.bank_name;
+    }
+    if (
+      (payload.current_profitability === undefined ||
+        payload.current_profitability === null) &&
+      account.annual_interest_rate !== undefined &&
+      account.annual_interest_rate !== null
+    ) {
+      payload.current_profitability = account.annual_interest_rate;
+    }
+    return payload;
+  }
+
+  /**
+   * Resuelve la cuenta bancaria del usuario para el cálculo de cuota:
+   * devuelve el nombre del banco y la tasa anual, o null si no existe.
+   */
+  async resolveAccountForQuota(
+    userId: number,
+    accountId: number,
+  ): Promise<{
+    bank: string | null;
+    annual_interest_rate: number | null;
+  } | null> {
+    const account = await this.bankAccountRepo.findOne({
+      where: { id: accountId, user_id: userId, deleted_at: IsNull() },
+    });
+    if (!account) return null;
+    return {
+      bank: account.bank_name ?? null,
+      annual_interest_rate: account.annual_interest_rate ?? null,
+    };
   }
 
   async softDelete(id: number, userId: number): Promise<void> {
@@ -93,14 +171,17 @@ export class FinancialObjectiveRepository {
     );
   }
 
-  private decryptBank(objective: FinancialObjective): FinancialObjective {
-    const result = { ...objective };
+  private decryptBank(
+    objective: FinancialObjective,
+  ): FinancialObjectiveWithProgress {
+    const result = { ...objective } as FinancialObjectiveWithProgress;
     if (result.bank) {
       result.bank = this.encryptionService.decryptField(
         result.bank,
         this.SCHEMA,
       );
     }
+    Object.assign(result, computeObjectiveProgress(result));
     return result;
   }
 }

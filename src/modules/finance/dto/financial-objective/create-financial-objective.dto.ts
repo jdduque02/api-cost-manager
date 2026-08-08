@@ -128,6 +128,17 @@ export class CreateFinancialObjectiveDto {
   current_profitability?: number;
 
   @ApiPropertyOptional({
+    description:
+      'Cuenta bancaria vinculada a la meta (patrimonio donde se ahorra).',
+    example: 1,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @IsPositive()
+  account_id?: number;
+
+  @ApiPropertyOptional({
     enum: FrequencyEnum,
     description: 'Frecuencia de pago.',
   })

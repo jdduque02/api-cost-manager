@@ -12,19 +12,45 @@ import { UpdateFinancialObjectiveDto } from '@finance/dto/financial-objective/up
 import { CalculateQuotaDto } from '@finance/dto/financial-objective/calculate-quota.dto';
 import { CalculateQuotaResponseDto } from '@finance/dto/financial-objective/calculate-quota-response.dto';
 import { FinancialProfileRepository } from '@identity/repositories/financial-profile.repository';
+import { UserRepository } from '@identity/repositories/app-user.repositories';
 import { AuditLogService } from '@audit/service/audit-log.service';
 import { FrequencyEnum, AuditActionEnum } from '@shared/enums';
+import { todayInTimeZone } from '@shared/helpers/financial-objective.helper';
 
-const DAYS_PER_FREQUENCY: Record<string, number> = {
+const DAYS_PER_FREQUENCY: Record<FrequencyEnum, number> = {
+  [FrequencyEnum.DAILY]: 1,
   [FrequencyEnum.WEEKLY]: 7,
   [FrequencyEnum.BIWEEKLY]: 14,
   [FrequencyEnum.MONTHLY]: 30.44,
+  [FrequencyEnum.QUARTERLY]: 91.31,
+  [FrequencyEnum.YEARLY]: 365.25,
 };
 
-const PERIODS_PER_MONTH: Record<string, number> = {
+const PERIODS_PER_MONTH: Record<FrequencyEnum, number> = {
+  [FrequencyEnum.DAILY]: 30.44,
   [FrequencyEnum.WEEKLY]: 4.33,
   [FrequencyEnum.BIWEEKLY]: 2.17,
   [FrequencyEnum.MONTHLY]: 1,
+  [FrequencyEnum.QUARTERLY]: 1 / 3,
+  [FrequencyEnum.YEARLY]: 1 / 12,
+};
+
+const PERIODS_PER_YEAR: Record<FrequencyEnum, number> = {
+  [FrequencyEnum.DAILY]: 365,
+  [FrequencyEnum.WEEKLY]: 52,
+  [FrequencyEnum.BIWEEKLY]: 26,
+  [FrequencyEnum.MONTHLY]: 12,
+  [FrequencyEnum.QUARTERLY]: 4,
+  [FrequencyEnum.YEARLY]: 1,
+};
+
+const FREQUENCY_LABEL: Record<FrequencyEnum, string> = {
+  [FrequencyEnum.DAILY]: 'día',
+  [FrequencyEnum.WEEKLY]: 'semana',
+  [FrequencyEnum.BIWEEKLY]: 'quincena',
+  [FrequencyEnum.MONTHLY]: 'mes',
+  [FrequencyEnum.QUARTERLY]: 'trimestre',
+  [FrequencyEnum.YEARLY]: 'año',
 };
 
 @Injectable()
@@ -35,6 +61,7 @@ export class FinancialObjectiveService {
     private readonly financialObjectiveRepository: FinancialObjectiveRepository,
     @Inject(forwardRef(() => FinancialProfileRepository))
     private readonly financialProfileRepository: FinancialProfileRepository,
+    private readonly userRepository: UserRepository,
     private readonly auditLogService: AuditLogService,
     @Inject(I18nService) private readonly i18n: I18nService,
   ) {}
@@ -83,8 +110,17 @@ export class FinancialObjectiveService {
       );
     }
 
-    // 2. Validar fin de período
-    const today = new Date().toISOString().split('T')[0];
+    // 2. Validar fin de período (hoy en la zona horaria del usuario)
+    let timezone = 'America/Bogota';
+    try {
+      const user = await this.userRepository.findById(String(userId));
+      timezone = user.timezone || 'America/Bogota';
+    } catch {
+      this.logger.debug(
+        `Usuario ${userId} no encontrado; se usa zona horaria por defecto.`,
+      );
+    }
+    const today = todayInTimeZone(timezone);
     const startDate = dto.start_date ?? today;
 
     if (!dto.end_date) {
@@ -126,28 +162,67 @@ export class FinancialObjectiveService {
       );
     }
 
-    // 4. Calcular períodos
-    const start = new Date(startDate);
-    const end = new Date(dto.end_date);
+    // 4. Calcular períodos (fechas en UTC para evitar desfases de zona horaria)
+    const start = new Date(`${startDate}T00:00:00Z`);
+    const end = new Date(`${dto.end_date}T00:00:00Z`);
 
-    if (start >= end) {
+    if (start.getTime() >= end.getTime()) {
       throw new BadRequestException(this.i18n.t('finance.INVALID_DATE_RANGE'));
     }
 
     const diffTime = end.getTime() - start.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const daysPerPeriod = DAYS_PER_FREQUENCY[dto.frequency];
-    const totalPeriods = Math.ceil(diffDays / daysPerPeriod);
+
+    // Mensual: períodos = meses calendario (parte los meses, no 30.44 días).
+    let totalPeriods: number;
+    if (dto.frequency === FrequencyEnum.MONTHLY) {
+      const monthDiff =
+        (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
+        (end.getUTCMonth() - start.getUTCMonth());
+      totalPeriods =
+        monthDiff + (end.getUTCDate() >= start.getUTCDate() ? 1 : 0);
+    } else {
+      const daysPerPeriod = DAYS_PER_FREQUENCY[dto.frequency];
+      totalPeriods = Math.ceil(diffDays / daysPerPeriod);
+    }
+    totalPeriods = Math.max(1, totalPeriods);
+    const daysInPeriod = Math.ceil(diffDays / totalPeriods);
 
     // 5. Calcular cuota
     const quotaAmount = amountToSave / totalPeriods;
 
-    // 6. Calcular rentabilidad proyectada
-    const projectedFinalBalance: number | null = null;
-    const currentProfitability: number | null = null;
+    // 6. Calcular rentabilidad proyectada (interés compuesto)
+    let annualRate = dto.interest_rate ?? 0;
+    let bankName: string | null = null;
 
-    // La rentabilidad se pasa como parámetro de la meta existente, no del cálculo
-    // Se retorna null aquí; el frontend puede combinarla con datos de la meta
+    if (dto.account_id) {
+      const accountInfo =
+        await this.financialObjectiveRepository.resolveAccountForQuota(
+          userId,
+          dto.account_id,
+        );
+      if (accountInfo) {
+        bankName = accountInfo.bank;
+        if (annualRate <= 0 && accountInfo.annual_interest_rate != null) {
+          annualRate = accountInfo.annual_interest_rate;
+        }
+      }
+    }
+
+    const currentProfitability = annualRate > 0 ? annualRate : null;
+    let projectedFinalBalance: number | null = null;
+
+    if (annualRate > 0 && totalPeriods > 0) {
+      const periodsPerYear = PERIODS_PER_YEAR[dto.frequency];
+      const periodicRate = annualRate / 100 / periodsPerYear;
+      const growthFactor = Math.pow(1 + periodicRate, totalPeriods);
+      // FV = P(1+i)^n + Q * (((1+i)^n - 1) / i)
+      // P: saldo actual, Q: cuota periódica, i: tasa periódica, n: total de períodos
+      projectedFinalBalance =
+        (dto.current_balance ?? 0) * growthFactor +
+        quotaAmount * ((growthFactor - 1) / periodicRate);
+      projectedFinalBalance = Math.round(projectedFinalBalance * 100) / 100;
+    }
 
     // 7. Validar contra regla 50-30-20
     let maxAllowedPerPeriod: number | null = null;
@@ -164,7 +239,7 @@ export class FinancialObjectiveService {
           `Tu cuota de $${quotaAmount.toLocaleString('es-CO', { maximumFractionDigits: 0 })} ` +
             `excede el ${savingsRatio}% recomendado de tu ingreso mensual ` +
             `($${monthlyIncome.toLocaleString('es-CO', { maximumFractionDigits: 0 })}). ` +
-            `El máximo recomendado por ${dto.frequency === FrequencyEnum.WEEKLY ? 'semana' : dto.frequency === FrequencyEnum.BIWEEKLY ? 'quincena' : 'mes'} ` +
+            `El máximo recomendado por ${FREQUENCY_LABEL[dto.frequency]} ` +
             `es $${maxAllowedPerPeriod.toLocaleString('es-CO', { maximumFractionDigits: 0 })}.`,
         );
         recommendations.push(
@@ -182,6 +257,14 @@ export class FinancialObjectiveService {
       recommendations.push(this.i18n.t('finance.LOAD_PROFILE_RECOMMENDATION'));
     }
 
+    // 9. Recomendación de proyección con interés compuesto
+    if (annualRate > 0 && projectedFinalBalance != null) {
+      recommendations.push(
+        `Con una tasa anual del ${annualRate}%, tu saldo proyectado al final del plazo sería ` +
+          `$${projectedFinalBalance.toLocaleString('es-CO', { maximumFractionDigits: 0 })}.`,
+      );
+    }
+
     const response: CalculateQuotaResponseDto = {
       target_amount: dto.target_amount,
       current_balance: dto.current_balance ?? 0,
@@ -190,7 +273,7 @@ export class FinancialObjectiveService {
       end_date: dto.end_date,
       frequency: dto.frequency,
       total_periods: totalPeriods,
-      days_in_period: diffDays,
+      days_in_period: daysInPeriod,
       quota_amount: Math.round(quotaAmount * 100) / 100,
       monthly_income: monthlyIncome,
       savings_ratio: savingsRatio,
@@ -198,7 +281,7 @@ export class FinancialObjectiveService {
         ? Math.round(maxAllowedPerPeriod * 100) / 100
         : null,
       is_within_budget: isWithinBudget,
-      bank: null,
+      bank: bankName,
       current_profitability: currentProfitability,
       projected_final_balance: projectedFinalBalance,
       has_financial_profile: hasFinancialProfile,

@@ -44,6 +44,13 @@ export class FinancialObjectiveResponseDto {
   @ApiPropertyOptional({ example: 5.5, nullable: true })
   current_profitability!: number | null;
 
+  @ApiPropertyOptional({
+    description: 'Cuenta bancaria vinculada a la meta.',
+    example: 1,
+    nullable: true,
+  })
+  account_id!: number | null;
+
   @ApiPropertyOptional({ enum: FrequencyEnum, nullable: true })
   frequency!: FrequencyEnum | null;
 
@@ -58,6 +65,26 @@ export class FinancialObjectiveResponseDto {
 
   @ApiProperty({ example: false })
   is_completed!: boolean;
+
+  @ApiProperty({
+    description: 'Monto restante por ahorrar (target - current, mínimo 0).',
+    example: 9800000,
+  })
+  amount_remaining!: number;
+
+  @ApiProperty({
+    description: 'Porcentaje de avance hacia la meta (0-100).',
+    example: 2,
+  })
+  progress_percent!: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Días calendario restantes hasta end_date (0 si venció o no hay fecha).',
+    example: 345,
+    nullable: true,
+  })
+  days_remaining!: number | null;
 
   @ApiPropertyOptional({
     description: 'Referencia del cálculo de cuota usado al crear la meta.',

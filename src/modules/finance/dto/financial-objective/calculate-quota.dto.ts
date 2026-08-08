@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsNumber,
   IsOptional,
+  Max,
   Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -49,17 +50,37 @@ export class CalculateQuotaDto {
   @IsDateString()
   end_date?: string;
 
+  @ApiPropertyOptional({
+    description: 'Tasa de interés anual (%) para proyectar el saldo final.',
+    example: 5.5,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  interest_rate?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Cuenta bancaria vinculada a la meta. Si se envía y no se especifica interest_rate, se toma la tasa anual de la cuenta.',
+    example: 1,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  account_id?: number;
+
   @ApiProperty({
-    enum: [FrequencyEnum.WEEKLY, FrequencyEnum.BIWEEKLY, FrequencyEnum.MONTHLY],
+    enum: FrequencyEnum,
     description: 'Frecuencia de las cuotas de ahorro.',
     example: FrequencyEnum.MONTHLY,
   })
-  @IsEnum(
-    [FrequencyEnum.WEEKLY, FrequencyEnum.BIWEEKLY, FrequencyEnum.MONTHLY],
-    {
-      message: 'La frecuencia debe ser: weekly, biweekly o monthly.',
-    },
-  )
+  @IsEnum(FrequencyEnum, {
+    message:
+      'La frecuencia debe ser: daily, weekly, biweekly, monthly, quarterly o yearly.',
+  })
   @IsNotEmpty()
   frequency!: FrequencyEnum;
 }
