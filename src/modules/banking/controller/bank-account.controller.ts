@@ -139,4 +139,23 @@ export class BankAccountController {
   ) {
     return this.bankAccountService.remove(id, userId);
   }
+
+  @Get(':id/projected-yield')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Calcular proyección de rendimiento de una cuenta' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Proyección de rendimiento.',
+  })
+  @ApiNotFoundResponse({
+    description: 'Cuenta no encontrada.',
+    type: ErrorResponseDto,
+  })
+  async getProjectedYield(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() _currentUser: IntrospectResponse,
+  ) {
+    return this.bankAccountService.getProjectedYield(id, userId);
+  }
 }

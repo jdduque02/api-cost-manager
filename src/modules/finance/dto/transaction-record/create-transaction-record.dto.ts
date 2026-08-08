@@ -10,6 +10,10 @@ import {
   Max,
   MaxLength,
   Min,
+  Validate,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
+  ValidationArguments,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -20,12 +24,33 @@ import {
   TransactionTypeEnum,
 } from '@shared/enums';
 
+@ValidatorConstraint({ name: 'singlePatrimony', async: false })
+export class SinglePatrimonyConstraint implements ValidatorConstraintInterface {
+  validate(_value: unknown, args: ValidationArguments): boolean {
+    const obj = args.object as Record<string, unknown>;
+    const count = [obj.account_id, obj.asset_id, obj.liability_id].filter(
+      (v) => v !== undefined && v !== null,
+    ).length;
+    return count <= 1;
+  }
+
+  defaultMessage(): string {
+    return 'Una transacción puede tener a lo sumo un patrimonio asociado (cuenta, activo o pasivo).';
+  }
+}
+
+@((Validate as any)(SinglePatrimonyConstraint))
 export class CreateTransactionRecordDto {
-  @ApiProperty({ description: 'ID de la categoría.', example: 1 })
+  @ApiPropertyOptional({
+    description:
+      'ID de la categoría. Opcional: si no se indica, se intenta auto-categorizar por descripción; si no hay regla, queda pendiente (category_status = pending).',
+    example: 1,
+  })
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(1)
-  category_id!: number;
+  category_id?: number;
 
   @ApiPropertyOptional({ description: 'ID de la subcategoría.', example: 2 })
   @IsOptional()
@@ -46,6 +71,27 @@ export class CreateTransactionRecordDto {
   @IsNumber()
   @Min(0)
   amount!: number;
+
+  @ApiPropertyOptional({
+    description: 'Número de cuotas de la compra (tarjeta crédito).',
+    example: 12,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(999)
+  installments?: number;
+
+  @ApiPropertyOptional({
+    description: 'Valor de cada cuota cuando la compra tiene financiación.',
+    example: 150000,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  installment_value?: number;
 
   @ApiPropertyOptional({
     enum: PaymentMethodEnum,
@@ -148,11 +194,12 @@ export class CreateTransactionRecordDto {
   fixed_type?: FixedTypeEnum;
 
   @ApiPropertyOptional({
-    description: 'Periodicidad de la transacción fija (quincenal o mensual).',
-    enum: ['biweekly', 'monthly'],
+    description:
+      'Periodicidad de la transacción fija (diaria, semanal, quincenal, mensual, trimestral o anual).',
+    enum: FrequencyEnum,
   })
   @IsOptional()
-  @IsIn(['biweekly', 'monthly'])
+  @IsIn(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'])
   frequency?: FrequencyEnum;
 
   @ApiPropertyOptional({
@@ -222,4 +269,14 @@ export class CreateTransactionRecordDto {
   @IsNumber()
   @Min(1)
   liability_id?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Procedencia del registro: manual (digita el usuario) o import (extracto cargado). Usado por la conciliación del arqueo de caja.',
+    enum: ['manual', 'import'],
+    example: 'manual',
+  })
+  @IsOptional()
+  @IsIn(['manual', 'import'])
+  source?: 'manual' | 'import';
 }

@@ -11,6 +11,7 @@
     "USER_EXISTS_KEYCLOAK": "User already exists in Keycloak (duplicate username or email).",
     "USER_REGISTER_ERROR": "Error registering user in Keycloak.",
     "USER_NOT_FOUND_EMAIL": "No user found with email: {email}",
+    "USER_NOT_FOUND": "No user found with that email.",
     "USER_SEARCH_ERROR": "Error searching user in Keycloak.",
     "PASSWORD_RESET_ERROR": "Could not send password recovery email.",
     "TOKEN_REVOKED": "The token has expired or was revoked.",
@@ -25,7 +26,14 @@
     "SESSION_NOT_FOUND": "Session does not exist or does not belong to the user.",
     "CURRENT_PASSWORD_INVALID": "The current password is incorrect.",
     "ENCRYPT_DISABLED": "This endpoint is only available in development environments.",
-    "EVENTS_ERROR": "Error fetching access history."
+    "EVENTS_ERROR": "Error fetching access history.",
+    "USER_UPDATE_ERROR": "Error updating user in Keycloak.",
+    "OTP_INVALID": "The verification code is invalid or has already been used.",
+    "OTP_EXPIRED": "The verification code has expired.",
+    "OTP_ATTEMPTS_EXCEEDED": "Too many attempts. Please request a new code.",
+    "OTP_SEND_ERROR": "Could not send the verification code email.",
+    "RESET_TOKEN_INVALID": "The reset token is invalid.",
+    "RESET_TOKEN_EXPIRED": "The reset token has expired. Please request a new code."
   },
   "identity": {
     "USER_NOT_FOUND": "User with id {id} not found.",
@@ -67,8 +75,18 @@
     "REDUCE_OR_EXTEND_RECOMMENDATION": "Consider reducing the target amount, extending the deadline, or finding ways to increase your income to meet the goal without compromising your financial stability.",
     "REGISTER_INCOME_RECOMMENDATION": "For a more accurate calculation, register your monthly income in your financial profile. The 50-30-20 rule suggests allocating a maximum of 20% of your income to savings.",
     "LOAD_PROFILE_RECOMMENDATION": "Load your financial information (monthly income and distribution ratios) in your profile to get a calculation validated against your real savings capacity.",
-    "SET_END_DATE_RECOMMENDATION": "For effective savings, it is recommended to set a deadline for your goal. Goals with a defined date are 42% more likely to be achieved according to behavioral psychology studies.",
-    "REUSE_ROUTE_HINT": "You can reuse this route in the future when you set your target date to get the exact installments."
+    "SET_END_DATE_RECOMMENDATION": "Set an end date for your goal. With it, we'll calculate how much to save each period and when you'll reach your target.",
+    "REUSE_ROUTE_HINT": "Once your end date is set, run the calculation again here to get your savings plan with exact installments.",
+    "STATEMENT_IMPORT_NOT_FOUND": "Statement import with id {id} not found.",
+    "STATEMENT_IMPORT_NO_FILES": "You must attach at least one PDF file.",
+    "STATEMENT_IMPORT_UNSUPPORTED_FILE": "Only PDF files are allowed.",
+    "STATEMENT_IMPORT_NO_CATEGORY": "Select a default category for the statement transactions.",
+    "STATEMENT_IMPORT_PASSWORD_REQUIRED": "The PDF \"{file}\" is password protected. Please try again providing the password.",
+    "STATEMENT_IMPORT_WRONG_PASSWORD": "Incorrect password for the PDF \"{file}\".",
+    "STATEMENT_IMPORT_INVALID_PDF": "Could not read the PDF \"{file}\". Check that it is not corrupted or scanned (no text layer).",
+    "STATEMENT_IMPORT_NO_TRANSACTIONS": "No movements detected in the PDF \"{file}\".",
+    "STATEMENT_IMPORT_NO_RETRYABLE": "There are no failed files to retry in this import.",
+    "STATEMENT_IMPORT_STORAGE_MISSING_RETRY": "The files \"{files}\" are no longer available to retry. Please upload the PDF again."
   },
   "intelligence": {
     "FINANCIAL_SUMMARY_NOT_FOUND": "No financial summary found for user {userId}.",
@@ -93,7 +111,9 @@
     "UPCOMING_DESCRIPTION": "Your {concept} of {amount} will be executed on {date}.",
     "PAYMENT_METHOD": "Payment method: {method}",
     "SOURCE_ENTITY": "Source entity: {source}",
-    "ADD_PAYMENT_HINT": "Please have enough balance and register the payment method and source entity to execute the movement."
+    "ADD_PAYMENT_HINT": "Please have enough balance and register the payment method and source entity to execute the movement.",
+    "IMPORT_COMPLETED_TITLE": "Statement upload finished",
+    "IMPORT_COMPLETED_DESCRIPTION": "{created} transactions were registered across {files} file(s). Files with errors: {failed}. Uncategorized: {uncategorized}."
   },
   "shared": {
     "UNEXPECTED_ERROR": "Unexpected error.",
@@ -133,5 +153,11 @@
     "IS_ARRAY": "{property} must be an array.",
     "ARRAY_MIN_SIZE": "{property} must contain at least {constraints} elements.",
     "CUSTOM_VALIDATOR": "{property} failed custom validation."
+  },
+  "support": {
+    "BANKING_ENTITY_NOT_FOUND": "Banking entity with id {id} not found.",
+    "BANKING_ENTITY_CODE_EXISTS": "A banking entity with that code already exists.",
+    "SUPPORT_REQUEST_NOT_FOUND": "Support request with id {id} not found.",
+    "PROCESSING_ERROR": "Error processing the request."
   }
 }

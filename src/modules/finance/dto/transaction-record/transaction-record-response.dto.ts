@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   FixedTypeEnum,
   PaymentMethodEnum,
+  ReviewStatusEnum,
   TransactionTypeEnum,
 } from '@shared/enums';
 
@@ -12,8 +13,17 @@ export class TransactionRecordResponseDto {
   @ApiProperty({ example: 10 })
   user_id!: number;
 
-  @ApiProperty({ example: 1 })
-  category_id!: number;
+  @ApiPropertyOptional({ example: 1, nullable: true })
+  category_id!: number | null;
+
+  @ApiProperty({ enum: ReviewStatusEnum })
+  category_status!: ReviewStatusEnum;
+
+  @ApiPropertyOptional({ example: 12, nullable: true })
+  installments!: number | null;
+
+  @ApiPropertyOptional({ example: 150000, nullable: true })
+  installment_value!: number | null;
 
   @ApiPropertyOptional({ example: 2, nullable: true })
   subcategory_id!: number | null;

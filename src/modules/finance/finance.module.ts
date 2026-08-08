@@ -4,11 +4,17 @@ import { AuthModule } from '../auth/auth.module';
 import { IdentityModule } from '@identity/identity.module';
 import { AuditModule } from '../audit/audit.module';
 import { NotificationModule } from '../notification/notification.module';
+import { CatalogModule } from '../catalog/catalog.module';
+import { SupportModule } from '../support/support.module';
 import { FinancialObjective } from './entities/financial-objective.entity';
 import { FinancialPeriod } from './entities/financial-period.entity';
 import { TransactionRecord } from './entities/transaction-record.entity';
 import { ObjectivePayment } from './entities/objective-payment.entity';
 import { Notification } from './entities/notification.entity';
+import { CashArqueo } from './entities/cash-arqueo.entity';
+import { StatementImport } from './entities/statement-import.entity';
+import { StatementImportFile } from './entities/statement-import-file.entity';
+import { TransactionCategoryRule } from './entities/transaction-category-rule.entity';
 import { BankAccount } from '@banking/entities/bank-account.entity';
 import { FinancialAsset } from '@banking/entities/financial-asset.entity';
 import { FinancialLiability } from '@banking/entities/financial-liability.entity';
@@ -16,15 +22,23 @@ import { FinancialObjectiveController } from './controller/financial-objective.c
 import { FinancialPeriodController } from './controller/financial-period.controller';
 import { TransactionRecordController } from './controller/transaction-record.controller';
 import { ObjectivePaymentController } from './controller/objective-payment.controller';
+import { StatementImportController } from './controller/statement-import.controller';
+import { TransferController } from './controller/transfer.controller';
+import { CashArqueoController } from './controller/cash-arqueo.controller';
 import { FinancialObjectiveService } from './service/financial-objective.service';
 import { FinancialPeriodService } from './service/financial-period.service';
 import { TransactionRecordService } from './service/transaction-record.service';
 import { ObjectivePaymentService } from './service/objective-payment.service';
+import { StatementImportService } from './service/statement-import.service';
+import { TransferService } from './service/transfer.service';
+import { CashArqueoService } from './service/cash-arqueo.service';
 import { FixedReminderScheduler } from './service/fixed-reminder.scheduler';
 import { FinancialObjectiveRepository } from './repositories/financial-objective.repository';
 import { FinancialPeriodRepository } from './repositories/financial-period.repository';
 import { TransactionRecordRepository } from './repositories/transaction-record.repository';
 import { ObjectivePaymentRepository } from './repositories/objective-payment.repository';
+import { StatementImportRepository } from './repositories/statement-import.repository';
+import { CashArqueoRepository } from './repositories/cash-arqueo.repository';
 
 @Module({
   imports: [
@@ -34,6 +48,10 @@ import { ObjectivePaymentRepository } from './repositories/objective-payment.rep
       TransactionRecord,
       ObjectivePayment,
       Notification,
+      CashArqueo,
+      StatementImport,
+      StatementImportFile,
+      TransactionCategoryRule,
       BankAccount,
       FinancialAsset,
       FinancialLiability,
@@ -42,23 +60,33 @@ import { ObjectivePaymentRepository } from './repositories/objective-payment.rep
     forwardRef(() => IdentityModule),
     AuditModule,
     NotificationModule,
+    CatalogModule,
+    SupportModule,
   ],
   controllers: [
     FinancialObjectiveController,
     FinancialPeriodController,
     TransactionRecordController,
     ObjectivePaymentController,
+    StatementImportController,
+    TransferController,
+    CashArqueoController,
   ],
   providers: [
     FinancialObjectiveService,
     FinancialPeriodService,
     TransactionRecordService,
     ObjectivePaymentService,
+    StatementImportService,
+    TransferService,
+    CashArqueoService,
     FixedReminderScheduler,
     FinancialObjectiveRepository,
     FinancialPeriodRepository,
     TransactionRecordRepository,
     ObjectivePaymentRepository,
+    StatementImportRepository,
+    CashArqueoRepository,
   ],
   exports: [
     FinancialObjectiveService,

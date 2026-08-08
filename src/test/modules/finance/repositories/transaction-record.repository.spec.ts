@@ -247,6 +247,26 @@ describe('TransactionRecordRepository', () => {
       expect(accountSave![0].encrypted_balance).toBe('950');
     });
 
+    it('update: vincular una meta por actualización suma al saldo aunque merge mute `old`', async () => {
+      const old = buildRecord({ type: 'expense', objective_id: null });
+      const linked = buildRecord({ type: 'investment', objective_id: 3 });
+      mockTypeOrmRepo.findOne.mockResolvedValue(old);
+      // Simula Repository.merge(): muta `old` en su lugar en lugar de
+      // devolver un objeto nuevo; así el snapshot previo es imprescindible.
+      mockTypeOrmRepo.merge.mockImplementation((target: any) => {
+        Object.assign(target, linked);
+        return target;
+      });
+
+      await repo.update(1, 10, { type: 'investment', objective_id: 3 });
+
+      const objectiveSave = mockTypeOrmRepo.save.mock.calls.find(
+        (call) => call[0]?.current_balance !== undefined && call[0]?.id === 3,
+      );
+      expect(objectiveSave).toBeDefined();
+      expect(objectiveSave![0].current_balance).toBe(1100);
+    });
+
     it('softDelete: eliminar transacción vinculada a activo revierte el valor', async () => {
       const old = buildRecord({ amount: 100, type: 'investment', asset_id: 2 });
       mockTypeOrmRepo.findOne.mockResolvedValue(old);

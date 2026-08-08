@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
@@ -8,7 +9,7 @@ import {
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { TransactionTypeEnum } from '@shared/enums';
+import { ReviewStatusEnum, TransactionTypeEnum } from '@shared/enums';
 
 export class TransactionRecordQueryDto {
   @ApiPropertyOptional({ example: 1 })
@@ -17,6 +18,20 @@ export class TransactionRecordQueryDto {
   @IsInt()
   @IsPositive()
   category_id?: number;
+
+  @ApiPropertyOptional({ enum: ReviewStatusEnum })
+  @IsOptional()
+  @IsEnum(ReviewStatusEnum)
+  category_status?: ReviewStatusEnum;
+
+  @ApiPropertyOptional({
+    description: 'Solo transacciones pendientes por categorizar (por editar).',
+    example: true,
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  uncategorized?: boolean;
 
   @ApiPropertyOptional({ example: 2 })
   @IsOptional()
