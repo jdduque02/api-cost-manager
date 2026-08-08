@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { I18nService } from 'nestjs-i18n';
-import { FrequencyEnum, TransactionTypeEnum } from '@shared/enums';
+import { FixedTypeEnum, FrequencyEnum, TransactionTypeEnum } from '@shared/enums';
 import { TransactionRecordRepository } from '@finance/repositories/transaction-record.repository';
 import { TransactionRecord } from '@finance/entities/transaction-record.entity';
 import { NotificationService } from '@notification/service/notification.service';
@@ -62,15 +62,70 @@ export function nextBiweeklyOccurrence(
   return new Date(current.getTime() + (14 - offset) * DAY_MS);
 }
 
+export function nextWeeklyOccurrence(
+  createdDate: Date,
+  today: Date,
+): Date {
+  const current = startOfDay(today);
+  const anchor = startOfDay(createdDate);
+  const elapsed = Math.floor((current.getTime() - anchor.getTime()) / DAY_MS);
+  const offset = ((elapsed % 7) + 7) % 7;
+  if (offset === 0) return current;
+  return new Date(current.getTime() + (7 - offset) * DAY_MS);
+}
+
+function addMonthsClamped(date: Date, months: number, day: number): Date {
+  const total = date.getFullYear() * 12 + date.getMonth() + months;
+  const y = Math.floor(total / 12);
+  const m = total % 12;
+  return new Date(y, m, clampDay(y, m, day));
+}
+
+export function nextQuarterlyOccurrence(
+  dueDay: number,
+  createdDate: Date,
+  today: Date,
+): Date {
+  const current = startOfDay(today);
+  let candidate = addMonthsClamped(startOfDay(createdDate), 0, dueDay);
+  while (candidate.getTime() < current.getTime()) {
+    candidate = addMonthsClamped(candidate, 3, dueDay);
+  }
+  return candidate;
+}
+
+export function nextYearlyOccurrence(
+  dueDay: number,
+  createdDate: Date,
+  today: Date,
+): Date {
+  const current = startOfDay(today);
+  let candidate = addMonthsClamped(startOfDay(createdDate), 0, dueDay);
+  while (candidate.getTime() < current.getTime()) {
+    candidate = addMonthsClamped(candidate, 12, dueDay);
+  }
+  return candidate;
+}
+
 export function nextOccurrence(
   tx: Pick<TransactionRecord, 'frequency' | 'due_day' | 'created_at'>,
   today: Date,
 ): Date | null {
+  if (tx.frequency === FrequencyEnum.DAILY) return startOfDay(today);
   if (tx.due_day == null) return null;
-  if (tx.frequency === FrequencyEnum.BIWEEKLY) {
-    return nextBiweeklyOccurrence(tx.due_day, tx.created_at, today);
+  switch (tx.frequency) {
+    case FrequencyEnum.WEEKLY:
+      return nextWeeklyOccurrence(tx.created_at, today);
+    case FrequencyEnum.BIWEEKLY:
+      return nextBiweeklyOccurrence(tx.due_day, tx.created_at, today);
+    case FrequencyEnum.QUARTERLY:
+      return nextQuarterlyOccurrence(tx.due_day, tx.created_at, today);
+    case FrequencyEnum.YEARLY:
+      return nextYearlyOccurrence(tx.due_day, tx.created_at, today);
+    case FrequencyEnum.MONTHLY:
+    default:
+      return nextMonthlyOccurrence(tx.due_day, today);
   }
-  return nextMonthlyOccurrence(tx.due_day, today);
 }
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
@@ -150,13 +205,16 @@ export class FixedReminderScheduler {
   ): { title: string; description: string } {
     const isInvestment = tx.type === TransactionTypeEnum.INVESTMENT;
     const isIncome = tx.type === TransactionTypeEnum.INCOME;
+    const isSubscription = tx.fixed_type === FixedTypeEnum.DEDUCTION;
 
     const title = this.i18n.t(
-      isInvestment
-        ? 'notification.UPCOMING_INVESTMENT'
-        : isIncome
-          ? 'notification.UPCOMING_INCOME'
-          : 'notification.UPCOMING_DEDUCTION',
+      isSubscription
+        ? 'notification.UPCOMING_SUBSCRIPTION'
+        : isInvestment
+          ? 'notification.UPCOMING_INVESTMENT'
+          : isIncome
+            ? 'notification.UPCOMING_INCOME'
+            : 'notification.UPCOMING_DEDUCTION',
     );
 
     const concept =
