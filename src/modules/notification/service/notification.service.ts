@@ -106,4 +106,11 @@ export class NotificationService {
   confirmMarkAllRead(userId: number): void {
     this.gateway.confirmMarkAllRead(userId);
   }
+
+  sendStatementImportProgress(
+    userId: number,
+    payload: Record<string, unknown>,
+  ): void {
+    this.gateway.sendStatementImportProgress(userId, payload);
+  }
 }

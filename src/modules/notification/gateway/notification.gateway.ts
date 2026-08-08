@@ -199,4 +199,18 @@ export class NotificationGateway
     const room = NOTIFICATION_ROOMS.user(userId);
     this.server.to(room).emit(NOTIFICATION_EVENTS.MARK_ALL_READ);
   }
+
+  /**
+   * Emite el progreso de una carga de extractos bancarios a la sala del usuario.
+   * Invocar desde StatementImportService.
+   */
+  sendStatementImportProgress(
+    userId: number,
+    payload: Record<string, unknown>,
+  ): void {
+    const room = NOTIFICATION_ROOMS.user(userId);
+    this.server
+      .to(room)
+      .emit(NOTIFICATION_EVENTS.STATEMENT_IMPORT_PROGRESS, payload);
+  }
 }
