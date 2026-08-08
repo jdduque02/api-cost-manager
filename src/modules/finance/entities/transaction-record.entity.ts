@@ -11,6 +11,7 @@ import {
   FixedTypeEnum,
   FrequencyEnum,
   PaymentMethodEnum,
+  ReviewStatusEnum,
   TransactionTypeEnum,
 } from '@shared/enums';
 
@@ -28,6 +29,12 @@ import {
 @Index('idx_transaction_account', ['account_id'])
 @Index('idx_transaction_asset', ['asset_id'])
 @Index('idx_transaction_liability', ['liability_id'])
+@Index('idx_transaction_category_status', ['user_id', 'category_status'])
+@Index('idx_transaction_description', ['user_id', 'description'])
+@Index('idx_transaction_transfer_group', ['transfer_group_id'])
+@Index('idx_transaction_source', ['user_id', 'source'])
+@Index('idx_transaction_origin_account', ['origin_account_id'])
+@Index('idx_transaction_destination_account', ['destination_account_id'])
 export class TransactionRecord {
   @PrimaryGeneratedColumn('identity', { type: 'bigint' })
   id!: number;
@@ -36,11 +43,25 @@ export class TransactionRecord {
   @Index('idx_transaction_user')
   user_id!: number;
 
-  @Column({ type: 'bigint' })
-  category_id!: number;
+  @Column({ type: 'bigint', nullable: true })
+  category_id!: number | null;
+
+  @Column({
+    type: 'enum',
+    enum: ReviewStatusEnum,
+    enumName: 'review_status_enum',
+    default: ReviewStatusEnum.CATEGORIZED,
+  })
+  category_status!: ReviewStatusEnum;
+
+  @Column({ type: 'smallint', nullable: true })
+  installments!: number | null;
+
+  @Column({ type: 'numeric', precision: 15, scale: 2, nullable: true })
+  installment_value!: number | null;
 
   @Column({ type: 'bigint', nullable: true })
-  subcategory_id!: number;
+  subcategory_id!: number | null;
 
   @Column({
     type: 'enum',
@@ -126,6 +147,18 @@ export class TransactionRecord {
 
   @Column({ type: 'bigint', nullable: true })
   liability_id!: number | null;
+
+  @Column({ type: 'bigint', nullable: true })
+  origin_account_id!: number | null;
+
+  @Column({ type: 'bigint', nullable: true })
+  destination_account_id!: number | null;
+
+  @Column({ type: 'varchar', length: 36, nullable: true })
+  transfer_group_id!: string | null;
+
+  @Column({ type: 'varchar', length: 30, nullable: true, default: 'manual' })
+  source!: string | null;
 
   @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;

@@ -1,17 +1,28 @@
-import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Inject,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { I18nService } from 'nestjs-i18n';
 import {
   DataSource,
   EntityManager,
+  In,
   IsNull,
   Repository,
   SelectQueryBuilder,
 } from 'typeorm';
+import { randomUUID } from 'crypto';
 import { TransactionRecord } from '@finance/entities/transaction-record.entity';
+import { TransactionCategoryRule } from '@finance/entities/transaction-category-rule.entity';
 import { FinancialObjective } from '@finance/entities/financial-objective.entity';
 import { CreateTransactionRecordDto } from '@finance/dto/transaction-record/create-transaction-record.dto';
 import { UpdateTransactionRecordDto } from '@finance/dto/transaction-record/update-transaction-record.dto';
+import { CreateTransferDto } from '@finance/dto/transaction-record/create-transfer.dto';
+import { UpdateTransferDto } from '@finance/dto/transaction-record/update-transfer.dto';
 import { TransactionRecordQueryDto } from '@finance/dto/transaction-record/transaction-record-query.dto';
 import { TransactionSummaryQueryDto } from '@finance/dto/transaction-record/transaction-summary-query.dto';
 import { TransactionSummaryResponseDto } from '@finance/dto/transaction-record/transaction-summary-response.dto';
@@ -19,7 +30,12 @@ import { BankAccount } from '@banking/entities/bank-account.entity';
 import { FinancialAsset } from '@banking/entities/financial-asset.entity';
 import { FinancialLiability } from '@banking/entities/financial-liability.entity';
 import { EncryptionService } from '@shared/services/encryption.service';
-import { TransactionTypeEnum } from '@shared/enums';
+import { applyCompletion } from '@shared/helpers/financial-objective.helper';
+import {
+  FixedTypeEnum,
+  ReviewStatusEnum,
+  TransactionTypeEnum,
+} from '@shared/enums';
 
 interface SummaryRawRow {
   type: TransactionTypeEnum;
@@ -33,6 +49,12 @@ interface CategoryRawRow extends SummaryRawRow {
 
 interface SeriesRawRow extends SummaryRawRow {
   bucket: string | Date;
+}
+
+interface FingerprintRawRow {
+  transaction_date: string | Date;
+  amount: string;
+  description: string;
 }
 
 type LinkKind = 'objective' | 'account' | 'asset' | 'liability';
@@ -63,6 +85,18 @@ function contribution(
   }
 }
 
+/**
+ * Normaliza la descripción de una transacción para matchear reglas de
+ * auto-categorización (minúsculas y espacios colapsados). Consistente con
+ * TransactionRecordRepository.fingerprint.
+ */
+export function normalizeDescription(description: string | null): string {
+  return String(description ?? '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 @Injectable()
 export class TransactionRecordRepository {
   private readonly logger = new Logger(TransactionRecordRepository.name);
@@ -70,6 +104,8 @@ export class TransactionRecordRepository {
   constructor(
     @InjectRepository(TransactionRecord)
     private readonly repo: Repository<TransactionRecord>,
+    @InjectRepository(TransactionCategoryRule)
+    private readonly ruleRepo: Repository<TransactionCategoryRule>,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly encryptionService: EncryptionService,
     @Inject(I18nService) private readonly i18n: I18nService,
@@ -81,12 +117,146 @@ export class TransactionRecordRepository {
   ): Promise<TransactionRecord> {
     return this.dataSource.transaction(async (manager) => {
       const recordRepo = manager.getRepository(TransactionRecord);
+      const ruleRepo = manager.getRepository(TransactionCategoryRule);
       const record = recordRepo.create({ ...dto, user_id: userId });
+
+      // Auto-categorización: si el usuario no indicó categoría, se busca una
+      // regla aprendida por descripción; si no hay, queda pendiente por editar.
+      await this.applyAutoCategory(ruleRepo, record, dto.category_id);
+      if (dto.category_id != null) {
+        await this.learnRule(
+          ruleRepo,
+          userId,
+          record.description,
+          dto.category_id,
+          dto.subcategory_id,
+        );
+      }
+
       const saved = await recordRepo.save(record);
       await this.applyLinkAdjustments(manager, null, saved);
       this.logger.log(`Transacción creada para usuario ID: ${userId}`);
       return saved;
     });
+  }
+
+  /**
+   * Creación masiva en una sola transacción (importación de extractos).
+   * Ajusta los saldos vinculados de forma agregada (meta/patrimonio).
+   * Las transacciones sin categoría se auto-categorizan por descripción;
+   * las que no matchean quedan pendientes por editar (NO se aprenden reglas
+   * en importaciones para no contaminar el aprendizaje con categorías por
+   * defecto).
+   */
+  async createMany(
+    userId: number,
+    dtos: CreateTransactionRecordDto[],
+    options?: { assignCategories?: boolean },
+  ): Promise<TransactionRecord[]> {
+    if (dtos.length === 0) return [];
+    const assignCategories = options?.assignCategories !== false;
+    return this.dataSource.transaction(async (manager) => {
+      const recordRepo = manager.getRepository(TransactionRecord);
+      const ruleRepo = manager.getRepository(TransactionCategoryRule);
+      const records = dtos.map((dto) =>
+        recordRepo.create({ ...dto, user_id: userId }),
+      );
+
+      if (assignCategories) {
+        const missing = records
+          .filter((r) => r.category_id == null)
+          .map((r) => normalizeDescription(r.description));
+        const rules = await this.findRulesByDescriptions(
+          ruleRepo,
+          userId,
+          missing,
+        );
+        for (const record of records) {
+          await this.applyAutoCategory(
+            ruleRepo,
+            record,
+            record.category_id,
+            rules,
+          );
+        }
+      } else {
+        for (const record of records) {
+          if (record.category_id == null) {
+            record.category_status = ReviewStatusEnum.PENDING;
+          } else {
+            record.category_status = ReviewStatusEnum.CATEGORIZED;
+          }
+        }
+      }
+
+      const saved = await recordRepo.save(records);
+      const net = new Map<string, number>();
+      for (const record of saved) {
+        this.collectContributions(record, 1, net);
+      }
+      for (const [key, delta] of net) {
+        if (delta === 0) continue;
+        const sep = key.indexOf(':');
+        const kind = key.slice(0, sep) as LinkKind;
+        const id = Number(key.slice(sep + 1));
+        await this.applyToEntity(manager, kind, id, delta);
+      }
+      this.logger.log(
+        `${saved.length} transacciones creadas en lote para usuario ID: ${userId}`,
+      );
+      return saved;
+    });
+  }
+
+  /**
+   * Huella estable para detectar duplicados: fecha + monto + descripción
+   * normalizada. Usada por la importación masiva para omitir movimientos ya
+   * registrados (misma fecha, monto y descripción).
+   */
+  static fingerprint(
+    transactionDate: string,
+    amount: number,
+    description: string,
+  ): string {
+    const desc = String(description ?? '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+    return `${transactionDate}|${Number(amount)}|${desc}`;
+  }
+
+  /**
+   * Devuelve las huellas de transacciones existentes del usuario para un
+   * conjunto de fechas. Incluye created_at para habilitar partition pruning.
+   */
+  async findExistingFingerprints(
+    userId: number,
+    dates: string[],
+    since: Date,
+  ): Promise<Set<string>> {
+    const uniqueDates = [...new Set(dates)];
+    if (uniqueDates.length === 0) return new Set();
+    const rows = await this.repo
+      .createQueryBuilder('tr')
+      .select('tr.transaction_date', 'transaction_date')
+      .addSelect('tr.amount', 'amount')
+      .addSelect('tr.description', 'description')
+      .where('tr.user_id = :userId', { userId })
+      .andWhere('tr.deleted_at IS NULL')
+      .andWhere('tr.created_at >= :since', { since })
+      .andWhere('tr.transaction_date IN (:...dates)', { dates: uniqueDates })
+      .getRawMany<FingerprintRawRow>();
+    const set = new Set<string>();
+    for (const row of rows) {
+      set.add(
+        TransactionRecordRepository.fingerprint(
+          String(row.transaction_date),
+          Number(row.amount),
+          String(row.description ?? ''),
+        ),
+      );
+    }
+    return set;
   }
 
   async findAll(
@@ -95,6 +265,8 @@ export class TransactionRecordRepository {
   ): Promise<{ data: TransactionRecord[]; total: number }> {
     const {
       category_id,
+      category_status,
+      uncategorized,
       subcategory_id,
       type,
       date_from,
@@ -123,6 +295,12 @@ export class TransactionRecordRepository {
     if (date_to) qb.andWhere('tr.transaction_date <= :date_to', { date_to });
     if (category_id)
       qb.andWhere('tr.category_id = :category_id', { category_id });
+    if (category_status)
+      qb.andWhere('tr.category_status = :category_status', { category_status });
+    if (uncategorized === true)
+      qb.andWhere('tr.category_status = :pendingStatus', {
+        pendingStatus: ReviewStatusEnum.PENDING,
+      });
     if (subcategory_id)
       qb.andWhere('tr.subcategory_id = :subcategory_id', { subcategory_id });
     if (type) qb.andWhere('tr.type = :type', { type });
@@ -162,6 +340,27 @@ export class TransactionRecordRepository {
       .getMany();
   }
 
+  /**
+   * Suscripciones (deducciones fijas) del usuario para calcular el próximo
+   * pago. Incluye created_at para partition pruning.
+   */
+  async findUpcomingSubscriptions(
+    userId: number,
+    fromDate: Date,
+  ): Promise<TransactionRecord[]> {
+    return this.repo
+      .createQueryBuilder('tr')
+      .where('tr.user_id = :userId', { userId })
+      .andWhere('tr.deleted_at IS NULL')
+      .andWhere('tr.is_fixed = TRUE')
+      .andWhere('tr.fixed_type = :fixedType', {
+        fixedType: FixedTypeEnum.DEDUCTION,
+      })
+      .andWhere('tr.due_day IS NOT NULL')
+      .andWhere('tr.created_at >= :from', { from: fromDate })
+      .getMany();
+  }
+
   async update(
     id: number,
     userId: number,
@@ -170,9 +369,58 @@ export class TransactionRecordRepository {
     const old = await this.findById(id, userId);
     return this.dataSource.transaction(async (manager) => {
       const recordRepo = manager.getRepository(TransactionRecord);
-      const merged = recordRepo.merge(old, dto);
+      const ruleRepo = manager.getRepository(TransactionCategoryRule);
+      const { apply_to_similar, ...fields } = dto;
+
+      // merge() muta `old` en su lugar; por eso tomamos un snapshot del
+      // estado anterior ANTES de mezclar, para que applyLinkAdjustments
+      // pueda revertir los vínculos previos y aplicar los nuevos.
+      const previous = { ...old };
+      const merged = recordRepo.merge(old, fields);
+
+      // Si el usuario asigna categoría manualmente:
+      //  1. Se aprende la regla (descripción normalizada -> categoría).
+      //  2. Si apply_to_similar, se propaga a transacciones con la misma
+      //     descripción (actualización en cadena).
+      const newCategoryId = fields.category_id ?? previous.category_id;
+      if (newCategoryId != null && merged.description) {
+        const normalized = normalizeDescription(merged.description);
+        if (normalized) {
+          await this.upsertRule(
+            ruleRepo,
+            userId,
+            normalized,
+            newCategoryId,
+            fields.subcategory_id ?? previous.subcategory_id ?? null,
+          );
+          if (apply_to_similar === true) {
+            await recordRepo
+              .createQueryBuilder()
+              .update(TransactionRecord)
+              .set({
+                category_id: newCategoryId,
+                subcategory_id:
+                  fields.subcategory_id ?? previous.subcategory_id ?? null,
+                category_status: ReviewStatusEnum.CATEGORIZED,
+              })
+              .where('user_id = :userId', { userId })
+              .andWhere('deleted_at IS NULL')
+              .andWhere('lower(description) = :normalized', { normalized })
+              .andWhere('id != :id', { id })
+              .execute();
+            this.logger.log(
+              `Actualización en cadena para descripción "${normalized}" del usuario ID: ${userId}`,
+            );
+          }
+        }
+      }
+
+      // Si no hay categoría, se intenta auto-categorizar; si no matchea
+      // ninguna regla queda pendiente por editar.
+      await this.applyAutoCategory(ruleRepo, merged, newCategoryId);
+
       const saved = await recordRepo.save(merged);
-      await this.applyLinkAdjustments(manager, old, saved);
+      await this.applyLinkAdjustments(manager, previous, saved);
       this.logger.log(
         `Transacción ID ${id} actualizada para usuario ID: ${userId}`,
       );
@@ -188,6 +436,356 @@ export class TransactionRecordRepository {
     });
     this.logger.log(
       `Transacción ID ${id} eliminada (soft) para usuario ID: ${userId}`,
+    );
+  }
+
+  /**
+   * Eliminación masiva (soft delete) dentro de una sola transacción.
+   * Ajusta los saldos vinculados de forma agregada. Devuelve cuántas
+   * transacciones se eliminaron realmente.
+   */
+  async softDeleteMany(ids: number[], userId: number): Promise<number> {
+    if (ids.length === 0) return 0;
+    return this.dataSource.transaction(async (manager) => {
+      const recordRepo = manager.getRepository(TransactionRecord);
+      const records = await recordRepo.find({
+        where: { id: In(ids), user_id: userId, deleted_at: IsNull() },
+      });
+      if (records.length === 0) {
+        throw new NotFoundException(
+          this.i18n.t('finance.TRANSACTION_NOT_FOUND', {
+            args: { id: ids[0] },
+          }),
+        );
+      }
+
+      const net = new Map<string, number>();
+      for (const record of records) {
+        this.collectContributions(record, -1, net);
+      }
+      await recordRepo.softRemove(records);
+      for (const [key, delta] of net) {
+        if (delta === 0) continue;
+        const sep = key.indexOf(':');
+        const kind = key.slice(0, sep) as LinkKind;
+        const id = Number(key.slice(sep + 1));
+        await this.applyToEntity(manager, kind, id, delta);
+      }
+      this.logger.log(
+        `${records.length} transacciones eliminadas (soft, masivo) para usuario ID: ${userId}`,
+      );
+      return records.length;
+    });
+  }
+
+  /**
+   * Movimiento bancario (transferencia): crea un PAR de transacciones
+   * ligadas por `transfer_group_id` dentro de una única transacción atómica.
+   *   - registro origen:  origin_account_id = cuenta origen  (debita)
+   *   - registro destino: destination_account_id = cuenta destino (acredita)
+   * Ajusta el saldo cifrado de ambas cuentas (origen -monto, destino +monto).
+   */
+  async createTransfer(
+    userId: number,
+    dto: CreateTransferDto,
+  ): Promise<TransactionRecord[]> {
+    if (dto.source_account_id === dto.destination_account_id) {
+      throw new BadRequestException(
+        this.i18n.t('finance.TRANSFER_SAME_ACCOUNT'),
+      );
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const recordRepo = manager.getRepository(TransactionRecord);
+      const accountRepo = manager.getRepository(BankAccount);
+
+      const source = await accountRepo.findOneBy({
+        id: dto.source_account_id,
+        user_id: userId,
+        deleted_at: IsNull(),
+      });
+      const destination = await accountRepo.findOneBy({
+        id: dto.destination_account_id,
+        user_id: userId,
+        deleted_at: IsNull(),
+      });
+      if (!source || !destination) {
+        throw new NotFoundException(
+          this.i18n.t('finance.TRANSFER_ACCOUNT_NOT_FOUND'),
+        );
+      }
+
+      const groupId = randomUUID();
+      const transactionDate =
+        dto.transaction_date ?? new Date().toISOString().slice(0, 10);
+      const base: Partial<TransactionRecord> = {
+        user_id: userId,
+        type: TransactionTypeEnum.TRANSFER,
+        amount: dto.amount,
+        transfer_group_id: groupId,
+        transaction_date: transactionDate as unknown as Date,
+        description: dto.description ?? 'Movimiento entre cuentas',
+        reference_code: dto.reference_code,
+        category_status: ReviewStatusEnum.CATEGORIZED,
+        source_account: source.account_type,
+        source_bank: source.bank_name,
+        destination_account: destination.account_type,
+        destination_bank: destination.bank_name,
+      };
+
+      const origin = recordRepo.create({
+        ...base,
+        origin_account_id: dto.source_account_id,
+      });
+      const destinationRecord = recordRepo.create({
+        ...base,
+        destination_account_id: dto.destination_account_id,
+      });
+
+      const savedOrigin = await recordRepo.save(origin);
+      const savedDestination = await recordRepo.save(destinationRecord);
+      await this.applyTransferAdjustment(manager, savedOrigin, 1);
+      await this.applyTransferAdjustment(manager, savedDestination, 1);
+
+      this.logger.log(
+        `Transferencia ${groupId} creada para usuario ID: ${userId}`,
+      );
+      return [savedOrigin, savedDestination];
+    });
+  }
+
+  /**
+   * Devuelve el par de transacciones ligadas de una transferencia. El id puede
+   * pertenecer a cualquiera de los dos movimientos (origen o destino).
+   */
+  async findTransferById(
+    id: number,
+    userId: number,
+  ): Promise<TransactionRecord[]> {
+    const record = await this.repo.findOne({
+      where: {
+        id,
+        user_id: userId,
+        deleted_at: IsNull(),
+        type: TransactionTypeEnum.TRANSFER,
+      },
+    });
+    if (!record)
+      throw new NotFoundException(
+        this.i18n.t('finance.TRANSFER_NOT_FOUND', { args: { id } }),
+      );
+    if (!record.transfer_group_id) return [record];
+    const siblings = await this.repo.find({
+      where: {
+        transfer_group_id: record.transfer_group_id,
+        user_id: userId,
+        deleted_at: IsNull(),
+      },
+      order: { id: 'ASC' },
+    });
+    return siblings;
+  }
+
+  /** Lista paginada de transferencias (cualquier miembro del par). */
+  async findTransfers(
+    userId: number,
+    page = 1,
+    limit = 20,
+  ): Promise<{ data: TransactionRecord[]; total: number }> {
+    const qb = this.repo
+      .createQueryBuilder('tr')
+      .where('tr.user_id = :userId', { userId })
+      .andWhere('tr.deleted_at IS NULL')
+      .andWhere('tr.type = :type', { type: TransactionTypeEnum.TRANSFER })
+      .andWhere('tr.transfer_group_id IS NOT NULL')
+      .orderBy('tr.transaction_date', 'DESC')
+      .addOrderBy('tr.id', 'DESC')
+      .take(Math.min(limit, 500))
+      .skip((page - 1) * limit);
+    const [data, total] = await qb.getManyAndCount();
+    return { data, total };
+  }
+
+  /** Actualiza monto/fecha/descripción de ambos movimientos de la transferencia. */
+  async updateTransfer(
+    id: number,
+    userId: number,
+    dto: UpdateTransferDto,
+  ): Promise<TransactionRecord[]> {
+    const records = await this.findTransferById(id, userId);
+    return this.dataSource.transaction(async (manager) => {
+      const recordRepo = manager.getRepository(TransactionRecord);
+      for (const record of records) {
+        await this.applyTransferAdjustment(manager, record, -1);
+      }
+      const fields: Partial<TransactionRecord> = {};
+      if (dto.amount !== undefined) fields.amount = dto.amount;
+      if (dto.transaction_date !== undefined)
+        fields.transaction_date = dto.transaction_date as unknown as Date;
+      if (dto.description !== undefined) fields.description = dto.description;
+      if (dto.reference_code !== undefined)
+        fields.reference_code = dto.reference_code;
+      for (const record of records) {
+        const merged = recordRepo.merge(record, fields);
+        const saved = await recordRepo.save(merged);
+        await this.applyTransferAdjustment(manager, saved, 1);
+      }
+      return records;
+    });
+  }
+
+  /** Borrado lógico de la transferencia completa (revierte saldos de ambos). */
+  async softDeleteTransfer(id: number, userId: number): Promise<void> {
+    const records = await this.findTransferById(id, userId);
+    await this.dataSource.transaction(async (manager) => {
+      const recordRepo = manager.getRepository(TransactionRecord);
+      for (const record of records) {
+        await this.applyTransferAdjustment(manager, record, -1);
+        await recordRepo.softRemove(record);
+      }
+    });
+    this.logger.log(
+      `Transferencia ID ${id} eliminada (soft) para usuario ID: ${userId}`,
+    );
+  }
+
+  /**
+   * Aplica el efecto de una transferencia sobre el saldo de sus cuentas:
+   * origen debita (-monto), destino acredita (+monto). `sign = -1` revierte.
+   */
+  private async applyTransferAdjustment(
+    manager: EntityManager,
+    tx: TransactionRecord,
+    sign: 1 | -1,
+  ): Promise<void> {
+    const amount = Number(tx.amount ?? 0);
+    if (tx.origin_account_id != null) {
+      await this.applyToEntity(
+        manager,
+        'account',
+        tx.origin_account_id,
+        -amount * sign,
+      );
+    }
+    if (tx.destination_account_id != null) {
+      await this.applyToEntity(
+        manager,
+        'account',
+        tx.destination_account_id,
+        amount * sign,
+      );
+    }
+  }
+
+  /**
+   * Auto-categorización por descripción. Si `explicitCategoryId` está
+   * definido se usa y la transacción queda categorizada. Si no, se busca
+   * una regla aprendida; si no hay, queda pendiente por editar.
+   * Opcionalmente se puede pasar un mapa de reglas pre-cargado para
+   * evitar N+1 en lotes.
+   */
+  private async applyAutoCategory(
+    ruleRepo: Repository<TransactionCategoryRule>,
+    record: Partial<TransactionRecord> & { category_status?: ReviewStatusEnum },
+    explicitCategoryId?: number | null,
+    preloaded?: Map<
+      string,
+      { category_id: number; subcategory_id: number | null }
+    >,
+  ): Promise<void> {
+    if (explicitCategoryId != null) {
+      record.category_id = explicitCategoryId;
+      record.category_status = ReviewStatusEnum.CATEGORIZED;
+      return;
+    }
+
+    const normalized = normalizeDescription(record.description ?? null);
+    if (!normalized) {
+      record.category_id = null;
+      record.category_status = ReviewStatusEnum.PENDING;
+      return;
+    }
+
+    let rule:
+      | { category_id: number; subcategory_id: number | null }
+      | null
+      | undefined = preloaded?.get(normalized);
+    if (!rule) {
+      rule = await ruleRepo.findOne({
+        where: { user_id: record.user_id, normalized_description: normalized },
+        select: ['category_id', 'subcategory_id'],
+      });
+    }
+
+    if (rule) {
+      record.category_id = rule.category_id;
+      record.subcategory_id = rule.subcategory_id ?? null;
+      record.category_status = ReviewStatusEnum.CATEGORIZED;
+    } else {
+      record.category_id = null;
+      record.category_status = ReviewStatusEnum.PENDING;
+    }
+  }
+
+  /** Carga reglas de auto-categorización para un conjunto de descripciones. */
+  private async findRulesByDescriptions(
+    ruleRepo: Repository<TransactionCategoryRule>,
+    userId: number,
+    normalizedDescriptions: string[],
+  ): Promise<
+    Map<string, { category_id: number; subcategory_id: number | null }>
+  > {
+    const unique = [...new Set(normalizedDescriptions.filter((d) => d))];
+    if (unique.length === 0) return new Map();
+    const rules = await ruleRepo.find({
+      where: {
+        user_id: userId,
+        normalized_description: In(unique),
+      },
+      select: ['normalized_description', 'category_id', 'subcategory_id'],
+    });
+    return new Map(
+      rules.map((r) => [
+        r.normalized_description,
+        { category_id: r.category_id, subcategory_id: r.subcategory_id },
+      ]),
+    );
+  }
+
+  /** Aprende (upsert) una regla descripción normalizada -> categoría. */
+  private async upsertRule(
+    ruleRepo: Repository<TransactionCategoryRule>,
+    userId: number,
+    normalized: string,
+    categoryId: number,
+    subcategoryId: number | null,
+  ): Promise<void> {
+    await ruleRepo.upsert(
+      {
+        user_id: userId,
+        normalized_description: normalized,
+        category_id: categoryId,
+        subcategory_id: subcategoryId,
+      },
+      ['user_id', 'normalized_description'],
+    );
+  }
+
+  private async learnRule(
+    ruleRepo: Repository<TransactionCategoryRule>,
+    userId: number,
+    description: string | null | undefined,
+    categoryId: number,
+    subcategoryId?: number,
+  ): Promise<void> {
+    const normalized = normalizeDescription(description ?? null);
+    if (!normalized) return;
+    await this.upsertRule(
+      ruleRepo,
+      userId,
+      normalized,
+      categoryId,
+      subcategoryId ?? null,
     );
   }
 
@@ -264,6 +862,7 @@ export class TransactionRecordRepository {
         if (!objective) return;
         objective.current_balance =
           Number(objective.current_balance ?? 0) + delta;
+        applyCompletion(objective);
         await manager.getRepository(FinancialObjective).save(objective);
         return;
       }
@@ -354,6 +953,7 @@ export class TransactionRecordRepository {
 
     const totals = { income: 0, expenses: 0, investments: 0, count: 0 };
     for (const row of totalsRaw) {
+      if (row.type === TransactionTypeEnum.TRANSFER) continue;
       const amount = Number(row.amount ?? 0);
       const count = Number(row.count ?? 0);
       totals.count += count;
@@ -375,6 +975,7 @@ export class TransactionRecordRepository {
       }
     >();
     for (const row of categoryRaw) {
+      if (row.type === TransactionTypeEnum.TRANSFER) continue;
       const categoryId = Number(row.category_id);
       const amount = Number(row.amount ?? 0);
       const count = Number(row.count ?? 0);
@@ -409,6 +1010,7 @@ export class TransactionRecordRepository {
       }
     >();
     for (const row of seriesRaw) {
+      if (row.type === TransactionTypeEnum.TRANSFER) continue;
       // pg devuelve el tipo DATE (OID 1082) como objeto Date, no como string
       // "YYYY-MM-DD"; por eso no podemos depender de slice(0,10) sobre String().
       const rawBucket = row.bucket;

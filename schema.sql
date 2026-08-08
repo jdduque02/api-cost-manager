@@ -24,6 +24,8 @@ CREATE SCHEMA IF NOT EXISTS audit;
 CREATE SCHEMA IF NOT EXISTS catalog;
 CREATE SCHEMA IF NOT EXISTS intelligence;
 CREATE SCHEMA IF NOT EXISTS news;
+CREATE SCHEMA IF NOT EXISTS mail;
+CREATE SCHEMA IF NOT EXISTS support;
 
 -- ============================================================
 -- 2. TIPOS ENUM
@@ -33,7 +35,7 @@ CREATE SCHEMA IF NOT EXISTS news;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type_enum') THEN
-    CREATE TYPE transaction_type_enum AS ENUM ('income', 'expense', 'investment');
+    CREATE TYPE transaction_type_enum AS ENUM ('income', 'expense', 'investment', 'transfer');
   ELSE
     IF NOT EXISTS (
       SELECT 1 FROM pg_enum e
@@ -41,6 +43,13 @@ BEGIN
       WHERE t.typname = 'transaction_type_enum' AND e.enumlabel = 'investment'
     ) THEN
       ALTER TYPE transaction_type_enum ADD VALUE 'investment';
+    END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_enum e
+      JOIN pg_type t ON e.enumtypid = t.oid
+      WHERE t.typname = 'transaction_type_enum' AND e.enumlabel = 'transfer'
+    ) THEN
+      ALTER TYPE transaction_type_enum ADD VALUE 'transfer';
     END IF;
   END IF;
 END
@@ -110,6 +119,15 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'audit_action_enum') THEN
     CREATE TYPE audit_action_enum AS ENUM ('INSERT', 'UPDATE', 'DELETE');
+  END IF;
+END
+$$;
+
+-- review_status_enum
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'review_status_enum') THEN
+    CREATE TYPE review_status_enum AS ENUM ('categorized', 'pending');
   END IF;
 END
 $$;
@@ -192,7 +210,10 @@ ALTER TABLE identity.app_user
 CREATE TABLE IF NOT EXISTS finance.transaction_record (
   id                    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id               BIGINT                  NOT NULL,
-  category_id           BIGINT                  NOT NULL,
+  category_id           BIGINT,
+  category_status       review_status_enum       NOT NULL DEFAULT 'categorized',
+  installments          SMALLINT,
+  installment_value     NUMERIC(15,2),
   subcategory_id        BIGINT,
   type                  transaction_type_enum   NOT NULL,
   amount                NUMERIC(15,2)           NOT NULL,
@@ -209,6 +230,10 @@ CREATE TABLE IF NOT EXISTS finance.transaction_record (
   destination_account   VARCHAR(100),
   source_bank           VARCHAR(100),
   destination_bank      VARCHAR(100),
+  origin_account_id     BIGINT,
+  destination_account_id BIGINT,
+  transfer_group_id     VARCHAR(36),
+  source                VARCHAR(30)             NOT NULL DEFAULT 'manual',
   addressee             VARCHAR(200),
   transaction_date      DATE                    NOT NULL DEFAULT CURRENT_DATE,
   objective_id          BIGINT,
@@ -252,8 +277,70 @@ CREATE INDEX IF NOT EXISTS idx_transaction_objective    ON finance.transaction_r
 CREATE INDEX IF NOT EXISTS idx_transaction_account      ON finance.transaction_record (account_id);
 CREATE INDEX IF NOT EXISTS idx_transaction_asset        ON finance.transaction_record (asset_id);
 CREATE INDEX IF NOT EXISTS idx_transaction_liability    ON finance.transaction_record (liability_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_category_status ON finance.transaction_record (user_id, category_status);
+CREATE INDEX IF NOT EXISTS idx_transaction_description  ON finance.transaction_record (user_id, lower(description));
+CREATE INDEX IF NOT EXISTS idx_transaction_transfer_group ON finance.transaction_record (transfer_group_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_origin_account ON finance.transaction_record (origin_account_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_destination_account ON finance.transaction_record (destination_account_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_source ON finance.transaction_record (user_id, source);
 
 COMMENT ON TABLE finance.transaction_record IS 'Registro de transacciones particionado por trimestre. SIEMPRE incluir created_at en WHERE.';
+
+-- ── finance.transaction_category_rule ───────────────────────
+CREATE TABLE IF NOT EXISTS finance.transaction_category_rule (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  normalized_description TEXT NOT NULL,
+  category_id BIGINT NOT NULL,
+  subcategory_id BIGINT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP,
+  CONSTRAINT uq_transaction_category_rule
+    UNIQUE (user_id, normalized_description),
+  CONSTRAINT fk_transaction_category_rule_category
+    FOREIGN KEY (category_id) REFERENCES catalog.category (id)
+    ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_transaction_category_rule_user
+  ON finance.transaction_category_rule (user_id, normalized_description);
+
+COMMENT ON TABLE finance.transaction_category_rule
+  IS 'Reglas de auto-categorización: descripción normalizada de la transacción -> categoría asignada por el usuario.';
+
+-- ── identity.password_reset_otp ─────────────────────────────
+CREATE TABLE IF NOT EXISTS identity.password_reset_otp (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  code_hash TEXT NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  consumed_at TIMESTAMP,
+  attempts INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_password_reset_otp_user
+    FOREIGN KEY (user_id) REFERENCES identity.app_user (id)
+    ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_otp_user
+  ON identity.password_reset_otp (user_id, created_at DESC);
+
+COMMENT ON TABLE identity.password_reset_otp
+  IS 'Códigos OTP de recuperación de contraseña. Se almacena hash SHA-256, nunca el código en claro.';
+
+-- ── mail.email_template ─────────────────────────────────────
+CREATE TABLE IF NOT EXISTS mail.email_template (
+  key VARCHAR(60) PRIMARY KEY,
+  subject VARCHAR(255) NOT NULL,
+  html_body TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP,
+  CONSTRAINT chk_email_template_subject
+    CHECK (char_length(subject) BETWEEN 1 AND 255)
+);
+
+COMMENT ON TABLE mail.email_template
+  IS 'Plantillas de correo personalizables desde el editor react.email (Inspector). key identifica el tipo de email.';
 
 -- ── finance.objective_payment ───────────────────────────────
 CREATE TABLE IF NOT EXISTS finance.objective_payment (
@@ -263,11 +350,39 @@ CREATE TABLE IF NOT EXISTS finance.objective_payment (
   amount          NUMERIC(15,2)   NOT NULL,
   payment_date    DATE            NOT NULL,
   note            TEXT,
-  created_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at      TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_objective_payment_objective ON finance.objective_payment (objective_id);
 CREATE INDEX IF NOT EXISTS idx_objective_payment_user      ON finance.objective_payment (user_id);
+
+-- cash_arqueo_status_enum
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'cash_arqueo_status_enum') THEN
+    CREATE TYPE cash_arqueo_status_enum AS ENUM ('balanced', 'unbalanced');
+  END IF;
+END
+$$;
+
+-- ── finance.cash_arqueo (arqueo de caja: app vs extractos) ──
+CREATE TABLE IF NOT EXISTS finance.cash_arqueo (
+  id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id          BIGINT              NOT NULL,
+  arqueo_date      DATE                NOT NULL DEFAULT CURRENT_DATE,
+  expected_amount  NUMERIC(15,2)       NOT NULL DEFAULT 0,
+  counted_amount   NUMERIC(15,2)       NOT NULL DEFAULT 0,
+  difference       NUMERIC(15,2)       NOT NULL DEFAULT 0,
+  status           cash_arqueo_status_enum NOT NULL DEFAULT 'unbalanced',
+  observations     TEXT,
+  reconciliation   JSONB,
+  created_at       TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       TIMESTAMP,
+  deleted_at       TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_cash_arqueo_user ON finance.cash_arqueo (user_id, arqueo_date);
 
 -- ── finance.notification ────────────────────────────────────
 CREATE TABLE IF NOT EXISTS finance.notification (
@@ -318,6 +433,7 @@ CREATE TABLE IF NOT EXISTS finance.financial_objective (
   owner                   VARCHAR(100),
   bank                    VARCHAR(500),                       -- Encriptado (AES-256-GCM)
   current_profitability   NUMERIC(5,2),
+  account_id              BIGINT,
   frequency               frequency_enum,
   due_day                 SMALLINT,
   start_date              DATE,
@@ -332,10 +448,12 @@ CREATE TABLE IF NOT EXISTS finance.financial_objective (
 
 CREATE INDEX IF NOT EXISTS idx_financial_objective_user ON finance.financial_objective (user_id);
 CREATE INDEX IF NOT EXISTS idx_financial_objective_type ON finance.financial_objective (type);
+CREATE INDEX IF NOT EXISTS idx_financial_objective_account ON finance.financial_objective (account_id);
 
 COMMENT ON COLUMN finance.financial_objective.bank                  IS 'Banco cifrado (AES-256-GCM)';
 COMMENT ON COLUMN finance.financial_objective.current_profitability  IS 'Rentabilidad anual vigente (ej: 11.50 = 11.5%)';
 COMMENT ON COLUMN finance.financial_objective.quota_calculation     IS 'Resultado del ultimo calculo de cuota (reference, no creado)';
+COMMENT ON COLUMN finance.financial_objective.account_id            IS 'Cuenta bancaria vinculada a la meta (patrimonio).';
 
 -- ============================================================
 -- 5. SCHEMA: banking
@@ -349,6 +467,7 @@ CREATE TABLE IF NOT EXISTS banking.bank_account (
   account_type               VARCHAR(50)  NOT NULL,
   encrypted_account_number   BYTEA       NOT NULL,   -- pgp_sym_encrypt
   encrypted_balance          BYTEA       NOT NULL,   -- pgp_sym_encrypt
+  annual_interest_rate       NUMERIC(5,2),
   is_primary                 BOOLEAN     NOT NULL DEFAULT FALSE,
   created_at                 TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at                 TIMESTAMP,
@@ -361,6 +480,7 @@ CREATE INDEX IF NOT EXISTS idx_bank_account_primary ON banking.bank_account (is_
 COMMENT ON TABLE  banking.bank_account IS 'Cuentas bancarias. Datos sensibles cifrados con pgcrypto (pgp_sym_encrypt).';
 COMMENT ON COLUMN banking.bank_account.encrypted_account_number IS 'Numero de cuenta cifrado con pgp_sym_encrypt';
 COMMENT ON COLUMN banking.bank_account.encrypted_balance        IS 'Saldo cifrado con pgp_sym_encrypt';
+COMMENT ON COLUMN banking.bank_account.annual_interest_rate     IS 'Tasa de interes anual de la cuenta en porcentaje (ej: 4.50 = 4.5% anual).';
 
 -- ── banking.financial_asset ─────────────────────────────────
 CREATE TABLE IF NOT EXISTS banking.financial_asset (
@@ -580,6 +700,55 @@ CREATE INDEX IF NOT EXISTS idx_news_item_published_at ON news.news_item (publish
 COMMENT ON TABLE news.news_item IS 'Noticias y contenido informativo del sistema.';
 
 -- ============================================================
+-- 10. SCHEMA: support
+-- ============================================================
+-- ── support.banking_entity (entidades bancarias configuradas) ──
+CREATE TABLE IF NOT EXISTS support.banking_entity (
+  id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  code            VARCHAR(50)     NOT NULL,
+  name            VARCHAR(120)    NOT NULL,
+  is_active       BOOLEAN         NOT NULL DEFAULT TRUE,
+  detect_patterns TEXT[]          NOT NULL DEFAULT '{}',
+  created_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      TIMESTAMP,
+  deleted_at      TIMESTAMP,
+
+  CONSTRAINT uq_banking_entity_code UNIQUE (code)
+);
+
+COMMENT ON TABLE support.banking_entity
+  IS 'Entidades bancarias configuradas por soporte para la detección de extractos (Nu/Bancolombia/RappiCard y otras).';
+
+-- ── support.support_request ─────────────────────────────────
+-- support_request_status_enum
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'support_request_status_enum') THEN
+    CREATE TYPE support_request_status_enum AS ENUM ('open', 'in_progress', 'resolved', 'closed');
+  END IF;
+END
+$$;
+
+CREATE TABLE IF NOT EXISTS support.support_request (
+  id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id       BIGINT                            NOT NULL,
+  subject       VARCHAR(200)                      NOT NULL,
+  description   TEXT                              NOT NULL,
+  status        support_request_status_enum       NOT NULL DEFAULT 'open',
+  admin_notes   TEXT,
+  created_at    TIMESTAMP                         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    TIMESTAMP,
+  deleted_at    TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_support_request_user
+  ON support.support_request (user_id, created_at DESC);
+
+COMMENT ON TABLE support.support_request
+  IS 'Solicitudes de soporte del usuario; el estado lo administra el equipo de soporte.';
+
+
+-- ============================================================
 -- FK de transacciones → metas / patrimonio
 -- (se crean aquí porque banking.* y finance.financial_objective
 --  ya existen en este punto del script)
@@ -603,6 +772,26 @@ ALTER TABLE finance.transaction_record
 ALTER TABLE finance.transaction_record
   ADD CONSTRAINT fk_transaction_liability
   FOREIGN KEY (liability_id) REFERENCES banking.financial_liability (id)
+  ON DELETE SET NULL;
+
+ALTER TABLE finance.transaction_record
+  ADD CONSTRAINT fk_transaction_origin_account
+  FOREIGN KEY (origin_account_id) REFERENCES banking.bank_account (id)
+  ON DELETE SET NULL;
+
+ALTER TABLE finance.transaction_record
+  ADD CONSTRAINT fk_transaction_destination_account
+  FOREIGN KEY (destination_account_id) REFERENCES banking.bank_account (id)
+  ON DELETE SET NULL;
+
+ALTER TABLE finance.objective_payment
+  ADD CONSTRAINT fk_objective_payment_objective
+  FOREIGN KEY (objective_id) REFERENCES finance.financial_objective (id)
+  ON DELETE RESTRICT;
+
+ALTER TABLE finance.financial_objective
+  ADD CONSTRAINT fk_financial_objective_account
+  FOREIGN KEY (account_id) REFERENCES banking.bank_account (id)
   ON DELETE SET NULL;
 
 -- ============================================================

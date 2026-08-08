@@ -32,15 +32,21 @@ import { TransactionRecordService } from '@finance/service/transaction-record.se
 import { CreateTransactionRecordDto } from '@finance/dto/transaction-record/create-transaction-record.dto';
 import { UpdateTransactionRecordDto } from '@finance/dto/transaction-record/update-transaction-record.dto';
 import { TransactionRecordQueryDto } from '@finance/dto/transaction-record/transaction-record-query.dto';
+import { BulkDeleteTransactionsDto } from '@finance/dto/transaction-record/bulk-delete-transactions.dto';
 import { TransactionSummaryQueryDto } from '@finance/dto/transaction-record/transaction-summary-query.dto';
 import { TransactionRecordResponseDto } from '@finance/dto/transaction-record/transaction-record-response.dto';
 import { TransactionSummaryResponseDto } from '@finance/dto/transaction-record/transaction-summary-response.dto';
+import { UpcomingPaymentDto } from '@finance/dto/transaction-record/upcoming-payment.dto';
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 
 @ApiTags('finance')
 @UseGuards(AuthGuard, OwnershipGuard)
 @ApiIntrospectGuardResponse()
-@ApiExtraModels(TransactionRecordResponseDto, TransactionSummaryResponseDto)
+@ApiExtraModels(
+  TransactionRecordResponseDto,
+  TransactionSummaryResponseDto,
+  UpcomingPaymentDto,
+)
 @Controller('users/:userId/transactions')
 export class TransactionRecordController {
   constructor(
@@ -90,6 +96,12 @@ export class TransactionRecordController {
   @ApiQuery({ name: 'category_id', required: false })
   @ApiQuery({ name: 'subcategory_id', required: false })
   @ApiQuery({ name: 'type', required: false })
+  @ApiQuery({ name: 'category_status', required: false, enum: ['categorized', 'pending'] })
+  @ApiQuery({
+    name: 'uncategorized',
+    required: false,
+    description: 'Solo transacciones pendientes por categorizar (por editar).',
+  })
   @ApiQuery({
     name: 'objective_id',
     required: false,
@@ -173,6 +185,35 @@ export class TransactionRecordController {
     return this.transactionRecordService.getSummary(userId, query);
   }
 
+  @Get('upcoming-payments')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Próximos pagos de suscripciones (deducciones fijas) con fecha y días restantes',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description:
+      'Lista de suscripciones con su próximo pago calculado y ordenado por fecha.',
+    schema: {
+      properties: {
+        data: {
+          type: 'array',
+          items: { $ref: getSchemaPath(UpcomingPaymentDto) },
+        },
+      },
+    },
+  })
+  async upcomingPayments(
+    @Param('userId', ParseIntPipe) userId: number,
+    @CurrentUser() _currentUser: IntrospectResponse,
+  ) {
+    const data = await this.transactionRecordService.getUpcomingPayments(
+      userId,
+    );
+    return { data };
+  }
+
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Obtener transacción por ID' })
@@ -216,6 +257,34 @@ export class TransactionRecordController {
     @CurrentUser() _currentUser: IntrospectResponse,
   ) {
     return this.transactionRecordService.update(id, userId, dto);
+  }
+
+  @Delete()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Eliminación masiva de transacciones (soft delete)',
+    description:
+      'Elimina (soft) las transacciones indicadas y recalcula los saldos vinculados de forma agregada.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Cantidad de transacciones eliminadas.',
+    schema: { properties: { deleted: { type: 'number' } } },
+  })
+  @ApiBadRequestResponse({
+    description: 'Datos de entrada inválidos.',
+    type: ErrorResponseDto,
+  })
+  async removeMany(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() dto: BulkDeleteTransactionsDto,
+    @CurrentUser() _currentUser: IntrospectResponse,
+  ) {
+    const deleted = await this.transactionRecordService.removeMany(
+      dto.ids,
+      userId,
+    );
+    return { deleted };
   }
 
   @Delete(':id')
