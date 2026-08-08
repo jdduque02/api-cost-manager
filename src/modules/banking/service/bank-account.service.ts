@@ -37,7 +37,10 @@ export class BankAccountService {
       masked_account_number: maskedNumber,
       display_balance: rawBalance ?? '0',
       currency: entity.currency,
+      annual_interest_rate: entity.annual_interest_rate ?? null,
+      yield_frequency: entity.yield_frequency ?? 'monthly',
       is_primary: entity.is_primary,
+      exempt_4x1000: entity.exempt_4x1000,
       created_at: entity.created_at,
       updated_at: entity.updated_at ?? null,
     };
@@ -84,7 +87,14 @@ export class BankAccountService {
       account_type: dto.account_type,
       currency: dto.currency,
       is_primary: dto.is_primary,
+      exempt_4x1000: dto.exempt_4x1000,
     };
+    if (dto.annual_interest_rate !== undefined) {
+      partial.annual_interest_rate = dto.annual_interest_rate;
+    }
+    if (dto.yield_frequency !== undefined) {
+      partial.yield_frequency = dto.yield_frequency;
+    }
     if (dto.account_number) {
       partial.encrypted_account_number = this.encryptionService.encryptField(
         dto.account_number,
@@ -99,6 +109,45 @@ export class BankAccountService {
     }
     const entity = await this.bankAccountRepository.update(id, userId, partial);
     return this.toResponseDto(entity);
+  }
+
+  async getProjectedYield(
+    id: number,
+    userId: number,
+  ): Promise<{
+    current_balance: number;
+    annual_rate: number | null;
+    yield_frequency: string;
+    projected: Record<string, number>;
+  }> {
+    const entity = await this.bankAccountRepository.findById(id, userId);
+    const rawBalance = entity.encrypted_balance
+      ? Number(this.encryptionService.decryptField(entity.encrypted_balance, 'banking'))
+      : 0;
+    const rate = entity.annual_interest_rate ?? 0;
+    const freq = entity.yield_frequency ?? 'monthly';
+
+    const periodsPerYear =
+      freq === 'daily' ? 365 : freq === 'monthly' ? 12 : 1;
+
+    const projected: Record<string, number> = {};
+    for (const years of [1, 3, 5, 10]) {
+      const totalPeriods = periodsPerYear * years;
+      const periodicRate = rate / 100 / periodsPerYear;
+      if (periodicRate > 0) {
+        projected[`${years}y`] =
+          Math.round(rawBalance * Math.pow(1 + periodicRate, totalPeriods) * 100) / 100;
+      } else {
+        projected[`${years}y`] = rawBalance;
+      }
+    }
+
+    return {
+      current_balance: rawBalance,
+      annual_rate: entity.annual_interest_rate ?? null,
+      yield_frequency: freq,
+      projected,
+    };
   }
 
   async remove(id: number, userId: number): Promise<void> {

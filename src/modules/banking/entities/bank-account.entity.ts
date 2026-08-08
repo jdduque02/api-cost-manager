@@ -37,9 +37,19 @@ export class BankAccount {
   @Column({ type: 'varchar', length: 3, default: 'COP' })
   currency!: string;
 
+  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true })
+  annual_interest_rate!: number | null;
+
+  @Column({ type: 'varchar', length: 10, default: 'monthly' })
+  yield_frequency!: string;
+
   @Column({ type: 'boolean', default: false })
   @Index('idx_bank_account_primary')
   is_primary!: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  @Index('idx_bank_account_4x1000')
+  exempt_4x1000!: boolean;
 
   @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;

@@ -28,8 +28,27 @@ export class BankAccountResponseDto {
   @ApiProperty({ example: 'COP' })
   currency!: string;
 
+  @ApiProperty({
+    description: 'Tasa de interés anual de la cuenta (%).',
+    example: 4.5,
+    nullable: true,
+  })
+  annual_interest_rate!: number | null;
+
+  @ApiProperty({
+    description: 'Frecuencia de entrega del rendimiento.',
+    example: 'monthly',
+  })
+  yield_frequency!: string;
+
   @ApiProperty({ example: false })
   is_primary!: boolean;
+
+  @ApiProperty({
+    description: 'Indica si la cuenta está exenta del impuesto 4x1000 (GMF).',
+    example: false,
+  })
+  exempt_4x1000!: boolean;
 
   @ApiProperty({ example: '2026-04-25T10:00:00.000Z' })
   created_at!: Date;

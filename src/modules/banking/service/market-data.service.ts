@@ -17,6 +17,13 @@ export interface AssetQuoteResult extends LiveQuote {
   success: boolean;
 }
 
+export interface FxRates {
+  cop_per_usd: number;
+  usd_per_cop: number;
+  source: string;
+  updated_at: string;
+}
+
 /** Mapeo de símbolos cripto comunes a IDs de CoinGecko. */
 const COINGECKO_IDS: Record<string, string> = {
   USDT: 'tether',
@@ -48,6 +55,28 @@ export class MarketDataService {
       return this.fetchCoinGecko(symbol);
     }
     return this.fetchYahoo(symbol);
+  }
+
+  /** Consulta la tasa de cambio USD/COP desde una API pública. */
+  async fetchFxRate(): Promise<FxRates> {
+    const url = 'https://open.er-api.com/v6/latest/USD';
+    const res = await firstValueFrom(
+      this.httpService.get(url, { timeout: 8000 }),
+    );
+    const body = res.data as {
+      rates?: Record<string, number>;
+      time_last_update_utc?: string;
+    };
+    const cop = body.rates?.COP;
+    if (typeof cop !== 'number' || cop <= 0) {
+      throw new Error('No se pudo obtener la tasa de cambio USD/COP');
+    }
+    return {
+      cop_per_usd: cop,
+      usd_per_cop: Number((1 / cop).toFixed(6)),
+      source: 'open.er-api.com',
+      updated_at: body.time_last_update_utc ?? new Date().toISOString(),
+    };
   }
 
   async refreshQuotes(assets: FinancialAsset[]): Promise<AssetQuoteResult[]> {
@@ -99,8 +128,15 @@ export class MarketDataService {
     const res = await firstValueFrom(
       this.httpService.get(url, { timeout: 8000 }),
     );
-    const meta = res.data?.chart?.result?.[0]?.meta;
-    if (!meta || typeof meta.regularMarketPrice !== 'number') {
+    const body = res.data as {
+      chart?: {
+        result?: Array<{
+          meta?: { regularMarketPrice?: number; currency?: string };
+        }>;
+      };
+    };
+    const meta = body.chart?.result?.[0]?.meta;
+    if (typeof meta?.regularMarketPrice !== 'number') {
       throw new Error(`No se pudo obtener la cotización de ${symbol}`);
     }
     return {
@@ -119,7 +155,8 @@ export class MarketDataService {
     const res = await firstValueFrom(
       this.httpService.get(url, { timeout: 8000 }),
     );
-    const price = res.data?.[id]?.usd;
+    const body = res.data as Record<string, { usd?: number }>;
+    const price = body[id]?.usd;
     if (typeof price !== 'number') {
       throw new Error(`No se pudo obtener la cotización de ${symbol}`);
     }

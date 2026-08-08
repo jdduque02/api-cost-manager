@@ -8,6 +8,7 @@ import { FinancialLiability } from '@banking/entities/financial-liability.entity
 import { BankAccountController } from '@banking/controller/bank-account.controller';
 import { FinancialAssetController } from '@banking/controller/financial-asset.controller';
 import { FinancialLiabilityController } from '@banking/controller/financial-liability.controller';
+import { CurrencyController } from '@banking/controller/currency.controller';
 import { BankAccountService } from '@banking/service/bank-account.service';
 import { FinancialAssetService } from '@banking/service/financial-asset.service';
 import { FinancialLiabilityService } from '@banking/service/financial-liability.service';
@@ -26,6 +27,7 @@ import { FinancialLiabilityRepository } from '@banking/repositories/financial-li
     BankAccountController,
     FinancialAssetController,
     FinancialLiabilityController,
+    CurrencyController,
   ],
   providers: [
     BankAccountService,

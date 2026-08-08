@@ -38,7 +38,9 @@ export class BankAccountRepository {
         currency: dto.currency ?? 'COP',
         encrypted_account_number: encryptedAccountNumber,
         encrypted_balance: encryptedBalance,
+        annual_interest_rate: dto.annual_interest_rate ?? null,
         is_primary: dto.is_primary ?? false,
+        exempt_4x1000: dto.exempt_4x1000 ?? false,
       });
       const saved = await this.repo.save(account);
       this.logger.log(`Cuenta bancaria creada para usuario ID: ${userId}`);
@@ -91,7 +93,7 @@ export class BankAccountRepository {
   private handleDbError(error: unknown): never {
     if (
       error instanceof QueryFailedError &&
-      (error as any).code === PG_UNIQUE_VIOLATION
+      (error as { code?: string }).code === PG_UNIQUE_VIOLATION
     ) {
       throw new ConflictException(
         this.i18n.t('banking.BANK_ACCOUNT_DUPLICATE'),
