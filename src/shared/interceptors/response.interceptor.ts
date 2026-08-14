@@ -97,7 +97,7 @@ export class ResponseInterceptor<TData = unknown> implements NestInterceptor<
 
     // Adaptar los datos para enviarlos como arreglo como dicta el ApiResponseDto
     const arrayData: TData[] = Array.isArray(data)
-      ? (data as unknown as TData[])
+      ? data
       : data != null
         ? [data]
         : [];

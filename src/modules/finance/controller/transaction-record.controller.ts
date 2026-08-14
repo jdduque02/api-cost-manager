@@ -96,7 +96,11 @@ export class TransactionRecordController {
   @ApiQuery({ name: 'category_id', required: false })
   @ApiQuery({ name: 'subcategory_id', required: false })
   @ApiQuery({ name: 'type', required: false })
-  @ApiQuery({ name: 'category_status', required: false, enum: ['categorized', 'pending'] })
+  @ApiQuery({
+    name: 'category_status',
+    required: false,
+    enum: ['categorized', 'pending'],
+  })
   @ApiQuery({
     name: 'uncategorized',
     required: false,
@@ -208,9 +212,8 @@ export class TransactionRecordController {
     @Param('userId', ParseIntPipe) userId: number,
     @CurrentUser() _currentUser: IntrospectResponse,
   ) {
-    const data = await this.transactionRecordService.getUpcomingPayments(
-      userId,
-    );
+    const data =
+      await this.transactionRecordService.getUpcomingPayments(userId);
     return { data };
   }
 

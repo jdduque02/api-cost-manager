@@ -91,13 +91,10 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   @MaxLength(200)
-  @Matches(
-    /^(\+57\s?)?(3\d{2}\s?\d{3}\s?\d{4}|[1-9]\d{6,7})$/,
-    {
-      message:
-        'El teléfono debe tener formato colombiano: +57 310 123 4567 (o 10 dígitos sin prefijo).',
-    },
-  )
+  @Matches(/^(\+57\s?)?(3\d{2}\s?\d{3}\s?\d{4}|[1-9]\d{6,7})$/, {
+    message:
+      'El teléfono debe tener formato colombiano: +57 310 123 4567 (o 10 dígitos sin prefijo).',
+  })
   phone?: string;
 
   @ApiPropertyOptional({

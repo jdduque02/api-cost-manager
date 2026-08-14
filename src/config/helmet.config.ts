@@ -1,16 +1,29 @@
 import { HelmetOptions } from 'helmet';
 
-export const getHelmetConfig = (): HelmetOptions => {
+export const getHelmetConfig = (isProd = false): HelmetOptions => {
+  const scriptSrc = isProd
+    ? ["'self'"]
+    : ["'self'", "'unsafe-inline'", "'unsafe-eval'"];
+  const styleSrc = isProd
+    ? ["'self'", "'unsafe-inline'"]
+    : ["'self'", "'unsafe-inline'"];
+
   return {
     crossOriginResourcePolicy: { policy: 'cross-origin' },
-    crossOriginEmbedderPolicy: { policy: 'require-corp' },
+    crossOriginEmbedderPolicy: false,
     crossOriginOpenerPolicy: { policy: 'same-origin' },
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc,
+        styleSrc,
         imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'", 'https:', 'wss:', 'ws:'],
+        fontSrc: ["'self'", 'https:', 'data:'],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
       },
     },
     dnsPrefetchControl: { allow: false },

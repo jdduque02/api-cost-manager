@@ -29,6 +29,7 @@ import { UserQueryDto } from '@identity/dto/user/user-query.dto';
 import { UserResponseDto } from '@identity/dto/user/user-response.dto';
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 import { AuthGuard } from '@auth/guards/auth.guard';
+import { AdminGuard } from '@auth/guards/admin.guard';
 import { OwnershipGuard } from '@auth/guards/ownership.guard';
 import { ApiIntrospectGuardResponse } from '@auth/decorators/api-introspect-guard-response.decorator';
 
@@ -65,10 +66,10 @@ export class UserController {
   }
 
   @Get()
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, AdminGuard)
   @ApiIntrospectGuardResponse()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Listar usuarios paginados' })
+  @ApiOperation({ summary: 'Listar usuarios paginados (admin)' })
   @ApiQuery({
     name: 'page',
     required: false,

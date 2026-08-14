@@ -96,10 +96,7 @@ export async function extractTextLines(
     const e = err as Error;
     const name = e?.name ?? '';
     const msg = String(e?.message ?? err);
-    if (
-      name === 'PasswordException' ||
-      /password|clave|encrypt/i.test(msg)
-    ) {
+    if (name === 'PasswordException' || /password|clave|encrypt/i.test(msg)) {
       throw err;
     }
     throw new Error(`PDF_READ_ERROR: ${name}: ${msg}`);
@@ -861,15 +858,169 @@ function parseNu(lines: TextLine[]): StatementParseResult {
 
 // ── Parser principal ────────────────────────────────────────
 
+/**
+ * Reconoce el layout de extracto de cuenta (ahorros/corriente) Bancolombia:
+ * cabecera FECHA | DESCRIPCIÓN | SUCURSAL | DCTO. | VALOR | SALDO y filas con
+ * fecha "DD/MM" sin año. Es estructural, por lo que funciona aunque la entidad
+ * configurada (DB) no coincida con el parser de tarjeta de crédito.
+ */
+function hasBancolombiaCuentaLayout(lines: TextLine[]): boolean {
+  let hasYearlessDate = false;
+  let hasHeader = false;
+  for (const line of lines) {
+    const texts = line.tokens.map((t) => t.text.trim());
+    if (texts.some((t) => /^\d{1,2}\/\d{1,2}$/.test(t))) hasYearlessDate = true;
+    if (
+      texts.some((t) => /^DCTO/.test(t)) &&
+      texts.some((t) => /^VALOR$/.test(t)) &&
+      texts.some((t) => /^SALDO$/.test(t))
+    ) {
+      hasHeader = true;
+    }
+    if (hasYearlessDate && hasHeader) return true;
+  }
+  return false;
+}
+
+function nearest<T extends { x: number }>(
+  tokens: T[],
+  colX: number,
+  maxDist: number,
+): T | undefined {
+  let best: T | undefined;
+  let bestDist = Infinity;
+  for (const t of tokens) {
+    const d = Math.abs(t.x - colX);
+    if (d <= maxDist && d < bestDist) {
+      bestDist = d;
+      best = t;
+    }
+  }
+  return best;
+}
+
+// Bancolombia (cuenta de ahorros / corriente): tabla con columnas
+// FECHA | DESCRIPCIÓN | SUCURSAL | DCTO. | VALOR | SALDO.
+// Fechas "DD/MM" sin año: el año se infiere del período "DESDE: aaaa/mm/dd
+// HASTA: aaaa/mm/dd". El VALOR va firmado (negativo = retiro/gasto,
+// positivo = abono/ingreso) y la columna SALDO guarda el saldo acumulado.
+function parseBancolombiaCuenta(lines: TextLine[]): StatementParseResult {
+  let year: number | undefined;
+  let period: string | undefined;
+
+  for (const line of lines) {
+    const joined = line.tokens.map((t) => t.text).join(' ');
+    const m = joined.match(
+      /DESDE:\s*(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})\s+HASTA:\s*(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})/i,
+    );
+    if (m) {
+      year = Number(m[1]);
+      period = `${m[1]}/${m[2]}/${m[3]} - ${m[4]}/${m[5]}/${m[6]}`;
+      break;
+    }
+  }
+
+  let colDescripcion = 130;
+  let colValor = 434;
+  let colSaldo = 534;
+  for (const line of lines) {
+    const texts = line.tokens.map((t) => t.text.trim());
+    const isHeader =
+      texts.some((t) => /^DCTO/.test(t)) &&
+      texts.some((t) => /^VALOR$/.test(t)) &&
+      texts.some((t) => /^SALDO$/.test(t));
+    if (!isHeader) continue;
+    for (const t of line.tokens) {
+      const txt = t.text.trim();
+      const absX = t.absX ?? 0;
+      if (/^DESCRIPCIÓN|^DESCRIPCION/i.test(txt)) colDescripcion = absX;
+      else if (/^VALOR$/.test(txt)) colValor = absX;
+      else if (/^SALDO$/.test(txt)) colSaldo = absX;
+    }
+    break;
+  }
+
+  const fallbackYear = new Date().getFullYear();
+  const transactions: ParsedStatementTransaction[] = [];
+
+  for (const line of lines) {
+    const dateTok = line.tokens.find(
+      (t) =>
+        t.absX !== undefined &&
+        t.absX < 100 &&
+        /^\d{1,2}\/\d{1,2}$/.test(t.text.trim()),
+    );
+    if (!dateTok) continue;
+    const [dd, mm] = dateTok.text.trim().split('/').map(Number);
+    const date = buildDate(year ?? fallbackYear, mm, dd);
+    if (!date) continue;
+
+    const numeric = line.tokens
+      .filter(
+        (t) =>
+          t.absX !== undefined &&
+          t.absX > colValor - 60 &&
+          parseAmount(t.text) !== null,
+      )
+      .map((t) => ({
+        x: t.absX as number,
+        value: parseAmount(t.text) as number,
+      }));
+
+    const saldo = nearest(numeric, colSaldo, 60);
+    const valor = nearest(
+      numeric.filter((n) => saldo === undefined || n !== saldo),
+      colValor,
+      60,
+    );
+    if (!valor || valor.value === 0) continue;
+
+    const description = normalizeDescription(
+      line.tokens
+        .filter(
+          (t) =>
+            t.absX !== undefined &&
+            t.absX >= colDescripcion - 60 &&
+            t.absX <= colValor - 40 &&
+            t !== dateTok,
+        )
+        .map((t) => t.text)
+        .join(' '),
+    );
+
+    const tx: ParsedStatementTransaction = {
+      transaction_date: date,
+      description: description || 'Movimiento bancario',
+      amount: Math.abs(valor.value),
+      type:
+        valor.value < 0
+          ? TransactionTypeEnum.EXPENSE
+          : TransactionTypeEnum.INCOME,
+    };
+    if (saldo) tx.balance = Math.abs(saldo.value);
+    transactions.push(tx);
+  }
+
+  return {
+    transactions: transactions.slice(0, MAX_TRANSACTIONS_PER_FILE),
+    bank: 'bancolombia',
+    period,
+  };
+}
+
 export function parseStatementLines(
   lines: TextLine[],
   defaultType?: TransactionTypeEnum,
   entities?: BankingEntityDetection[],
 ): StatementParseResult {
   const bank = detectBank(lines, entities);
-  if (bank === 'bancolombia') return parseBancolombia(lines);
+  if (bank === 'bancolombia') {
+    if (hasBancolombiaCuentaLayout(lines)) return parseBancolombiaCuenta(lines);
+    return parseBancolombia(lines);
+  }
   if (bank === 'rappicard') return parseRappiCard(lines);
   if (bank === 'nu') return parseNu(lines);
+  if (hasBancolombiaCuentaLayout(lines)) return parseBancolombiaCuenta(lines);
 
   const layout = detectColumnLayout(lines);
   const transactions: ParsedStatementTransaction[] = [];

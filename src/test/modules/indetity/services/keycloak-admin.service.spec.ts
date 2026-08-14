@@ -10,6 +10,11 @@ import {
 import { of, throwError } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { KeycloakAdminService } from '@auth/service/keycloak-admin.service';
+import { I18nService } from 'nestjs-i18n';
+
+interface KeycloakAdminServiceUnderTest {
+  getAdminToken(): Promise<string>;
+}
 
 const mockHttpService = {
   post: jest.fn(),
@@ -36,6 +41,10 @@ const mockCacheManager = {
   del: jest.fn(),
 };
 
+const mockI18nService = {
+  t: jest.fn((key: string) => `[${key}]`),
+};
+
 const axiosResponse = <T>(
   data: T,
   headers: Record<string, string> = {},
@@ -44,7 +53,7 @@ const axiosResponse = <T>(
   status: 200,
   statusText: 'OK',
   headers,
-  config: { headers: {} } as any,
+  config: { headers: {} } as unknown as AxiosResponse<T>['config'],
 });
 
 const ADMIN_TOKEN = 'admin-jwt-token';
@@ -59,6 +68,7 @@ describe('KeycloakAdminService', () => {
         { provide: HttpService, useValue: mockHttpService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: CACHE_MANAGER, useValue: mockCacheManager },
+        { provide: I18nService, useValue: mockI18nService },
       ],
     }).compile();
 
@@ -76,7 +86,9 @@ describe('KeycloakAdminService', () => {
       mockHttpService.post.mockReturnValue(
         of(axiosResponse({ access_token: ADMIN_TOKEN, expires_in: 300 })),
       );
-      const token = await (service as any).getAdminToken();
+      const token = await (
+        service as unknown as KeycloakAdminServiceUnderTest
+      ).getAdminToken();
       expect(token).toBe(ADMIN_TOKEN);
     });
 
@@ -88,9 +100,9 @@ describe('KeycloakAdminService', () => {
           message: 'Network error',
         })),
       );
-      await expect((service as any).getAdminToken()).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(
+        (service as unknown as KeycloakAdminServiceUnderTest).getAdminToken(),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 

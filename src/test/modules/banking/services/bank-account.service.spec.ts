@@ -8,18 +8,22 @@ import { BankAccount } from '@banking/entities/bank-account.entity';
 import { EncryptionService } from '@shared/services/encryption.service';
 
 const mockBankAccountRepository = {
-  create: jest.fn(),
-  findAll: jest.fn(),
-  findById: jest.fn(),
-  update: jest.fn(),
-  softDelete: jest.fn(),
+  create: jest.fn<
+    Promise<BankAccount>,
+    [number, CreateBankAccountDto, string | null, string | null]
+  >(),
+  findAll: jest.fn<Promise<BankAccount[]>, [number]>(),
+  findById: jest.fn<Promise<BankAccount>, [number, number]>(),
+  update: jest.fn<
+    Promise<BankAccount>,
+    [number, number, Partial<BankAccount>]
+  >(),
+  softDelete: jest.fn<Promise<void>, [number, number]>(),
 };
 
 const mockEncryptionService = {
   encryptField: jest.fn((value: string) => `enc:${value}`),
-  decryptField: jest.fn((value: string) =>
-    value.replace(/^enc:/, ''),
-  ),
+  decryptField: jest.fn((value: string) => value.replace(/^enc:/, '')),
   encrypt: jest.fn((value: string) => value),
   decrypt: jest.fn((value: string) => value),
 };
@@ -34,6 +38,7 @@ const buildAccount = (overrides = {}): BankAccount =>
     encrypted_balance: 'enc:1500000',
     currency: 'COP',
     is_primary: false,
+    exempt_4x1000: false,
     deleted_at: null,
     created_at: new Date(),
     updated_at: new Date(),
@@ -95,9 +100,12 @@ describe('BankAccountService', () => {
         masked_account_number: '****6789',
         display_balance: '1500000',
         currency: 'COP',
+        annual_interest_rate: null,
+        yield_frequency: 'monthly',
         is_primary: false,
-        created_at: expect.any(Date),
-        updated_at: expect.any(Date),
+        exempt_4x1000: false,
+        created_at: expect.any(Date) as Date,
+        updated_at: expect.any(Date) as Date,
       });
     });
   });

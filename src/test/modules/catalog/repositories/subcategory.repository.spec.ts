@@ -5,12 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { QueryFailedError } from 'typeorm';
 import { SubcategoryRepository } from '@catalog/repositories/subcategory.repository';
 import { Subcategory } from '@catalog/entities/subcategory.entity';
 import { CreateSubcategoryDto } from '@catalog/dto/subcategory/create-subcategory.dto';
 import { UpdateSubcategoryDto } from '@catalog/dto/subcategory/update-subcategory.dto';
-import { TransactionTypeEnum } from '@shared/enums';
 
 const mockTypeOrmRepo = {
   create: jest.fn(),
@@ -18,6 +18,10 @@ const mockTypeOrmRepo = {
   find: jest.fn(),
   findOne: jest.fn(),
   merge: jest.fn(),
+};
+
+const mockI18nService = {
+  t: jest.fn((key: string) => `[${key}]`),
 };
 
 const buildSubcategory = (overrides = {}): Subcategory =>
@@ -38,6 +42,7 @@ describe('SubcategoryRepository', () => {
       providers: [
         SubcategoryRepository,
         { provide: getRepositoryToken(Subcategory), useValue: mockTypeOrmRepo },
+        { provide: I18nService, useValue: mockI18nService },
       ],
     }).compile();
 
@@ -66,10 +71,10 @@ describe('SubcategoryRepository', () => {
     });
 
     it('debe lanzar ConflictException por nombre duplicado (23505)', async () => {
-      const pgError = Object.assign(Object.create(QueryFailedError.prototype), {
-        message: 'duplicate key',
-        code: '23505',
-      });
+      const pgError = Object.assign(
+        Object.create(QueryFailedError.prototype) as QueryFailedError,
+        { message: 'duplicate key', code: '23505' },
+      );
       mockTypeOrmRepo.create.mockReturnValue(buildSubcategory());
       mockTypeOrmRepo.save.mockRejectedValue(pgError);
 

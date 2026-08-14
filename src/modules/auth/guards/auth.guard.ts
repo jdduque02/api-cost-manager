@@ -8,7 +8,7 @@ import {
 import { Request } from 'express';
 import { I18nService } from 'nestjs-i18n';
 import { AuthService } from '@auth/service/auth.service';
-import { extractBearerToken } from '@shared/helpers/bearer-token.helper';
+import { extractAccessToken } from '@shared/helpers/bearer-token.helper';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -19,8 +19,7 @@ export class AuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
-    const authorization = request.headers['authorization'];
-    const token = extractBearerToken(authorization);
+    const token = extractAccessToken(request);
     const result = await this.authService.introspect(token);
 
     if (!result.active) {

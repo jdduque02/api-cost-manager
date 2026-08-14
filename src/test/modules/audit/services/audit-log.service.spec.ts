@@ -13,7 +13,9 @@ const mockAuditLogRepository = {
 };
 
 const mockLoggingService = {
-  sendLog: jest.fn(),
+  sendLog: jest.fn((_data: unknown, _severity?: string, _context?: string) =>
+    Promise.resolve(undefined),
+  ),
 };
 
 const buildWriteDto = (

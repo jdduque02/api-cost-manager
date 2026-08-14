@@ -207,13 +207,16 @@ describe('StatementImportService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('lanza BadRequestException si no hay categoría por defecto disponible', async () => {
+    it('no exige una categoría por defecto al crear el lote (el catálogo no se consulta)', async () => {
       mockCategoryService.findAll.mockResolvedValue([]);
 
-      await expect(
-        service.createJob(10, [pdfFile], { skip_duplicates: 'true' }),
-      ).rejects.toThrow(BadRequestException);
-      expect(mockStatementImportRepository.createJob).not.toHaveBeenCalled();
+      const result = await service.createJob(10, [pdfFile], {
+        skip_duplicates: 'true',
+      });
+
+      expect(result).toEqual(buildJob());
+      expect(mockStatementImportRepository.createJob).toHaveBeenCalled();
+      expect(mockCategoryService.findAll).not.toHaveBeenCalled();
     });
 
     it('escribe los PDFs en un directorio temporal y crea el lote', async () => {
@@ -317,7 +320,9 @@ describe('StatementImportService', () => {
       mockTransactionRecordRepository.findExistingFingerprints.mockResolvedValue(
         new Set(),
       );
-      mockTransactionRecordRepository.createMany.mockResolvedValue([]);
+      mockTransactionRecordRepository.createMany.mockResolvedValue([
+        { id: 99, category_id: 2 },
+      ]);
 
       await service.createJob(10, [pdfFile], {
         skip_duplicates: 'true',
@@ -341,13 +346,13 @@ describe('StatementImportService', () => {
         10,
         [
           expect.objectContaining({
-            category_id: 2,
             type: TransactionTypeEnum.INCOME,
             amount: 1547390,
             description: 'ABONO SUCURSAL VIRTUAL',
             transaction_date: '2026-07-15',
           }),
         ],
+        { assignCategories: true },
       );
       expect(
         mockStatementImportRepository.markFileSuccess,
@@ -355,6 +360,7 @@ describe('StatementImportService', () => {
         records_parsed: 1,
         records_created: 1,
         records_skipped: 0,
+        records_uncategorized: 0,
       });
       expect(mockStatementImportRepository.finishJob).toHaveBeenCalledWith(
         1,
@@ -443,6 +449,7 @@ describe('StatementImportService', () => {
         records_parsed: 1,
         records_created: 0,
         records_skipped: 1,
+        records_uncategorized: 0,
       });
     });
 
@@ -462,6 +469,9 @@ describe('StatementImportService', () => {
       mockTransactionRecordRepository.findExistingFingerprints.mockResolvedValue(
         new Set(),
       );
+      mockTransactionRecordRepository.createMany.mockResolvedValue([
+        { id: 99, category_id: 2 },
+      ]);
 
       await service.createJob(10, [pdfFile], {
         skip_duplicates: 'true',
@@ -472,6 +482,7 @@ describe('StatementImportService', () => {
       expect(mockTransactionRecordRepository.createMany).toHaveBeenCalledWith(
         10,
         [expect.objectContaining({ amount: 1547390 })],
+        { assignCategories: true },
       );
       expect(
         mockStatementImportRepository.markFileSuccess,
@@ -510,6 +521,7 @@ describe('StatementImportService', () => {
       expect(mockTransactionRecordRepository.createMany).toHaveBeenCalledWith(
         10,
         [expect.objectContaining({ amount: 1547390 })],
+        { assignCategories: true },
       );
     });
 
@@ -560,6 +572,7 @@ describe('StatementImportService', () => {
             reference_code: 'C78699',
           }),
         ],
+        { assignCategories: true },
       );
     });
 
@@ -664,6 +677,9 @@ describe('StatementImportService', () => {
       mockTransactionRecordRepository.findExistingFingerprints.mockResolvedValue(
         new Set(),
       );
+      mockTransactionRecordRepository.createMany.mockResolvedValue([
+        { id: 99, category_id: 2 },
+      ]);
       (readFile as jest.Mock).mockImplementation((path: string) =>
         path.endsWith('bad.pdf')
           ? Promise.resolve(Buffer.from('no es un pdf'))

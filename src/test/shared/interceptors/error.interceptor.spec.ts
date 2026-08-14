@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { firstValueFrom, throwError } from 'rxjs';
 import { ErrorsInterceptor } from '@shared/interceptors/error.interceptor';
+import { LoggingService } from '@shared/services/logging.service';
+import { I18nService } from 'nestjs-i18n';
 
 jest.mock('uuid', () => ({
   v4: jest.fn(() => 'trace-xyz'),
@@ -20,15 +22,28 @@ describe('ErrorsInterceptor', () => {
     }) as unknown as ExecutionContext;
 
   const loggingService = {
-    sendLog: jest.fn().mockResolvedValue(undefined),
+    sendLog: jest.fn().mockResolvedValue(undefined) as jest.Mock<
+      Promise<void>,
+      [unknown, string, string]
+    >,
   };
+
+  const mockI18nService = {
+    t: jest.fn((key: string) => `[${key}]`),
+  };
+
+  const createInterceptor = (): ErrorsInterceptor =>
+    new ErrorsInterceptor(
+      loggingService as unknown as LoggingService,
+      mockI18nService as unknown as I18nService,
+    );
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('debe transformar HttpException no-500 y loggear WARNING', async () => {
-    const interceptor = new ErrorsInterceptor(loggingService as any);
+    const interceptor = createInterceptor();
     const context = buildContext('/auth/refresh');
     const sourceError = new HttpException(
       'Token inválido',
@@ -53,7 +68,7 @@ describe('ErrorsInterceptor', () => {
   });
 
   it('debe transformar errores no HttpException a InternalServerErrorException con trace_id', async () => {
-    const interceptor = new ErrorsInterceptor(loggingService as any);
+    const interceptor = createInterceptor();
     const context = buildContext('/user/1');
     const next: CallHandler = {
       handle: () => throwError(() => new Error('db down')),
@@ -75,7 +90,7 @@ describe('ErrorsInterceptor', () => {
   });
 
   it('debe extraer details cuando responseData contiene details[]', async () => {
-    const interceptor = new ErrorsInterceptor(loggingService as any);
+    const interceptor = createInterceptor();
     const context = buildContext('/user');
     const sourceError = new HttpException(
       { message: 'Error de validación', details: ['campo requerido'] },

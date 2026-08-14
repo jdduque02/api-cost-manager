@@ -13,7 +13,11 @@ import {
  * Se aprende cuando el usuario asigna una categoría a una transacción.
  */
 @Entity({ name: 'transaction_category_rule', schema: 'finance' })
-@Index('idx_transaction_category_rule_user', ['user_id', 'normalized_description'], { unique: true })
+@Index(
+  'idx_transaction_category_rule_user',
+  ['user_id', 'normalized_description'],
+  { unique: true },
+)
 export class TransactionCategoryRule {
   @PrimaryGeneratedColumn('identity', { type: 'bigint' })
   id!: number;

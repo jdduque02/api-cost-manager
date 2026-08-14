@@ -106,12 +106,13 @@
   "moduleFileExtensions": [
    "js",
    "json",
-   "ts"
+   "ts",
+   "tsx"
   ],
   "rootDir": "src",
   "testRegex": ".*\\.spec\\.ts$",
   "transform": {
-   "^.+\\.(t|j)s$": "ts-jest"
+   "^.+\\.(t|j)sx?$": "ts-jest"
   },
   "moduleNameMapper": {
    "^@identity/(.*)$": "<rootDir>/modules/identity/$1",
@@ -122,7 +123,8 @@
    "^@banking/(.*)$": "<rootDir>/modules/banking/$1",
    "^@catalog/(.*)$": "<rootDir>/modules/catalog/$1",
    "^@finance/(.*)$": "<rootDir>/modules/finance/$1",
-   "^@notification/(.*)$": "<rootDir>/modules/notification/$1",
+    "^@notification/(.*)$": "<rootDir>/modules/notification/$1",
+    "^@mail/(.*)$": "<rootDir>/modules/mail/$1",
    "^@intelligence/(.*)$": "<rootDir>/modules/intelligence/$1",
    "^@common/(.*)$": "<rootDir>/common/$1",
    "^@/(.*)$": "<rootDir>/$1",

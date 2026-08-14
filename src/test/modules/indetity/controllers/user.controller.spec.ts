@@ -37,23 +37,23 @@ describe('UserController', () => {
     expect(result).toEqual(created);
   });
 
-  it('debe listar usuarios paginados y limitar a 100', async () => {
+  it('debe listar usuarios delegando el query de paginación al servicio', async () => {
     const payload = { data: [], total: 0 };
     mockUserService.findAllUsers.mockResolvedValue(payload);
 
-    const result = await controller.findAll(1, 200);
+    const result = await controller.findAll({ page: 1, limit: 200 });
     expect(mockUserService.findAllUsers).toHaveBeenCalledWith({
       page: 1,
-      limit: 100,
+      limit: 200,
     });
     expect(result).toEqual(payload);
   });
 
-  it('debe listar usuarios respetando límite menor a 100', async () => {
+  it('debe listar usuarios delegando el query con límite menor a 100', async () => {
     const payload = { data: [{ id: 1 }], total: 1 };
     mockUserService.findAllUsers.mockResolvedValue(payload);
 
-    const result = await controller.findAll(2, 20);
+    const result = await controller.findAll({ page: 2, limit: 20 });
     expect(mockUserService.findAllUsers).toHaveBeenCalledWith({
       page: 2,
       limit: 20,

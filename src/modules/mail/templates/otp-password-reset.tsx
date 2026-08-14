@@ -16,6 +16,8 @@ export interface OtpPasswordResetEmailProps {
   name?: string;
   /** Código OTP de 6 dígitos. */
   otpCode: string;
+  /** Año a mostrar en el pie. Por defecto usa el año actual. */
+  year?: string;
 }
 
 const DEFAULT_BG = '#f4f5f7';
@@ -29,12 +31,19 @@ const BRAND = '#0f766e';
 export default function OtpPasswordResetEmail({
   name = '',
   otpCode,
+  year = String(new Date().getFullYear()),
 }: OtpPasswordResetEmailProps) {
   return (
     <Html lang="es">
       <Head />
       <Preview>Tu código de recuperación es {otpCode}</Preview>
-      <Body style={{ backgroundColor: DEFAULT_BG, fontFamily: 'sans-serif', margin: 0 }}>
+      <Body
+        style={{
+          backgroundColor: DEFAULT_BG,
+          fontFamily: 'sans-serif',
+          margin: 0,
+        }}
+      >
         <Container
           style={{
             backgroundColor: '#ffffff',
@@ -45,12 +54,14 @@ export default function OtpPasswordResetEmail({
             padding: '32px 28px',
           }}
         >
-          <Heading style={{ color: '#111827', fontSize: 22, margin: '0 0 8px' }}>
+          <Heading
+            style={{ color: '#111827', fontSize: 22, margin: '0 0 8px' }}
+          >
             Recuperación de contraseña
           </Heading>
           <Text style={{ color: '#374151', fontSize: 15, lineHeight: '22px' }}>
-            Hola{name ? `, ${name}` : ''}: recibimos una solicitud para restablecer
-            tu contraseña. Usa el siguiente código para continuar:
+            Hola{name ? `, ${name}` : ''}: recibimos una solicitud para
+            restablecer tu contraseña. Usa el siguiente código para continuar:
           </Text>
 
           <Section
@@ -76,15 +87,15 @@ export default function OtpPasswordResetEmail({
           </Section>
 
           <Text style={{ color: '#374151', fontSize: 14, lineHeight: '21px' }}>
-            El código expira en <strong>10 minutos</strong>. Si no solicitaste este
-            cambio, ignora este correo.
+            El código expira en <strong>10 minutos</strong>. Si no solicitaste
+            este cambio, ignora este correo.
           </Text>
 
           <Hr style={{ borderColor: '#e5e7eb', margin: '24px 0' }} />
 
           <Text style={{ color: '#9ca3af', fontSize: 12, lineHeight: '18px' }}>
-            © {new Date().getFullYear()} Cost Manager. Este es un correo
-            automático, por favor no respondas.
+            © {year} Cost Manager. Este es un correo automático, por favor no
+            respondas.
           </Text>
         </Container>
       </Body>

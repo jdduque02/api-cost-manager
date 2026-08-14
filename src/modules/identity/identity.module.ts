@@ -4,6 +4,7 @@ import { HttpModule } from '@nestjs/axios';
 import { FinancialProfileController } from '@identity/controller/financial-profile.controller';
 import { FinancialProfileService } from '@identity/service/financial-profile.service';
 import { UserController } from './controller/user.controller';
+import { AdminUserController } from './controller/admin-user.controller';
 import { UserService } from './service/user.service';
 import { AppUser } from './entities/app-user.entity';
 import { FinancialProfile } from './entities/financial-profile.entity';
@@ -17,7 +18,11 @@ import { AuthModule } from '../auth/auth.module';
     HttpModule,
     forwardRef(() => AuthModule),
   ],
-  controllers: [FinancialProfileController, UserController],
+  controllers: [
+    FinancialProfileController,
+    UserController,
+    AdminUserController,
+  ],
   providers: [
     UserRepository,
     FinancialProfileRepository,
@@ -28,6 +33,7 @@ import { AuthModule } from '../auth/auth.module';
     UserRepository,
     FinancialProfileRepository,
     FinancialProfileService,
+    UserService,
   ],
 })
 export class IdentityModule {}

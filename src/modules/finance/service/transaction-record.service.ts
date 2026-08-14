@@ -1,4 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { TransactionRecordRepository } from '@finance/repositories/transaction-record.repository';
 import { CreateTransactionRecordDto } from '@finance/dto/transaction-record/create-transaction-record.dto';
 import { UpdateTransactionRecordDto } from '@finance/dto/transaction-record/update-transaction-record.dto';
@@ -12,6 +14,7 @@ import { UpcomingPaymentDto } from '@finance/dto/transaction-record/upcoming-pay
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SUBSCRIPTION_WINDOW_DAYS = 370 * 10; // cubre suscripciones anuales antiguas
+const SUMMARY_TTL_MS = 45_000;
 
 @Injectable()
 export class TransactionRecordService {
@@ -19,10 +22,30 @@ export class TransactionRecordService {
 
   constructor(
     private readonly transactionRecordRepository: TransactionRecordRepository,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
+  private summaryKey(userId: number, query: TransactionSummaryQueryDto) {
+    return `tx:summary:${userId}:${query.date_from ?? ''}:${query.date_to ?? ''}:${query.group_by ?? 'day'}:${query.type ?? ''}`;
+  }
+
+  private async invalidateSummary(userId: number) {
+    // Best-effort: drop common key prefixes by storing a generation counter
+    const genKey = `tx:summary:gen:${userId}`;
+    const gen = (await this.cacheManager.get<number>(genKey)) ?? 0;
+    await this.cacheManager.set(genKey, gen + 1, 86_400_000);
+  }
+
+  private async summaryGen(userId: number) {
+    return (
+      (await this.cacheManager.get<number>(`tx:summary:gen:${userId}`)) ?? 0
+    );
+  }
+
   async create(userId: number, dto: CreateTransactionRecordDto) {
-    return this.transactionRecordRepository.create(userId, dto);
+    const created = await this.transactionRecordRepository.create(userId, dto);
+    await this.invalidateSummary(userId);
+    return created;
   }
 
   async findAll(userId: number, query: TransactionRecordQueryDto) {
@@ -30,7 +53,18 @@ export class TransactionRecordService {
   }
 
   async getSummary(userId: number, query: TransactionSummaryQueryDto) {
-    return this.transactionRecordRepository.getSummary(userId, query);
+    const gen = await this.summaryGen(userId);
+    const cacheKey = `${this.summaryKey(userId, query)}:g${gen}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) return cached;
+    const summary = await this.transactionRecordRepository.getSummary(
+      userId,
+      query,
+    );
+    // TTL jitter anti-stampede (±15%)
+    const jitter = Math.floor(SUMMARY_TTL_MS * (0.85 + Math.random() * 0.3));
+    await this.cacheManager.set(cacheKey, summary, jitter);
+    return summary;
   }
 
   async findOne(id: number, userId: number) {
@@ -38,15 +72,31 @@ export class TransactionRecordService {
   }
 
   async update(id: number, userId: number, dto: UpdateTransactionRecordDto) {
-    return this.transactionRecordRepository.update(id, userId, dto);
+    const updated = await this.transactionRecordRepository.update(
+      id,
+      userId,
+      dto,
+    );
+    await this.invalidateSummary(userId);
+    return updated;
   }
 
   async remove(id: number, userId: number) {
-    return this.transactionRecordRepository.softDelete(id, userId);
+    const result = await this.transactionRecordRepository.softDelete(
+      id,
+      userId,
+    );
+    await this.invalidateSummary(userId);
+    return result;
   }
 
   async removeMany(ids: number[], userId: number) {
-    return this.transactionRecordRepository.softDeleteMany(ids, userId);
+    const result = await this.transactionRecordRepository.softDeleteMany(
+      ids,
+      userId,
+    );
+    await this.invalidateSummary(userId);
+    return result;
   }
 
   /**

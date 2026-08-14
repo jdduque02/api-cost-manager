@@ -1,5 +1,7 @@
 import { ThrottlerModuleOptions } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
+import type { Request } from 'express';
+import { ThrottlerStorageRedisService } from './throttler-redis.storage';
 
 export const getThrottlerConfig = (
   configService: ConfigService,
@@ -9,9 +11,12 @@ export const getThrottlerConfig = (
   return {
     throttlers: [
       {
+        // App personal de un solo usuario: cada página dispara ~10-15 GETs en
+        // paralelo (dashboard, transacciones, patrimonio), así que 120/min en
+        // dev se agotaba con el uso normal y bloqueaba todo durante 60s.
         name: 'global',
         ttl: configService.get<number>('THROTTLE_TTL_MS', 60_000),
-        limit: configService.get<number>('THROTTLE_LIMIT', isProd ? 60 : 120),
+        limit: configService.get<number>('THROTTLE_LIMIT', isProd ? 120 : 600),
       },
       {
         name: 'auth',
@@ -22,9 +27,9 @@ export const getThrottlerConfig = (
         ),
       },
     ],
-    storage: undefined,
+    storage: new ThrottlerStorageRedisService(configService),
     errorMessage: (context) => {
-      const req = context.switchToHttp().getRequest();
+      const req = context.switchToHttp().getRequest<Request>();
       const path = req?.url ?? '';
       if (path.includes('/auth/login')) {
         return 'Demasiados intentos de inicio de sesión. Intente de nuevo más tarde.';

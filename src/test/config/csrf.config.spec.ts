@@ -12,6 +12,14 @@ jest.mock('csrf-csrf', () => ({
 
 import { doubleCsrf } from 'csrf-csrf';
 
+interface CsrfOptionsShape {
+  getSecret: () => string;
+  cookieName: string;
+  cookieOptions: { secure: boolean };
+  getSessionIdentifier: (req: { cookies: Record<string, string> }) => string;
+  ignoredMethods: string[];
+}
+
 describe('getCsrfProtection', () => {
   let mockConfigService: Partial<ConfigService>;
 
@@ -33,7 +41,9 @@ describe('getCsrfProtection', () => {
     );
     getCsrfProtection(mockConfigService as ConfigService);
 
-    const [options] = (doubleCsrf as jest.Mock).mock.calls[0];
+    const [options] = (doubleCsrf as jest.Mock).mock.calls[0] as [
+      CsrfOptionsShape,
+    ];
     expect(options.getSecret()).toBe('mi-secreto-csrf');
   });
 
@@ -41,7 +51,9 @@ describe('getCsrfProtection', () => {
     (mockConfigService.get as jest.Mock).mockReturnValue(undefined);
     getCsrfProtection(mockConfigService as ConfigService);
 
-    const [options] = (doubleCsrf as jest.Mock).mock.calls[0];
+    const [options] = (doubleCsrf as jest.Mock).mock.calls[0] as [
+      CsrfOptionsShape,
+    ];
     expect(options.getSecret()).toBe('csrf-super-secret');
   });
 
@@ -49,7 +61,9 @@ describe('getCsrfProtection', () => {
     (mockConfigService.get as jest.Mock).mockReturnValue(undefined);
     getCsrfProtection(mockConfigService as ConfigService);
 
-    const [options] = (doubleCsrf as jest.Mock).mock.calls[0];
+    const [options] = (doubleCsrf as jest.Mock).mock.calls[0] as [
+      CsrfOptionsShape,
+    ];
     expect(options.cookieName).toBe('x-csrf-token');
   });
 
@@ -59,7 +73,9 @@ describe('getCsrfProtection', () => {
     );
     getCsrfProtection(mockConfigService as ConfigService);
 
-    const [options] = (doubleCsrf as jest.Mock).mock.calls[0];
+    const [options] = (doubleCsrf as jest.Mock).mock.calls[0] as [
+      CsrfOptionsShape,
+    ];
     expect(options.cookieOptions.secure).toBe(true);
   });
 
@@ -69,7 +85,9 @@ describe('getCsrfProtection', () => {
     );
     getCsrfProtection(mockConfigService as ConfigService);
 
-    const [options] = (doubleCsrf as jest.Mock).mock.calls[0];
+    const [options] = (doubleCsrf as jest.Mock).mock.calls[0] as [
+      CsrfOptionsShape,
+    ];
     expect(options.cookieOptions.secure).toBe(false);
   });
 
@@ -77,7 +95,9 @@ describe('getCsrfProtection', () => {
     (mockConfigService.get as jest.Mock).mockReturnValue(undefined);
     getCsrfProtection(mockConfigService as ConfigService);
 
-    const [options] = (doubleCsrf as jest.Mock).mock.calls[0];
+    const [options] = (doubleCsrf as jest.Mock).mock.calls[0] as [
+      CsrfOptionsShape,
+    ];
     expect(options.ignoredMethods).toEqual(['GET', 'HEAD', 'OPTIONS']);
   });
 
@@ -85,8 +105,10 @@ describe('getCsrfProtection', () => {
     (mockConfigService.get as jest.Mock).mockReturnValue(undefined);
     getCsrfProtection(mockConfigService as ConfigService);
 
-    const [options] = (doubleCsrf as jest.Mock).mock.calls[0];
-    const req = { cookies: { 'x-csrf-token': 'mi-token' } } as any;
+    const [options] = (doubleCsrf as jest.Mock).mock.calls[0] as [
+      CsrfOptionsShape,
+    ];
+    const req = { cookies: { 'x-csrf-token': 'mi-token' } };
     expect(options.getSessionIdentifier(req)).toBe('mi-token');
   });
 
@@ -94,8 +116,10 @@ describe('getCsrfProtection', () => {
     (mockConfigService.get as jest.Mock).mockReturnValue(undefined);
     getCsrfProtection(mockConfigService as ConfigService);
 
-    const [options] = (doubleCsrf as jest.Mock).mock.calls[0];
-    const req = { cookies: {} } as any;
+    const [options] = (doubleCsrf as jest.Mock).mock.calls[0] as [
+      CsrfOptionsShape,
+    ];
+    const req = { cookies: {} };
     expect(options.getSessionIdentifier(req)).toBe('stateless-session');
   });
 });

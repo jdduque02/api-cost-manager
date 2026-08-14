@@ -123,6 +123,111 @@ describe('bank-statement-parser', () => {
     });
   });
 
+  describe('Bancolombia (cuenta de ahorros)', () => {
+    const lines: TextLine[] = [
+      line(698.8, 1, [
+        [332, 'DESDE:'],
+        [370, '2024/06/30'],
+        [450, 'HASTA:'],
+        [490, '2024/09/30'],
+      ]),
+      line(602.8, 2, [
+        [31.5, 'FECHA'],
+        [132.3, 'DESCRIPCIÓN'],
+        [269.5, 'SUCURSAL'],
+        [355.1, 'DCTO.'],
+        [434.1, 'VALOR'],
+        [533.8, 'SALDO'],
+      ]),
+      line(584.6, 2, [
+        [35, '14/07'],
+        [79, 'RETIRO CAJERO AUTO CASTILLA 2'],
+        [448.2, '-100,000.00'],
+        [549, '746,073.88'],
+      ]),
+      line(566.6, 2, [
+        [35, '27/08'],
+        [79, 'ABONO INTERESES AHORROS'],
+        [481.8, '5.76'],
+        [539.4, '1,053,466.25'],
+      ]),
+      line(530.6, 2, [
+        [35, '30/08'],
+        [79, 'TRANSFERENCIA CTA SUC VIRTUAL'],
+        [448.2, '-245,100.00'],
+        [549, '808,367.35'],
+      ]),
+      line(472.6, 1, [
+        [45, 'SALDO ANTERIOR'],
+        [140, '$'],
+        [222.4, '1,913,832.07'],
+        [330, 'SALDO PROMEDIO'],
+        [465, '$'],
+        [537.2, '858,048'],
+      ]),
+    ];
+
+    it('detecta el layout de cuenta y usa el parser de ahorros', () => {
+      const result = parseStatementLines(lines);
+      expect(result.bank).toBe('bancolombia');
+      expect(result.period).toBe('2024/06/30 - 2024/09/30');
+      expect(result.transactions).toHaveLength(3);
+
+      const [retiro, abono, transfer] = result.transactions;
+      expect(retiro).toMatchObject({
+        transaction_date: '2024-07-14',
+        description: 'RETIRO CAJERO AUTO CASTILLA 2',
+        amount: 100000,
+        type: TransactionTypeEnum.EXPENSE,
+        balance: 746073.88,
+      });
+      expect(abono).toMatchObject({
+        transaction_date: '2024-08-27',
+        description: 'ABONO INTERESES AHORROS',
+        amount: 5.76,
+        type: TransactionTypeEnum.INCOME,
+        balance: 1053466.25,
+      });
+      expect(transfer).toMatchObject({
+        transaction_date: '2024-08-30',
+        description: 'TRANSFERENCIA CTA SUC VIRTUAL',
+        amount: 245100,
+        type: TransactionTypeEnum.EXPENSE,
+      });
+    });
+
+    it('omite filas de resumen sin fecha', () => {
+      const result = parseStatementLines(lines);
+      const descs = result.transactions.map((t) => t.description);
+      expect(descs).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ description: 'SALDO ANTERIOR' }),
+        ]),
+      );
+    });
+
+    it('usa el parser de cuenta aunque la entidad detecte el de tarjeta', () => {
+      const withCreditHeader: TextLine[] = [
+        line(586.6, 2, [
+          [30, 'Nuevos movimientos entre 15 jun hasta 15 jul. 2026'],
+        ]),
+        ...lines,
+      ];
+      const entities = [
+        { code: 'bancolombia', detect_patterns: ['Nuevos movimientos entre'] },
+      ];
+
+      const result = parseStatementLines(withCreditHeader, undefined, entities);
+
+      expect(result.bank).toBe('bancolombia');
+      expect(result.transactions).toHaveLength(3);
+      expect(result.transactions[0]).toMatchObject({
+        transaction_date: '2024-07-14',
+        description: 'RETIRO CAJERO AUTO CASTILLA 2',
+      });
+    });
+  });
+
   describe('RappiCard (Davivienda)', () => {
     const lines: TextLine[] = [
       line(510.6, 1, [

@@ -107,7 +107,7 @@ export class BankingEntityRepository {
   private handleDbError(error: unknown): never {
     if (
       error instanceof QueryFailedError &&
-      (error as any).code === PG_UNIQUE_VIOLATION
+      (error as { code?: string }).code === PG_UNIQUE_VIOLATION
     ) {
       throw new ConflictException(
         this.i18n.t('support.BANKING_ENTITY_CODE_EXISTS'),

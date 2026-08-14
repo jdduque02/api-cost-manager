@@ -29,18 +29,27 @@ export class UserResponseDto {
   metadata!: Record<string, unknown>;
 
   @Expose()
+  roles!: string[];
+
+  @Expose()
   is_active!: boolean;
 
-  @Expose({ groups: ['detail'] })
+  @Expose()
+  last_login_at!: Date | null;
+
+  @Expose()
+  is_online?: boolean;
+
+  @Expose({ groups: ['detail', 'admin'] })
   phone!: string | null;
 
-  @Expose({ groups: ['detail'] })
+  @Expose({ groups: ['detail', 'admin'] })
   address!: string | null;
 
-  @Expose({ groups: ['detail'] })
+  @Expose({ groups: ['detail', 'admin'] })
   full_name!: string | null;
 
-  @Expose({ groups: ['detail'] })
+  @Expose({ groups: ['detail', 'admin'] })
   document_id!: string | null;
 
   @Expose()
@@ -49,7 +58,7 @@ export class UserResponseDto {
   @Expose()
   updated_at!: Date;
 
-  @Expose({ groups: ['detail'] })
+  @Expose({ groups: ['detail', 'admin'] })
   @Type(() => FinancialProfileResponseDto)
   financial_profile!: FinancialProfileResponseDto;
 

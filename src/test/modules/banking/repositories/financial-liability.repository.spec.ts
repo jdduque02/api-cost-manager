@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { FinancialLiabilityRepository } from '@banking/repositories/financial-liability.repository';
 import { FinancialLiability } from '@banking/entities/financial-liability.entity';
 import { CreateFinancialLiabilityDto } from '@banking/dto/financial-liability/create-financial-liability.dto';
@@ -13,6 +14,10 @@ const mockTypeOrmRepo = {
   findOne: jest.fn(),
   merge: jest.fn(),
   softRemove: jest.fn(),
+};
+
+const mockI18nService = {
+  t: jest.fn((key: string) => `[${key}]`),
 };
 
 const buildLiability = (overrides = {}): FinancialLiability =>
@@ -40,6 +45,7 @@ describe('FinancialLiabilityRepository', () => {
           provide: getRepositoryToken(FinancialLiability),
           useValue: mockTypeOrmRepo,
         },
+        { provide: I18nService, useValue: mockI18nService },
       ],
     }).compile();
 

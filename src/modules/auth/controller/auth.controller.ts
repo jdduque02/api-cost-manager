@@ -6,13 +6,14 @@ import {
   Body,
   Param,
   Req,
+  Res,
   HttpCode,
   HttpStatus,
   UseGuards,
   Inject,
   ForbiddenException,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import { I18nService } from 'nestjs-i18n';
@@ -47,6 +48,14 @@ import { EncryptPasswordDto } from '@auth/dto/encrypt-password.dto';
 import { EncryptPasswordResponseDto } from '@auth/dto/encrypt-password-response.dto';
 import { KeycloakTokenResponse } from '@auth/interfaces/KeycloakTokenResponse.dto';
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
+import {
+  ACCESS_COOKIE_NAME,
+  REFRESH_COOKIE_NAME,
+  clearAccessCookieOptions,
+  clearRefreshCookieOptions,
+  getAccessCookieOptions,
+  getRefreshCookieOptions,
+} from '@config/cookie.config';
 
 @ApiTags('auth')
 @ApiExtraModels(KeycloakTokenResponse, SessionResponseDto, EventResponseDto)
@@ -99,8 +108,14 @@ export class AuthController {
     description: 'Error de comunicación con Keycloak.',
     type: ErrorResponseDto,
   })
-  login(@Body() loginDto: LoginDto, @Req() req: Request) {
-    return this.authService.login(loginDto, this.extractIp(req));
+  async login(
+    @Body() loginDto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const tokens = await this.authService.login(loginDto, this.extractIp(req));
+    this.setAuthCookies(res, tokens);
+    return tokens;
   }
 
   @Post('refresh')
@@ -120,8 +135,18 @@ export class AuthController {
     description: 'Error de comunicación con Keycloak.',
     type: ErrorResponseDto,
   })
-  refresh(@Body() refreshTokenDto: RefreshTokenDto) {
-    return this.authService.refresh(refreshTokenDto);
+  async refresh(
+    @Body() refreshTokenDto: RefreshTokenDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const cookieRefresh = (req.cookies as Record<string, string> | undefined)?.[
+      REFRESH_COOKIE_NAME
+    ];
+    const refresh_token = refreshTokenDto?.refresh_token || cookieRefresh || '';
+    const tokens = await this.authService.refresh({ refresh_token });
+    this.setAuthCookies(res, tokens);
+    return tokens;
   }
 
   @Post('logout')
@@ -134,8 +159,43 @@ export class AuthController {
     description: 'Error al cerrar sesión en Keycloak.',
     type: ErrorResponseDto,
   })
-  async logout(@Body() refreshTokenDto: RefreshTokenDto) {
-    await this.authService.logout(refreshTokenDto.refresh_token);
+  async logout(
+    @Body() refreshTokenDto: RefreshTokenDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const cookieRefresh = (req.cookies as Record<string, string> | undefined)?.[
+      REFRESH_COOKIE_NAME
+    ];
+    const refresh_token = refreshTokenDto?.refresh_token || cookieRefresh || '';
+    if (refresh_token) {
+      await this.authService.logout(refresh_token);
+    }
+    res.cookie(
+      REFRESH_COOKIE_NAME,
+      '',
+      clearRefreshCookieOptions(this.configService),
+    );
+    res.cookie(
+      ACCESS_COOKIE_NAME,
+      '',
+      clearAccessCookieOptions(this.configService),
+    );
+  }
+
+  private setAuthCookies(res: Response, tokens: KeycloakTokenResponse): void {
+    const accessMaxAge = (tokens.expires_in ?? 300) * 1000;
+    const refreshMaxAge = (tokens.refresh_expires_in ?? 1800) * 1000;
+    res.cookie(
+      ACCESS_COOKIE_NAME,
+      tokens.access_token,
+      getAccessCookieOptions(this.configService, accessMaxAge),
+    );
+    res.cookie(
+      REFRESH_COOKIE_NAME,
+      tokens.refresh_token,
+      getRefreshCookieOptions(this.configService, refreshMaxAge),
+    );
   }
 
   @Post('forgot-password')

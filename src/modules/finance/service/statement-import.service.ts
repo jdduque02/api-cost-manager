@@ -224,12 +224,11 @@ export class StatementImportService {
     const options = job.options as unknown as StatementImportJobOptions;
 
     this.chain = this.chain
-      .then(() => this.processRetryJob(id, userId, password, options, bankingEntities))
+      .then(() =>
+        this.processRetryJob(id, userId, password, options, bankingEntities),
+      )
       .catch((error: unknown) =>
-        this.logger.error(
-          `Error reintentando lote #${id}`,
-          error as Error,
-        ),
+        this.logger.error(`Error reintentando lote #${id}`, error as Error),
       );
 
     return this.statementImportRepository.findJobById(id, userId);
@@ -573,10 +572,7 @@ export class StatementImportService {
       err?.stack,
     );
 
-    if (
-      name === 'PasswordException' ||
-      /password|clave|encrypt/i.test(msg)
-    ) {
+    if (name === 'PasswordException' || /password|clave|encrypt/i.test(msg)) {
       if (/incorrect|inv[aá]lida|incorrecta|wrong/i.test(msg)) {
         return {
           code: 'PDF_WRONG_PASSWORD',

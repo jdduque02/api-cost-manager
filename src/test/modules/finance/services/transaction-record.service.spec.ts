@@ -5,7 +5,14 @@ import { CreateTransactionRecordDto } from '@finance/dto/transaction-record/crea
 import { UpdateTransactionRecordDto } from '@finance/dto/transaction-record/update-transaction-record.dto';
 import { TransactionRecordQueryDto } from '@finance/dto/transaction-record/transaction-record-query.dto';
 import { NotFoundException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { TransactionTypeEnum } from '@shared/enums';
+
+const mockCacheManager = {
+  get: jest.fn(),
+  set: jest.fn(),
+  del: jest.fn(),
+};
 
 const mockTransactionRecordRepository = {
   create: jest.fn(),
@@ -36,6 +43,7 @@ describe('TransactionRecordService', () => {
           provide: TransactionRecordRepository,
           useValue: mockTransactionRecordRepository,
         },
+        { provide: CACHE_MANAGER, useValue: mockCacheManager },
       ],
     }).compile();
 

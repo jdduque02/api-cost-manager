@@ -162,9 +162,7 @@ describe('FinancialObjectiveRepository', () => {
 
       const result = await repo.findById(1, 10);
 
-      expect(result).toEqual(
-        expect.objectContaining({ id: 1, user_id: 10 }),
-      );
+      expect(result).toEqual(expect.objectContaining({ id: 1, user_id: 10 }));
     });
 
     it('debe lanzar NotFoundException si no existe', async () => {

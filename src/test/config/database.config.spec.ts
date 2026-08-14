@@ -2,6 +2,8 @@ import { ConfigService } from '@nestjs/config';
 import { databaseConfig } from '@config/database.config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
+type DatabaseFactory = (configService: ConfigService) => TypeOrmModuleOptions;
+
 describe('databaseConfig', () => {
   it('debe exportar un objeto TypeOrmModuleAsyncOptions válido', () => {
     expect(databaseConfig).toBeDefined();
@@ -16,9 +18,8 @@ describe('databaseConfig', () => {
           (key: string, defaultVal?: unknown) => env[key] ?? defaultVal,
         ),
       } as unknown as ConfigService;
-      return (databaseConfig.useFactory as Function)(
-        mockConfigService,
-      ) as TypeOrmModuleOptions;
+      const factory = databaseConfig.useFactory as unknown as DatabaseFactory;
+      return factory(mockConfigService);
     };
 
     it('debe retornar la configuración de PostgreSQL con los valores del entorno', () => {
@@ -55,9 +56,9 @@ describe('databaseConfig', () => {
     });
 
     it('debe incluir pool de conexiones en extra', () => {
-      const config = buildConfig({ NODE_ENV: 'DEV' }) as any;
+      const config = buildConfig({ NODE_ENV: 'DEV' });
       expect(config.extra).toMatchObject({
-        max: 10,
+        max: 20,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 5000,
       });

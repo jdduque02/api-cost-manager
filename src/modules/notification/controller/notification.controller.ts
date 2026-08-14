@@ -59,7 +59,7 @@ export class NotificationController {
   async create(
     @Param('userId', ParseIntPipe) userId: number,
     @Body() dto: CreateNotificationDto,
-    @CurrentUser() currentUser: IntrospectResponse,
+    @CurrentUser() _currentUser: IntrospectResponse,
   ) {
     return this.notificationService.create(userId, dto);
   }
@@ -85,7 +85,7 @@ export class NotificationController {
   async findAll(
     @Param('userId', ParseIntPipe) userId: number,
     @Query() query: NotificationQueryDto,
-    @CurrentUser() currentUser: IntrospectResponse,
+    @CurrentUser() _currentUser: IntrospectResponse,
   ) {
     return this.notificationService.findAll(userId, query);
   }
@@ -105,9 +105,23 @@ export class NotificationController {
   async findOne(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() currentUser: IntrospectResponse,
+    @CurrentUser() _currentUser: IntrospectResponse,
   ) {
     return this.notificationService.findOne(id, userId);
+  }
+
+  @Patch('read-all')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Marcar todas las notificaciones como leídas' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Todas las notificaciones marcadas como leídas.',
+  })
+  async markAllAsRead(
+    @Param('userId', ParseIntPipe) userId: number,
+    @CurrentUser() _currentUser: IntrospectResponse,
+  ) {
+    return this.notificationService.markAllAsRead(userId);
   }
 
   @Patch(':id')
@@ -130,7 +144,7 @@ export class NotificationController {
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateNotificationDto,
-    @CurrentUser() currentUser: IntrospectResponse,
+    @CurrentUser() _currentUser: IntrospectResponse,
   ) {
     return this.notificationService.update(id, userId, dto);
   }
@@ -150,23 +164,9 @@ export class NotificationController {
   async markAsRead(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() currentUser: IntrospectResponse,
+    @CurrentUser() _currentUser: IntrospectResponse,
   ) {
     return this.notificationService.markAsRead(id, userId);
-  }
-
-  @Patch('read-all')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Marcar todas las notificaciones como leídas' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Todas las notificaciones marcadas como leídas.',
-  })
-  async markAllAsRead(
-    @Param('userId', ParseIntPipe) userId: number,
-    @CurrentUser() currentUser: IntrospectResponse,
-  ) {
-    return this.notificationService.markAllAsRead(userId);
   }
 
   @Delete(':id')
@@ -183,7 +183,7 @@ export class NotificationController {
   async remove(
     @Param('userId', ParseIntPipe) userId: number,
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() currentUser: IntrospectResponse,
+    @CurrentUser() _currentUser: IntrospectResponse,
   ) {
     return this.notificationService.remove(id, userId);
   }

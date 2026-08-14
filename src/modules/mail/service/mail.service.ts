@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  OnApplicationBootstrap,
-} from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -56,26 +52,53 @@ export class MailService implements OnApplicationBootstrap {
   }
 
   async onApplicationBootstrap(): Promise<void> {
+    // Se siembra con MÁS marcadores ({{otp}}, {{name}}, {{year}}) y no con
+    // valores fijos: así el HTML guardado puede reemplazarse por correo.
+    // (Históricamente se renderizaba con '123456'/'usuario' incrustados y
+    // sendOtp reemplazaba sobre marcadores inexistentes → mismo código en
+    // todos los correos.)
+    const seededHtml = await render(
+      OtpPasswordResetEmail({
+        name: '{{name}}',
+        otpCode: '{{otp}}',
+        year: '{{year}}',
+      }),
+    );
+
     try {
       const existing = await this.templateRepo.findOne({
         where: { key: OTP_EMAIL_TEMPLATE_KEY },
       });
-      if (existing) return;
-      const html = await render(
-        OtpPasswordResetEmail({ name: 'usuario', otpCode: '123456' }),
-      );
-      await this.templateRepo.save(
-        this.templateRepo.create({
-          key: OTP_EMAIL_TEMPLATE_KEY,
-          subject: DEFAULT_OTP_SUBJECT,
-          html_body: html,
-        }),
-      );
-      this.logger.log(
-        `Plantilla por defecto "${OTP_EMAIL_TEMPLATE_KEY}" creada en mail.email_template.`,
-      );
+
+      if (!existing) {
+        await this.templateRepo.save(
+          this.templateRepo.create({
+            key: OTP_EMAIL_TEMPLATE_KEY,
+            subject: DEFAULT_OTP_SUBJECT,
+            html_body: seededHtml,
+          }),
+        );
+        this.logger.log(
+          `Plantilla por defecto "${OTP_EMAIL_TEMPLATE_KEY}" creada en mail.email_template.`,
+        );
+        return;
+      }
+
+      // Repara plantillas previas que no tengan el marcador {{otp}}
+      // (guardadas con un código fijo incrustado).
+      if (!existing.html_body.includes('{{otp}}')) {
+        existing.html_body = seededHtml;
+        existing.subject = existing.subject || DEFAULT_OTP_SUBJECT;
+        await this.templateRepo.save(existing);
+        this.logger.warn(
+          `Plantilla "${OTP_EMAIL_TEMPLATE_KEY}" reparada: se reemplazó el HTML por una versión con los marcadores {{otp}}, {{name}} y {{year}}.`,
+        );
+      }
     } catch (error) {
-      this.logger.error('No se pudo crear la plantilla por defecto', error as Error);
+      this.logger.error(
+        'No se pudo crear/reparar la plantilla por defecto',
+        error as Error,
+      );
     }
   }
 
@@ -92,7 +115,9 @@ export class MailService implements OnApplicationBootstrap {
 
   /**
    * Envía el correo OTP de recuperación de contraseña. Usa la plantilla
-   * personalizada (mail.email_template) si existe; si no, la react-email.
+   * personalizada (mail.email_template) si existe y contiene el marcador
+   * {{otp}}; si no (o no existe), renderiza la react-email con el código
+   * real para garantizar que el correo lleve SIEMPRE el código generado.
    */
   async sendOtp(to: string, code: string, name?: string): Promise<void> {
     let subject = DEFAULT_OTP_SUBJECT;
@@ -101,29 +126,42 @@ export class MailService implements OnApplicationBootstrap {
     const custom = await this.templateRepo.findOne({
       where: { key: OTP_EMAIL_TEMPLATE_KEY },
     });
-    if (custom) {
-      const year = String(new Date().getFullYear());
+    const year = String(new Date().getFullYear());
+
+    if (custom && custom.html_body.includes('{{otp}}')) {
       html = custom.html_body
         .replace(/{{otp}}/g, code)
         .replace(/{{name}}/g, name ?? '')
         .replace(/{{year}}/g, year);
       subject = custom.subject || subject;
     } else {
+      if (custom) {
+        this.logger.warn(
+          `Plantilla "${OTP_EMAIL_TEMPLATE_KEY}" sin marcador {{otp}}; se usa la react-email por defecto con el código real.`,
+        );
+      }
       html = await render(
         OtpPasswordResetEmail({
           name,
           otpCode: code,
+          year,
         }),
       );
     }
 
-    await this.send({ to, subject, html });
+    await this.send({
+      to,
+      subject,
+      html,
+      text: `Su código de recuperación es ${code}`,
+    });
   }
 
   private async send(payload: {
     to: string;
     subject: string;
     html: string;
+    text?: string;
   }): Promise<void> {
     if (!this.transporter) {
       this.logger.log(
@@ -138,7 +176,9 @@ export class MailService implements OnApplicationBootstrap {
         to: payload.to,
         subject: payload.subject,
         html: payload.html,
-        text: `Su código de recuperación es ${payload.html.match(/\d{6}/)?.[0] ?? ''}`,
+        text:
+          payload.text ??
+          `Su código de recuperación es ${payload.html.match(/\d{6}/)?.[0] ?? ''}`,
       });
       this.logger.log(`Correo enviado a ${payload.to}: "${payload.subject}"`);
     } catch (error) {

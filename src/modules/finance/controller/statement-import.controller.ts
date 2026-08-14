@@ -27,6 +27,7 @@ import {
 } from '@nestjs/swagger';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '@auth/guards/auth.guard';
 import { OwnershipGuard } from '@auth/guards/ownership.guard';
 import { ApiIntrospectGuardResponse } from '@auth/decorators/api-introspect-guard-response.decorator';
@@ -125,6 +126,7 @@ export class StatementImportController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ global: { limit: 300, ttl: 60_000 } })
   @ApiOperation({ summary: 'Listar cargas de extractos del usuario' })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 10 })
@@ -158,6 +160,7 @@ export class StatementImportController {
 
   @Get(':id')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ global: { limit: 300, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Obtener carga por ID con detalle por archivo',
   })
@@ -203,10 +206,6 @@ export class StatementImportController {
     @Body() body: { password?: string },
     @CurrentUser() _currentUser: IntrospectResponse,
   ) {
-    return this.statementImportService.retryJob(
-      id,
-      userId,
-      body?.password,
-    );
+    return this.statementImportService.retryJob(id, userId, body?.password);
   }
 }

@@ -83,10 +83,7 @@ export class MailTemplateController {
     description: 'Plantilla guardada.',
     type: EmailTemplateResponseDto,
   })
-  async upsert(
-    @Param('key') key: string,
-    @Body() dto: UpdateEmailTemplateDto,
-  ) {
+  async upsert(@Param('key') key: string, @Body() dto: UpdateEmailTemplateDto) {
     const existing = await this.templateRepo.findOne({ where: { key } });
     if (existing) {
       existing.subject = dto.subject;

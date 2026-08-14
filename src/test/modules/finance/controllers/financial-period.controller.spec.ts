@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { FinancialPeriodController } from '@finance/controller/financial-period.controller';
 import { FinancialPeriodService } from '@finance/service/financial-period.service';
 import { CreateFinancialPeriodDto } from '@finance/dto/financial-period/create-financial-period.dto';
+import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 
 const mockFinancialPeriodService = {
   create: jest.fn(),
@@ -19,7 +20,7 @@ const buildPeriod = (overrides = {}) => ({
   ...overrides,
 });
 
-const currentUser = { sub: 'kc-uuid' } as any;
+const currentUser: IntrospectResponse = { sub: 'kc-uuid' };
 
 describe('FinancialPeriodController', () => {
   let controller: FinancialPeriodController;

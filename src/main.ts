@@ -17,11 +17,14 @@ import { join } from 'node:path';
 import cookieParser from 'cookie-parser';
 import { ConfigService } from '@nestjs/config';
 import { getRabbitMQConfig } from '@config/rabbitmq.config';
-/* import { getCsrfProtection } from '@config/csrf.config'; */
+import { getCsrfProtection } from '@config/csrf.config';
+import { DataSource } from 'typeorm';
+import type { Request, Response } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+  app.enableShutdownHooks();
 
   // Registrar adaptador Socket.io
   app.useWebSocketAdapter(new IoAdapter(app));
@@ -41,23 +44,52 @@ async function bootstrap() {
   app.useGlobalFilters(new I18nValidationExceptionFilter());
 
   // --- Security setup ---
-  // Helmet helps protect your app from some well-known web vulnerabilities by setting HTTP headers appropriately
-  app.use(helmet(getHelmetConfig()));
+  const env = configService.get<string>('NODE_ENV', 'LOCAL');
+  const isProd = env === 'PROD' || env === 'DEPLOY' || env === 'production';
+  app.use(helmet(getHelmetConfig(isProd)));
   app.enableCors(getCorsConfig(configService));
-  // CSRF protection using double submit cookie pattern
-  // Needs cookie-parser to read the cookies
+
   const cookieSecret = configService.get<string>('COOKIE_SECRET');
   if (!cookieSecret) throw new Error('COOKIE_SECRET env var no está definida.');
+  if (isProd) {
+    if (!configService.get<string>('OTP_SECRET')) {
+      throw new Error('OTP_SECRET debe definirse en entornos de producción.');
+    }
+    if (!configService.get<string>('BCRYPT_PEPPER')) {
+      throw new Error(
+        'BCRYPT_PEPPER debe definirse en entornos de producción.',
+      );
+    }
+    if (!configService.get<string>('CSRF_SECRET')) {
+      throw new Error('CSRF_SECRET debe definirse en entornos de producción.');
+    }
+  }
   app.use(cookieParser(cookieSecret));
-  // CSRF protection (double-submit cookie). Requires cookie-parser (above).
-  // The client must echo the `x-csrf-token` cookie back in the `x-csrf-token`
-  // header on state-changing requests (POST/PUT/PATCH/DELETE).
-  // app.use(getCsrfProtection(configService));
+
+  // CSRF double-submit cookie. El cliente debe reenviar el cookie `x-csrf-token`
+  // en el header `x-csrf-token` en POST/PUT/PATCH/DELETE.
+  // Se puede desactivar con CSRF_ENABLED=false (útil en tests locales).
+  const csrfEnabled =
+    configService.get<string>('CSRF_ENABLED', isProd ? 'true' : 'false') ===
+    'true';
+  if (csrfEnabled) {
+    app.use(getCsrfProtection(configService));
+  }
 
   // Global Prefix for all routes (e.g., /api/v1)
   const apiVersion = configService.get<string>('VERSION') ?? '1';
   const globalPrefix = `api/v${apiVersion}`;
   app.setGlobalPrefix(globalPrefix);
+
+  // Health (sin auth) — se monta tras el prefix global vía middleware simple
+  const httpAdapter = app.getHttpAdapter();
+  httpAdapter.get(`/${globalPrefix}/health`, (_req: Request, res: Response) => {
+    res.status(200).json({
+      status: true,
+      message: 'ok',
+      timestamp: new Date().toISOString(),
+    });
+  });
 
   // --- Swagger ---
   const config = getSwaggerConfig(configService);
@@ -92,5 +124,22 @@ async function bootstrap() {
     `Swagger Docs available at: http://localhost:${port}/api/v${swaggerVersion}/docs`,
   );
   console.log('RabbitMQ transport connected and listening for messages.');
+
+  const shutdown = async (signal: string) => {
+    console.log(`Received ${signal}, shutting down gracefully...`);
+    try {
+      await app.close();
+      try {
+        const ds = app.get(DataSource, { strict: false });
+        if (ds?.isInitialized) await ds.destroy();
+      } catch {
+        // DataSource may already be closed by Nest
+      }
+    } finally {
+      process.exit(0);
+    }
+  };
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  process.on('SIGINT', () => void shutdown('SIGINT'));
 }
 bootstrap();

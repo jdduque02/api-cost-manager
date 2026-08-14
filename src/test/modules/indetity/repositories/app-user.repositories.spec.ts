@@ -1,10 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { QueryFailedError } from 'typeorm';
 import { UserRepository } from '@identity/repositories/app-user.repositories';
 import { AppUser } from '@identity/entities/app-user.entity';
 import { UserQueryDto } from '@identity/dto/user/user-query.dto';
+import { EncryptionService } from '@shared/services/encryption.service';
 
 const buildUser = (overrides: Partial<AppUser> = {}): AppUser =>
   ({
@@ -23,14 +25,26 @@ const buildUser = (overrides: Partial<AppUser> = {}): AppUser =>
   }) as AppUser;
 
 // Builder de QueryBuilder encadenable
-const buildQb = (result: [AppUser[], number]) => {
-  const qb: any = {
+interface MockQueryBuilder {
+  leftJoinAndSelect: jest.Mock;
+  where: jest.Mock;
+  andWhere: jest.Mock;
+  orderBy: jest.Mock;
+  take: jest.Mock;
+  skip: jest.Mock;
+  cache: jest.Mock;
+  getManyAndCount: jest.Mock;
+}
+
+const buildQb = (result: [AppUser[], number]): MockQueryBuilder => {
+  const qb: MockQueryBuilder = {
     leftJoinAndSelect: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
     take: jest.fn().mockReturnThis(),
     skip: jest.fn().mockReturnThis(),
+    cache: jest.fn().mockReturnThis(),
     getManyAndCount: jest.fn().mockResolvedValue(result),
   };
   return qb;
@@ -46,6 +60,15 @@ const mockTypeOrmRepo = {
   createQueryBuilder: jest.fn(),
 };
 
+const mockI18nService = {
+  t: jest.fn((key: string) => `[${key}]`),
+};
+
+const mockEncryptionService = {
+  encryptField: jest.fn((value: string | null | undefined) => value),
+  decryptField: jest.fn((value: string | null | undefined) => value),
+};
+
 describe('UserRepository', () => {
   let repo: UserRepository;
 
@@ -54,6 +77,8 @@ describe('UserRepository', () => {
       providers: [
         UserRepository,
         { provide: getRepositoryToken(AppUser), useValue: mockTypeOrmRepo },
+        { provide: I18nService, useValue: mockI18nService },
+        { provide: EncryptionService, useValue: mockEncryptionService },
       ],
     }).compile();
 
@@ -85,7 +110,7 @@ describe('UserRepository', () => {
         message: 'duplicate key value violates unique constraint',
         code: '23505',
         detail: 'Key (email)=(test@test.com) already exists.',
-      });
+      }) as unknown as QueryFailedError;
       mockTypeOrmRepo.create.mockReturnValue(buildUser());
       mockTypeOrmRepo.save.mockRejectedValue(pgError);
 
@@ -167,9 +192,7 @@ describe('UserRepository', () => {
 
     it('debe lanzar NotFoundException si el usuario no existe', async () => {
       mockTypeOrmRepo.findOne.mockResolvedValue(null);
-      await expect(repo.update(99, {} as any)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(repo.update(99, {})).rejects.toThrow(NotFoundException);
     });
   });
 });

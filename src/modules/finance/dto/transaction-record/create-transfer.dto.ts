@@ -34,7 +34,11 @@ export class DistinctTransferAccountsConstraint implements ValidatorConstraintIn
   }
 }
 
-@((Validate as any)(DistinctTransferAccountsConstraint))
+const ValidateClassDecorator = Validate as unknown as (
+  constraint: unknown,
+) => ClassDecorator;
+
+@ValidateClassDecorator(DistinctTransferAccountsConstraint)
 export class CreateTransferDto {
   @ApiProperty({
     description: 'ID de la cuenta bancaria de origen (se debita).',

@@ -58,7 +58,8 @@ export function getCsrfProtection(configService: ConfigService) {
      *    constant string so that token generation still works.
      */
     getSessionIdentifier: (req: Request) =>
-      req?.cookies?.['x-csrf-token'] || 'stateless-session',
+      (req?.cookies?.['x-csrf-token'] as string | undefined) ||
+      'stateless-session',
 
     /**
      * Safe HTTP methods that do NOT mutate server state.

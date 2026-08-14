@@ -6,7 +6,10 @@ import { MailService } from './service/mail.service';
 import { MailTemplateController } from './controller/mail-template.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([EmailTemplate]), forwardRef(() => AuthModule)],
+  imports: [
+    TypeOrmModule.forFeature([EmailTemplate]),
+    forwardRef(() => AuthModule),
+  ],
   controllers: [MailTemplateController],
   providers: [MailService],
   exports: [MailService],

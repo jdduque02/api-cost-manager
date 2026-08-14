@@ -1,7 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { FinancialProfileController } from '@identity/controller/financial-profile.controller';
 import { FinancialProfileService } from '@identity/service/financial-profile.service';
-import { UserService } from '@identity/service/user.service';
 import { CreateFinancialProfileDto } from '@identity/dto/financial-profile/create-financial-profile.dto';
 import { UpdateFinancialProfileDto } from '@identity/dto/financial-profile/update-financial-profile.dto';
 import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';

@@ -39,7 +39,11 @@ export class SinglePatrimonyConstraint implements ValidatorConstraintInterface {
   }
 }
 
-@((Validate as any)(SinglePatrimonyConstraint))
+const ValidateClassDecorator = Validate as unknown as (
+  constraint: unknown,
+) => ClassDecorator;
+
+@ValidateClassDecorator(SinglePatrimonyConstraint)
 export class CreateTransactionRecordDto {
   @ApiPropertyOptional({
     description:

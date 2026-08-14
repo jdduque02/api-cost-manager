@@ -31,6 +31,14 @@ import {
 } from '../interfaces/notification.interfaces';
 import { WsExceptionFilter } from '../filters/ws-exception.filter';
 import { AuthService } from '@auth/service/auth.service';
+import { PresenceService } from '@shared/services/presence.service';
+import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
+
+type SocketData = {
+  token?: string;
+  user?: IntrospectResponse;
+  user_id?: number;
+};
 
 @WebSocketGateway({
   namespace: '/notifications',
@@ -60,6 +68,7 @@ export class NotificationGateway
     @Inject(forwardRef(() => AuthService))
     private readonly authService: AuthService,
     @Inject(I18nService) private readonly i18n: I18nService,
+    private readonly presenceService: PresenceService,
   ) {}
 
   afterInit(server: Server): void {
@@ -68,37 +77,58 @@ export class NotificationGateway
     );
 
     // Middleware de autenticación: valida el token JWT con Keycloak antes de permitir conexión
-    server.use(async (socket: Socket, next) => {
-      const token =
-        (socket.handshake.auth?.token as string | undefined) ||
-        socket.handshake.headers?.authorization?.replace('Bearer ', '');
-
-      if (!token) {
-        return next(
-          new WsException(this.i18n.t('notification.AUTH_TOKEN_REQUIRED')),
-        );
-      }
-
-      try {
-        const user = await this.authService.introspect(token);
-        socket.data.token = token;
-        // Adjunta el perfil Keycloak al socket: { sub, username, email, realm_access, ... }
-        socket.data.user = user;
-        next();
-      } catch {
-        next(new WsException(this.i18n.t('notification.AUTH_TOKEN_INVALID')));
-      }
+    server.use((socket: Socket, next) => {
+      void this.authenticateSocket(socket, next);
     });
   }
 
+  private async authenticateSocket(
+    socket: Socket,
+    next: (err?: Error) => void,
+  ): Promise<void> {
+    const token =
+      (socket.handshake.auth?.token as string | undefined) ||
+      socket.handshake.headers?.authorization?.replace('Bearer ', '');
+
+    if (!token) {
+      return next(
+        new WsException(this.i18n.t('notification.AUTH_TOKEN_REQUIRED')),
+      );
+    }
+
+    try {
+      const user = await this.authService.introspect(token);
+      const data = this.socketData(socket);
+      data.token = token;
+      // Adjunta el perfil Keycloak al socket: { sub, username, email, realm_access, ... }
+      data.user = user;
+      next();
+    } catch {
+      next(new WsException(this.i18n.t('notification.AUTH_TOKEN_INVALID')));
+    }
+  }
+
+  private socketData(client: Socket): SocketData {
+    return client.data as SocketData;
+  }
+
   handleConnection(client: Socket): void {
+    const userId = this.socketData(client).user?.userId;
     this.logger.log(
-      `Cliente conectado: ${client.id} (sub: ${client.data.user?.sub ?? 'desconocido'})`,
+      `Cliente conectado: ${client.id} (sub: ${this.socketData(client).user?.sub ?? 'desconocido'})`,
     );
+    if (userId) {
+      void this.presenceService.markOnline(userId);
+      this.socketData(client).user_id = userId;
+    }
   }
 
   handleDisconnect(client: Socket): void {
+    const userId = this.socketData(client).user_id;
     this.logger.log(`Cliente desconectado: ${client.id}`);
+    if (userId) {
+      void this.presenceService.markOffline(userId);
+    }
   }
 
   // ── Eventos del cliente ─────────────────────────────────────
@@ -112,14 +142,14 @@ export class NotificationGateway
     @MessageBody() payload: SubscribePayload,
     @ConnectedSocket() client: Socket,
   ): void {
-    const authenticatedUserId = client.data.user?.userId as number | undefined;
+    const authenticatedUserId = this.socketData(client).user?.userId;
     if (!authenticatedUserId || payload.user_id !== authenticatedUserId) {
       throw new WsException(this.i18n.t('notification.FORBIDDEN_SUBSCRIBE'));
     }
 
     const room = NOTIFICATION_ROOMS.user(payload.user_id);
-    client.join(room);
-    client.data.user_id = payload.user_id;
+    void client.join(room);
+    this.socketData(client).user_id = payload.user_id;
     this.logger.log(`Cliente ${client.id} suscrito a sala ${room}`);
   }
 
@@ -131,13 +161,13 @@ export class NotificationGateway
     @MessageBody() payload: SubscribePayload,
     @ConnectedSocket() client: Socket,
   ): void {
-    const authenticatedUserId = client.data.user?.userId as number | undefined;
+    const authenticatedUserId = this.socketData(client).user?.userId;
     if (!authenticatedUserId || payload.user_id !== authenticatedUserId) {
       throw new WsException(this.i18n.t('notification.FORBIDDEN_SUBSCRIBE'));
     }
 
     const room = NOTIFICATION_ROOMS.user(payload.user_id);
-    client.leave(room);
+    void client.leave(room);
     this.logger.log(`Cliente ${client.id} salió de sala ${room}`);
   }
 
@@ -162,7 +192,7 @@ export class NotificationGateway
    */
   @SubscribeMessage(NOTIFICATION_EVENTS.MARK_ALL_AS_READ)
   handleMarkAllAsRead(@ConnectedSocket() client: Socket): void {
-    const userId = client.data.user_id as number | undefined;
+    const userId = this.socketData(client).user_id;
     if (userId) {
       this.logger.debug(
         `Cliente ${client.id} solicitó marcar todo como leído (user: ${userId})`,

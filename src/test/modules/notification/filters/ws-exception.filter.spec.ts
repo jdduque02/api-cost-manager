@@ -2,6 +2,11 @@ import { WsExceptionFilter } from '@notification/filters/ws-exception.filter';
 import { WsException } from '@nestjs/websockets';
 import { ArgumentsHost } from '@nestjs/common';
 
+interface MockWsClient {
+  id: string;
+  emit: jest.Mock;
+}
+
 const buildHost = (clientId = 'socket-1'): ArgumentsHost => {
   const emit = jest.fn();
   const client = { id: clientId, emit };
@@ -20,7 +25,7 @@ describe('WsExceptionFilter', () => {
 
   it('debe emitir el mensaje de WsException al cliente', () => {
     const host = buildHost();
-    const client = host.switchToWs().getClient<any>();
+    const client = host.switchToWs().getClient<MockWsClient>();
     const exception = new WsException('Token inválido');
 
     filter.catch(exception, host);
@@ -33,7 +38,7 @@ describe('WsExceptionFilter', () => {
 
   it('debe emitir el mensaje de Error estándar al cliente', () => {
     const host = buildHost();
-    const client = host.switchToWs().getClient<any>();
+    const client = host.switchToWs().getClient<MockWsClient>();
     const exception = new Error('Error inesperado');
 
     filter.catch(exception, host);
@@ -46,7 +51,7 @@ describe('WsExceptionFilter', () => {
 
   it('debe emitir mensaje genérico para excepciones desconocidas', () => {
     const host = buildHost();
-    const client = host.switchToWs().getClient<any>();
+    const client = host.switchToWs().getClient<MockWsClient>();
 
     filter.catch('excepcion-string', host);
 

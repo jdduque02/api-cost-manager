@@ -10,6 +10,10 @@ jest.mock('node:fs');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 const mockedFs = jest.mocked(fs);
 
+interface ServiceWithLogger {
+  logger: { error: jest.Mock };
+}
+
 describe('LoggingService', () => {
   let service: LoggingService;
   let configService: jest.Mocked<ConfigService>;
@@ -43,11 +47,12 @@ describe('LoggingService', () => {
         .mockReturnValueOnce('false') // APP_DEV
         .mockReturnValueOnce('http://log-service.example.com'); // LOG_SERVICE_URL
 
-      mockedAxios.post = jest.fn().mockResolvedValue({ status: 200 });
+      const postMock = jest.fn().mockResolvedValue({ status: 200 });
+      mockedAxios.post = postMock;
 
       await service.sendLog({ message: 'test' }, 'INFO', 'TestContext');
 
-      expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect(postMock).toHaveBeenCalledWith(
         'http://log-service.example.com',
         expect.objectContaining({
           severity: 'INFO',
@@ -63,11 +68,12 @@ describe('LoggingService', () => {
         .mockReturnValueOnce('true') // APP_DEV
         .mockReturnValueOnce('http://log-service.example.com'); // LOG_SERVICE_URL
 
-      mockedAxios.post = jest.fn().mockResolvedValue({ status: 200 });
+      const postMock = jest.fn().mockResolvedValue({ status: 200 });
+      mockedAxios.post = postMock;
 
       await service.sendLog({ message: 'test' }, 'INFO', 'TestContext');
 
-      expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect(postMock).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ source: 'cost-manager_dev' }),
       );
@@ -78,11 +84,12 @@ describe('LoggingService', () => {
         .mockReturnValueOnce('false')
         .mockReturnValueOnce('http://log-service.example.com');
 
-      mockedAxios.post = jest.fn().mockResolvedValue({ status: 200 });
+      const postMock = jest.fn().mockResolvedValue({ status: 200 });
+      mockedAxios.post = postMock;
 
       await service.sendLog({ message: 'test' }, undefined, 'TestContext');
 
-      expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect(postMock).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ severity: 'INFO' }),
       );
@@ -93,15 +100,19 @@ describe('LoggingService', () => {
         .mockReturnValueOnce('false') // APP_DEV
         .mockReturnValueOnce(undefined); // LOG_SERVICE_URL
 
+      const postMock = jest.fn();
+      mockedAxios.post = postMock;
       mockedFs.existsSync.mockReturnValue(true);
-      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => {
-        cb(null);
-        return undefined;
-      });
+      mockedFs.appendFile.mockImplementation(
+        (_p: any, _d: any, cb: (error: Error | null) => void) => {
+          cb(null);
+          return undefined;
+        },
+      );
 
       await service.sendLog({ message: 'test' }, 'ERROR', 'TestContext');
 
-      expect(mockedAxios.post).not.toHaveBeenCalled();
+      expect(postMock).not.toHaveBeenCalled();
       expect(mockedFs.appendFile).toHaveBeenCalled();
     });
 
@@ -112,10 +123,12 @@ describe('LoggingService', () => {
 
       mockedFs.existsSync.mockReturnValue(false);
       mockedFs.mkdirSync.mockReturnValue(undefined);
-      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => {
-        cb(null);
-        return undefined;
-      });
+      mockedFs.appendFile.mockImplementation(
+        (_p: any, _d: any, cb: (error: Error | null) => void) => {
+          cb(null);
+          return undefined;
+        },
+      );
 
       await service.sendLog({ message: 'test' }, 'WARN', 'TestContext');
 
@@ -129,19 +142,20 @@ describe('LoggingService', () => {
         .mockReturnValueOnce('false')
         .mockReturnValueOnce('http://log-service.example.com');
 
-      mockedAxios.post = jest
-        .fn()
-        .mockRejectedValue(new Error('Network error'));
+      const postMock = jest.fn().mockRejectedValue(new Error('Network error'));
+      mockedAxios.post = postMock;
       mockedFs.existsSync.mockReturnValue(true);
-      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => {
-        cb(null);
-        return undefined;
-      });
+      mockedFs.appendFile.mockImplementation(
+        (_p: any, _d: any, cb: (error: Error | null) => void) => {
+          cb(null);
+          return undefined;
+        },
+      );
 
       await service.sendLog({ message: 'test' }, 'ERROR', 'TestContext');
 
       // retry(3) realiza 1 intento original + 3 reintentos = 4 llamadas totales
-      expect(mockedAxios.post).toHaveBeenCalledTimes(4);
+      expect(postMock).toHaveBeenCalledTimes(4);
       expect(mockedFs.appendFile).toHaveBeenCalled();
     });
 
@@ -151,13 +165,15 @@ describe('LoggingService', () => {
         .mockReturnValueOnce(undefined);
 
       mockedFs.existsSync.mockReturnValue(true);
-      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => {
-        cb(new Error('disk full'));
-        return undefined;
-      });
+      mockedFs.appendFile.mockImplementation(
+        (_p: any, _d: any, cb: (error: Error | null) => void) => {
+          cb(new Error('disk full'));
+          return undefined;
+        },
+      );
 
       const loggerErrorSpy = jest
-        .spyOn((service as any).logger, 'error')
+        .spyOn((service as unknown as ServiceWithLogger).logger, 'error')
         .mockImplementation(() => {});
 
       await service.sendLog({ message: 'test' }, 'INFO', 'TestContext');
@@ -175,13 +191,15 @@ describe('LoggingService', () => {
         .mockReturnValueOnce(undefined);
 
       mockedFs.existsSync.mockReturnValue(true);
-      mockedFs.appendFile.mockImplementation((_p: any, _d: any, cb: any) => {
-        cb(null);
-        return undefined;
-      });
+      mockedFs.appendFile.mockImplementation(
+        (_p: any, _d: any, cb: (error: Error | null) => void) => {
+          cb(null);
+          return undefined;
+        },
+      );
 
       const loggerErrorSpy = jest
-        .spyOn((service as any).logger, 'error')
+        .spyOn((service as unknown as ServiceWithLogger).logger, 'error')
         .mockImplementation(() => {});
 
       await service.sendLog({ message: 'test' }, 'WARN', 'TestContext');

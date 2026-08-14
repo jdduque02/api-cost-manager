@@ -2,7 +2,10 @@ import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { I18nService } from 'nestjs-i18n';
 import { IsNull, Repository } from 'typeorm';
-import { CashArqueo, CashArqueoStatusEnum } from '@finance/entities/cash-arqueo.entity';
+import {
+  CashArqueo,
+  CashArqueoStatusEnum,
+} from '@finance/entities/cash-arqueo.entity';
 import { TransactionRecord } from '@finance/entities/transaction-record.entity';
 import { TransactionRecordRepository } from '@finance/repositories/transaction-record.repository';
 import { CreateCashArqueoDto } from '@finance/dto/cash-arqueo/create-cash-arqueo.dto';
@@ -45,7 +48,8 @@ export class CashArqueoRepository {
 
     const entity = this.repo.create({
       user_id: userId,
-      arqueo_date: (dto.arqueo_date ?? new Date().toISOString().slice(0, 10)) as unknown as Date,
+      arqueo_date: (dto.arqueo_date ??
+        new Date().toISOString().slice(0, 10)) as unknown as Date,
       counted_amount: countedAmount,
       expected_amount: expectedAmount,
       difference,
@@ -95,7 +99,9 @@ export class CashArqueoRepository {
       monthNum < 1 ||
       monthNum > 12
     ) {
-      throw new NotFoundException(this.i18n.t('finance.CASH_ARQUEO_INVALID_MONTH'));
+      throw new NotFoundException(
+        this.i18n.t('finance.CASH_ARQUEO_INVALID_MONTH'),
+      );
     }
     const start = `${year}-${String(monthNum).padStart(2, '0')}-01`;
     const nextMonthStart = new Date(Date.UTC(year, monthNum, 1));
@@ -174,8 +180,7 @@ export class CashArqueoRepository {
       }
     }
 
-    const expected_amount =
-      extract.count > 0 ? extract.net : app.net;
+    const expected_amount = extract.count > 0 ? extract.net : app.net;
 
     return {
       month,

@@ -8,13 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { I18nService } from 'nestjs-i18n';
-import {
-  DeepPartial,
-  FindOptionsWhere,
-  IsNull,
-  QueryFailedError,
-  Repository,
-} from 'typeorm';
+import { DeepPartial, IsNull, QueryFailedError, Repository } from 'typeorm';
 import { AppUser } from '@identity/entities/app-user.entity';
 import { CreateUserDto } from '@identity/dto/user/create-user.dto';
 import { UpdateUserDto } from '@identity/dto/user/update-user.dto';
@@ -43,7 +37,7 @@ export class UserRepository {
   ): Promise<AppUser> {
     try {
       const encrypted = this.encryptSensitiveFields(dto);
-      const user = this.repo.create(encrypted) as unknown as AppUser;
+      const user = this.repo.create(encrypted);
       const savedUser = await this.repo.save(user);
       const decrypted = this.decryptSensitiveFields(savedUser);
 
@@ -53,8 +47,10 @@ export class UserRepository {
       return decrypted;
     } catch (error) {
       this.logger.error(
-        `Error al crear usuario: ${error.message}`,
-        error.stack,
+        `Error al crear usuario: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        error instanceof Error ? error.stack : undefined,
       );
       this.handleDbError(error, 'crear usuario');
     }
@@ -69,6 +65,8 @@ export class UserRepository {
   ): Promise<{ data: AppUser[]; total: number }> {
     const {
       search,
+      role,
+      is_active,
       sortBy = 'created_at',
       order = 'DESC',
       page = 1,
@@ -76,13 +74,18 @@ export class UserRepository {
     } = query;
 
     this.logger.debug(
-      `Buscando usuarios: search="${search}" sortBy=${sortBy} order=${order} página=${page} límite=${limit}`,
+      `Buscando usuarios: search="${search}" role=${role} is_active=${is_active} sortBy=${sortBy} order=${order} página=${page} límite=${limit}`,
     );
 
     const qb = this.repo
       .createQueryBuilder('u')
       .leftJoinAndSelect('u.financial_profile', 'fp')
-      .where('u.is_active = true');
+      .where('u.deleted_at IS NULL')
+      .cache(`users:list:${JSON.stringify(query)}`, 30_000);
+
+    if (typeof is_active === 'boolean') {
+      qb.andWhere('u.is_active = :is_active', { is_active });
+    }
 
     if (search?.trim()) {
       qb.andWhere('(u.username ILIKE :search OR u.email ILIKE :search)', {
@@ -90,12 +93,21 @@ export class UserRepository {
       });
     }
 
-    qb.orderBy(`u.${sortBy}`, order)
+    if (role?.trim()) {
+      qb.andWhere(`u.roles @> :roleJson`, {
+        roleJson: JSON.stringify([role.trim()]),
+      });
+    }
+
+    qb.orderBy(`u.${sortBy}`, order, 'NULLS LAST')
       .take(limit)
       .skip((page - 1) * limit);
 
     const [data, total] = await qb.getManyAndCount();
-    return { data, total };
+    return {
+      data: data.map((u) => this.decryptSensitiveFields(u)),
+      total,
+    };
   }
 
   async findById(id: string): Promise<AppUser> {
@@ -135,6 +147,26 @@ export class UserRepository {
     return user;
   }
 
+  async recordLogin(id: string, roles: string[]): Promise<void> {
+    await this.repo.update(
+      { id },
+      {
+        last_login_at: new Date(),
+        roles: roles ?? [],
+      },
+    );
+  }
+
+  async updateRoles(id: string, roles: string[]): Promise<AppUser> {
+    await this.repo.update({ id }, { roles });
+    return this.findById(id);
+  }
+
+  async updateActiveStatus(id: string, isActive: boolean): Promise<AppUser> {
+    await this.repo.update({ id }, { is_active: isActive });
+    return this.findById(id);
+  }
+
   // ─────────────────────────────────────────────────────────────
   // UPDATE
   // ─────────────────────────────────────────────────────────────
@@ -144,7 +176,10 @@ export class UserRepository {
 
     try {
       const encrypted = this.encryptSensitiveFields(updateUserDto);
-      const updated = this.repo.merge(user, encrypted);
+      const updated = this.repo.merge(
+        user,
+        encrypted as unknown as DeepPartial<AppUser>,
+      );
       const result = await this.repo.save(updated);
       const decrypted = this.decryptSensitiveFields(result);
 
@@ -203,9 +238,9 @@ export class UserRepository {
     'full_name',
     'document_id',
   ] as const;
-  private encryptSensitiveFields(data: any): any {
+  private encryptSensitiveFields<T>(data: T): T {
     if (!data || typeof data !== 'object') return data;
-    const result = { ...data };
+    const result = { ...(data as object) } as Record<string, unknown>;
     for (const field of this.SENSITIVE_FIELDS) {
       if (result[field] !== undefined && result[field] !== null) {
         result[field] = this.encryptionService.encryptField(
@@ -214,7 +249,7 @@ export class UserRepository {
         );
       }
     }
-    return result;
+    return result as T;
   }
 
   private decryptSensitiveFields(user: AppUser): AppUser {
@@ -238,7 +273,7 @@ export class UserRepository {
    */
   private handleDbError(error: unknown, contextAction: string): never {
     if (error instanceof QueryFailedError) {
-      const pg = error as any;
+      const pg = error as QueryFailedError & { code?: string; detail?: string };
 
       if (pg.code === PG_UNIQUE_VIOLATION) {
         this.logger.warn(

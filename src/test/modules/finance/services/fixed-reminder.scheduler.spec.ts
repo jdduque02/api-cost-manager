@@ -5,7 +5,9 @@ import {
   startOfDay,
 } from '@finance/service/fixed-reminder.scheduler';
 import { TransactionRecordRepository } from '@finance/repositories/transaction-record.repository';
+import { TransactionRecord } from '@finance/entities/transaction-record.entity';
 import { NotificationService } from '@notification/service/notification.service';
+import { I18nService } from 'nestjs-i18n';
 
 const mockTransactionRepo = {
   findFixedForReminders: jest.fn(),
@@ -19,7 +21,9 @@ const mockI18nService = {
   t: jest.fn((key: string) => `[${key}]`),
 };
 
-const buildTx = (overrides = {}) =>
+const buildTx = (
+  overrides: Partial<TransactionRecord> = {},
+): TransactionRecord =>
   ({
     id: 1,
     user_id: 10,
@@ -32,7 +36,7 @@ const buildTx = (overrides = {}) =>
     description: 'Suscripción Movistar',
     created_at: new Date('2026-07-01T10:00:00.000Z'),
     ...overrides,
-  }) as any;
+  }) as unknown as TransactionRecord;
 
 describe('FixedReminderScheduler', () => {
   let scheduler: FixedReminderScheduler;
@@ -41,7 +45,7 @@ describe('FixedReminderScheduler', () => {
     scheduler = new FixedReminderScheduler(
       mockTransactionRepo as unknown as TransactionRecordRepository,
       mockNotificationService as unknown as NotificationService,
-      mockI18nService as any,
+      mockI18nService as unknown as I18nService,
     );
     jest.clearAllMocks();
   });
@@ -103,7 +107,9 @@ describe('FixedReminderScheduler', () => {
       const reference = `fixed:reminder:1:2026-08-15`;
       expect(mockNotificationService.createIfMissing).toHaveBeenCalledWith(
         10,
-        expect.objectContaining({ title: expect.any(String) }),
+        expect.objectContaining({
+          title: expect.any(String) as string,
+        }),
         reference,
       );
     });

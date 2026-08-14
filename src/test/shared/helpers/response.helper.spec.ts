@@ -9,7 +9,7 @@ describe('ResponseHelper', () => {
 
       expect(response.ok).toBe(true);
       expect(response.status).toBe(HttpStatus.OK);
-      expect(response.message).toBe('Operación exitosa');
+      expect(response.message).toBe('shared.SUCCESS');
       expect(response.body).toEqual(data);
       expect(response.timestamp).toBeDefined();
     });

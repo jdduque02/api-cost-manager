@@ -10,6 +10,9 @@ import { AxiosResponse } from 'axios';
 import { AuthService } from '@auth/service/auth.service';
 import { KeycloakAdminService } from '@auth/service/keycloak-admin.service';
 import { UserRepository } from '@identity/repositories/app-user.repositories';
+import { PasswordResetOtp } from '@auth/entities/password-reset-otp.entity';
+import { MailService } from '@mail/service/mail.service';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { LoginDto } from '@auth/dto/login.dto';
 import { RefreshTokenDto } from '@auth/dto/refresh-token.dto';
 import { EncryptionService } from '@shared/services/encryption.service';
@@ -44,6 +47,7 @@ const mockUserRepository = {
   findByExternalId: jest.fn(),
   findByUsername: jest.fn(),
   update: jest.fn(),
+  recordLogin: jest.fn(),
 };
 
 const mockEncryptionService = {
@@ -64,6 +68,17 @@ const mockI18nService = {
   t: jest.fn((key: string) => key),
 };
 
+const mockOtpRepo = {
+  findOne: jest.fn(),
+  save: jest.fn(),
+  update: jest.fn(),
+  create: jest.fn((data: unknown) => data),
+};
+
+const mockMailService = {
+  sendOtp: jest.fn(),
+};
+
 const TEST_IP = '127.0.0.1';
 
 const axiosResponse = <T>(data: T): AxiosResponse<T> => ({
@@ -71,7 +86,7 @@ const axiosResponse = <T>(data: T): AxiosResponse<T> => ({
   status: 200,
   statusText: 'OK',
   headers: {},
-  config: { headers: {} } as any,
+  config: { headers: {} } as unknown as AxiosResponse<T>['config'],
 });
 
 describe('AuthService', () => {
@@ -88,6 +103,11 @@ describe('AuthService', () => {
         { provide: EncryptionService, useValue: mockEncryptionService },
         { provide: IpBlockService, useValue: mockIpBlockService },
         { provide: I18nService, useValue: mockI18nService },
+        {
+          provide: getRepositoryToken(PasswordResetOtp),
+          useValue: mockOtpRepo,
+        },
+        { provide: MailService, useValue: mockMailService },
       ],
     }).compile();
 
@@ -114,9 +134,13 @@ describe('AuthService', () => {
       mockUserRepository.findByUsername.mockResolvedValue({ id: '123' });
       mockHttpService.post.mockReturnValue(of(axiosResponse(tokenResponse)));
       const result = await service.login(dto, TEST_IP);
-      expect(result).toEqual(tokenResponse);
+      expect(result).toEqual({ ...tokenResponse, userId: 123 });
       expect(mockHttpService.post).toHaveBeenCalledTimes(1);
       expect(mockIpBlockService.resetAttempts).toHaveBeenCalledWith(TEST_IP);
+      expect(mockUserRepository.recordLogin).toHaveBeenCalledWith(
+        '123',
+        expect.any(Array),
+      );
     });
 
     it('debe lanzar UnauthorizedException con credenciales inválidas (401)', async () => {
@@ -213,27 +237,32 @@ describe('AuthService', () => {
       mockKeycloakAdminService.findKeycloakIdByEmail.mockResolvedValue(
         'kc-id-123',
       );
-      mockKeycloakAdminService.sendResetPasswordEmail.mockResolvedValue(
-        undefined,
-      );
+      mockUserRepository.findByExternalId.mockResolvedValue({
+        id: '7',
+        username: 'testuser',
+      });
+      mockOtpRepo.update.mockResolvedValue(undefined);
+      mockOtpRepo.save.mockResolvedValue({});
       await expect(
         service.forgotPassword('user@test.com'),
       ).resolves.toBeUndefined();
       expect(
         mockKeycloakAdminService.findKeycloakIdByEmail,
       ).toHaveBeenCalledWith('user@test.com');
-      expect(
-        mockKeycloakAdminService.sendResetPasswordEmail,
-      ).toHaveBeenCalledWith('kc-id-123');
+      expect(mockMailService.sendOtp).toHaveBeenCalledWith(
+        'user@test.com',
+        expect.any(String),
+        'testuser',
+      );
     });
 
-    it('debe propagar error si el email no existe en Keycloak', async () => {
+    it('debe ignorar silenciosamente si el email no existe en Keycloak', async () => {
       mockKeycloakAdminService.findKeycloakIdByEmail.mockRejectedValue(
         new UnauthorizedException('Email no encontrado.'),
       );
       await expect(
         service.forgotPassword('noexiste@test.com'),
-      ).rejects.toThrow();
+      ).resolves.toBeUndefined();
     });
   });
 

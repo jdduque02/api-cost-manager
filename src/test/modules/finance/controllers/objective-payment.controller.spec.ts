@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { ObjectivePaymentController } from '@finance/controller/objective-payment.controller';
 import { ObjectivePaymentService } from '@finance/service/objective-payment.service';
 import { CreateObjectivePaymentDto } from '@finance/dto/objective-payment/create-objective-payment.dto';
+import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 
 const mockObjectivePaymentService = {
   create: jest.fn(),
@@ -19,7 +20,7 @@ const buildPayment = (overrides = {}) => ({
   ...overrides,
 });
 
-const currentUser = { sub: 'kc-uuid' } as any;
+const currentUser: IntrospectResponse = { sub: 'kc-uuid' };
 
 describe('ObjectivePaymentController', () => {
   let controller: ObjectivePaymentController;

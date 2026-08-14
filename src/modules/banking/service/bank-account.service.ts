@@ -122,13 +122,17 @@ export class BankAccountService {
   }> {
     const entity = await this.bankAccountRepository.findById(id, userId);
     const rawBalance = entity.encrypted_balance
-      ? Number(this.encryptionService.decryptField(entity.encrypted_balance, 'banking'))
+      ? Number(
+          this.encryptionService.decryptField(
+            entity.encrypted_balance,
+            'banking',
+          ),
+        )
       : 0;
     const rate = entity.annual_interest_rate ?? 0;
     const freq = entity.yield_frequency ?? 'monthly';
 
-    const periodsPerYear =
-      freq === 'daily' ? 365 : freq === 'monthly' ? 12 : 1;
+    const periodsPerYear = freq === 'daily' ? 365 : freq === 'monthly' ? 12 : 1;
 
     const projected: Record<string, number> = {};
     for (const years of [1, 3, 5, 10]) {
@@ -136,7 +140,9 @@ export class BankAccountService {
       const periodicRate = rate / 100 / periodsPerYear;
       if (periodicRate > 0) {
         projected[`${years}y`] =
-          Math.round(rawBalance * Math.pow(1 + periodicRate, totalPeriods) * 100) / 100;
+          Math.round(
+            rawBalance * Math.pow(1 + periodicRate, totalPeriods) * 100,
+          ) / 100;
       } else {
         projected[`${years}y`] = rawBalance;
       }

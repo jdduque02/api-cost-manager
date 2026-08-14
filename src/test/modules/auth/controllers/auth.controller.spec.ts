@@ -28,11 +28,27 @@ const mockI18nService = {
   t: jest.fn((key: string) => key),
 };
 
-const mockRequest = {
+interface MockRequest {
+  headers: Record<string, unknown>;
+  cookies: Record<string, string>;
+  ip: string;
+  socket: { remoteAddress: string };
+}
+
+interface MockResponse {
+  cookie: jest.Mock;
+}
+
+const mockRequest: MockRequest = {
   headers: {},
+  cookies: {},
   ip: '127.0.0.1',
   socket: { remoteAddress: '127.0.0.1' },
-} as any;
+};
+
+const mockResponse: MockResponse = {
+  cookie: jest.fn(),
+};
 
 const tokenResponse = {
   access_token: 'access-jwt',
@@ -72,30 +88,28 @@ describe('AuthController', () => {
 
     it('debe retornar KeycloakTokenResponse en login exitoso', async () => {
       mockAuthService.login.mockResolvedValue(tokenResponse);
-      const result = await controller.login(dto, mockRequest);
-      expect(mockAuthService.login).toHaveBeenCalledWith(
-        dto,
-        '127.0.0.1',
-      );
+      const result = await controller.login(dto, mockRequest, mockResponse);
+      expect(mockAuthService.login).toHaveBeenCalledWith(dto, '127.0.0.1');
       expect(result).toEqual(tokenResponse);
+      expect(mockResponse.cookie).toHaveBeenCalled();
     });
 
     it('debe propagar UnauthorizedException con credenciales inválidas', async () => {
       mockAuthService.login.mockRejectedValue(
         new UnauthorizedException('Credenciales inválidas.'),
       );
-      await expect(controller.login(dto, mockRequest)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        controller.login(dto, mockRequest, mockResponse),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('debe propagar InternalServerErrorException en error de Keycloak', async () => {
       mockAuthService.login.mockRejectedValue(
         new InternalServerErrorException(),
       );
-      await expect(controller.login(dto, mockRequest)).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(
+        controller.login(dto, mockRequest, mockResponse),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 
@@ -107,8 +121,10 @@ describe('AuthController', () => {
 
     it('debe retornar nuevos tokens en refresh exitoso', async () => {
       mockAuthService.refresh.mockResolvedValue(tokenResponse);
-      const result = await controller.refresh(dto);
-      expect(mockAuthService.refresh).toHaveBeenCalledWith(dto);
+      const result = await controller.refresh(dto, mockRequest, mockResponse);
+      expect(mockAuthService.refresh).toHaveBeenCalledWith({
+        refresh_token: 'valid-refresh',
+      });
       expect(result).toEqual(tokenResponse);
     });
 
@@ -116,18 +132,18 @@ describe('AuthController', () => {
       mockAuthService.refresh.mockRejectedValue(
         new UnauthorizedException('Sesión expirada o token inválido.'),
       );
-      await expect(controller.refresh(dto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        controller.refresh(dto, mockRequest, mockResponse),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('debe propagar InternalServerErrorException en error de Keycloak', async () => {
       mockAuthService.refresh.mockRejectedValue(
         new InternalServerErrorException(),
       );
-      await expect(controller.refresh(dto)).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(
+        controller.refresh(dto, mockRequest, mockResponse),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 
@@ -139,7 +155,7 @@ describe('AuthController', () => {
 
     it('debe cerrar sesión correctamente y retornar undefined', async () => {
       mockAuthService.logout.mockResolvedValue(undefined);
-      const result = await controller.logout(dto);
+      const result = await controller.logout(dto, mockRequest, mockResponse);
       expect(mockAuthService.logout).toHaveBeenCalledWith(dto.refresh_token);
       expect(result).toBeUndefined();
     });
@@ -148,9 +164,9 @@ describe('AuthController', () => {
       mockAuthService.logout.mockRejectedValue(
         new InternalServerErrorException(),
       );
-      await expect(controller.logout(dto)).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(
+        controller.logout(dto, mockRequest, mockResponse),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 

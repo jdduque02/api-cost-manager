@@ -6,6 +6,7 @@ import { UpdateTransactionRecordDto } from '@finance/dto/transaction-record/upda
 import { TransactionRecordQueryDto } from '@finance/dto/transaction-record/transaction-record-query.dto';
 import { TransactionSummaryQueryDto } from '@finance/dto/transaction-record/transaction-summary-query.dto';
 import { TransactionTypeEnum } from '@shared/enums';
+import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 
 const mockTransactionRecordService = {
   create: jest.fn(),
@@ -26,7 +27,7 @@ const buildTransaction = (overrides = {}) => ({
   ...overrides,
 });
 
-const currentUser = { sub: 'kc-uuid' } as any;
+const currentUser: IntrospectResponse = { sub: 'kc-uuid' };
 
 describe('TransactionRecordController', () => {
   let controller: TransactionRecordController;

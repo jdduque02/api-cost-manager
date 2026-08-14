@@ -12,25 +12,29 @@ export class CashReconciliationDto {
   app!: { count: number; income: number; expense: number; net: number };
 
   @ApiProperty({
-    description: 'Registros provenientes de extractos cargados (source = import).',
+    description:
+      'Registros provenientes de extractos cargados (source = import).',
     example: { count: 18, income: 2800000, expense: 1350000, net: 1450000 },
   })
   extract!: { count: number; income: number; expense: number; net: number };
 
   @ApiProperty({
-    description: 'Movimientos que coinciden en ambos lados (por fecha+monto+descripción).',
+    description:
+      'Movimientos que coinciden en ambos lados (por fecha+monto+descripción).',
     example: { count: 10, amount: 2500000 },
   })
   matched!: { count: number; amount: number };
 
   @ApiProperty({
-    description: 'Movimientos solo presentes en el aplicativo (sin contraparte en extractos).',
+    description:
+      'Movimientos solo presentes en el aplicativo (sin contraparte en extractos).',
     example: { count: 2, amount: 500000 },
   })
   app_only!: { count: number; amount: number };
 
   @ApiProperty({
-    description: 'Movimientos solo presentes en los extractos (sin contraparte en el aplicativo).',
+    description:
+      'Movimientos solo presentes en los extractos (sin contraparte en el aplicativo).',
     example: { count: 8, amount: 750000 },
   })
   extract_only!: { count: number; amount: number };
@@ -44,7 +48,8 @@ export class CashReconciliationDto {
 
   @ApiPropertyOptional({
     type: 'array',
-    description: 'Movimientos sin coincidencia (detalle de app_only y extract_only).',
+    description:
+      'Movimientos sin coincidencia (detalle de app_only y extract_only).',
   })
   discrepancies?: Array<Record<string, unknown>>;
 }

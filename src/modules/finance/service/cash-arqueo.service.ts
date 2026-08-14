@@ -9,8 +9,10 @@ export class CashArqueoService {
 
   async create(userId: number, dto: CreateCashArqueoDto) {
     const month = this.resolveMonth(dto.arqueo_date);
-    const reconciliation =
-      await this.cashArqueoRepository.getReconciliation(userId, month);
+    const reconciliation = await this.cashArqueoRepository.getReconciliation(
+      userId,
+      month,
+    );
     return this.cashArqueoRepository.create(userId, dto, reconciliation);
   }
 

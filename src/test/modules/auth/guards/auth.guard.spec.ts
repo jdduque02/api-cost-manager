@@ -1,4 +1,5 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { I18nService } from 'nestjs-i18n';
 import { AuthGuard } from '@auth/guards/auth.guard';
 import { AuthService } from '@auth/service/auth.service';
 
@@ -6,10 +7,14 @@ const mockAuthService = {
   introspect: jest.fn(),
 };
 
+const mockI18n = {
+  t: jest.fn((key: string) => key),
+};
+
 const buildContext = (authorization?: string): ExecutionContext =>
   ({
     switchToHttp: () => ({
-      getRequest: () => ({ headers: { authorization } }),
+      getRequest: () => ({ headers: { authorization }, cookies: {} }),
     }),
   }) as unknown as ExecutionContext;
 
@@ -17,7 +22,10 @@ describe('AuthGuard', () => {
   let guard: AuthGuard;
 
   beforeEach(() => {
-    guard = new AuthGuard(mockAuthService as unknown as AuthService);
+    guard = new AuthGuard(
+      mockAuthService as unknown as AuthService,
+      mockI18n as unknown as I18nService,
+    );
     jest.clearAllMocks();
   });
 
@@ -51,7 +59,9 @@ describe('AuthGuard', () => {
   it('debe adjuntar el payload al request.user cuando el token es válido', async () => {
     const payload = { active: true, sub: 'user-uuid', username: 'admin' };
     mockAuthService.introspect.mockResolvedValue(payload);
-    const request: any = { headers: { authorization: 'Bearer valid-token' } };
+    const request: { headers: { authorization: string }; user?: unknown } = {
+      headers: { authorization: 'Bearer valid-token' },
+    };
     const ctx = {
       switchToHttp: () => ({ getRequest: () => request }),
     } as unknown as ExecutionContext;

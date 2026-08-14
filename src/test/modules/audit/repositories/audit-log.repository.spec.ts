@@ -1,11 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  ConflictException,
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { QueryFailedError } from 'typeorm';
 import { AuditLogRepository } from '@audit/repositories/audit-log.repository';
 import { AuditLog } from '@audit/entities/audit-log.entity';
 import { WriteAuditLogDto } from '@audit/dto/write-audit-log.dto';

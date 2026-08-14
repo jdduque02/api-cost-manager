@@ -1,10 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { FinancialProfileRepository } from '@identity/repositories/financial-profile.repository';
 import { FinancialProfile } from '@identity/entities/financial-profile.entity';
 import { CreateFinancialProfileDto } from '@identity/dto/financial-profile/create-financial-profile.dto';
 import { UpdateFinancialProfileDto } from '@identity/dto/financial-profile/update-financial-profile.dto';
+import { EncryptionService } from '@shared/services/encryption.service';
 
 const buildProfile = (
   overrides: Partial<FinancialProfile> = {},
@@ -32,6 +34,15 @@ const mockTypeOrmRepo = {
   remove: jest.fn(),
 };
 
+const mockI18nService = {
+  t: jest.fn((key: string) => `[${key}]`),
+};
+
+const mockEncryptionService = {
+  encryptField: jest.fn((value: string | null | undefined) => value),
+  decryptField: jest.fn((value: string | null | undefined) => value),
+};
+
 describe('FinancialProfileRepository', () => {
   let repo: FinancialProfileRepository;
 
@@ -43,6 +54,8 @@ describe('FinancialProfileRepository', () => {
           provide: getRepositoryToken(FinancialProfile),
           useValue: mockTypeOrmRepo,
         },
+        { provide: I18nService, useValue: mockI18nService },
+        { provide: EncryptionService, useValue: mockEncryptionService },
       ],
     }).compile();
 

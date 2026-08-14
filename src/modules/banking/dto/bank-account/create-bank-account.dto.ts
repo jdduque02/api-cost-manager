@@ -77,7 +77,8 @@ export class CreateBankAccountDto {
   annual_interest_rate?: number;
 
   @ApiPropertyOptional({
-    description: 'Frecuencia de entrega del rendimiento (daily, monthly, annual).',
+    description:
+      'Frecuencia de entrega del rendimiento (daily, monthly, annual).',
     example: 'monthly',
     enum: ['daily', 'monthly', 'annual'],
   })

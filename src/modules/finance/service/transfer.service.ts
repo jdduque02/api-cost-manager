@@ -16,8 +16,14 @@ export class TransferService {
     private readonly transactionRecordRepository: TransactionRecordRepository,
   ) {}
 
-  async create(userId: number, dto: CreateTransferDto): Promise<TransferResponseDto> {
-    const pair = await this.transactionRecordRepository.createTransfer(userId, dto);
+  async create(
+    userId: number,
+    dto: CreateTransferDto,
+  ): Promise<TransferResponseDto> {
+    const pair = await this.transactionRecordRepository.createTransfer(
+      userId,
+      dto,
+    );
     return this.toResponseDto(pair);
   }
 
@@ -26,11 +32,8 @@ export class TransferService {
     page = 1,
     limit = 20,
   ): Promise<{ data: TransferResponseDto[]; total: number }> {
-    const { data, total } = await this.transactionRecordRepository.findTransfers(
-      userId,
-      page,
-      limit,
-    );
+    const { data, total } =
+      await this.transactionRecordRepository.findTransfers(userId, page, limit);
     const grouped = this.groupPairs(data);
     return {
       data: grouped.map((pair) => this.toResponseDto(pair)),
@@ -39,7 +42,10 @@ export class TransferService {
   }
 
   async findOne(id: number, userId: number): Promise<TransferResponseDto> {
-    const pair = await this.transactionRecordRepository.findTransferById(id, userId);
+    const pair = await this.transactionRecordRepository.findTransferById(
+      id,
+      userId,
+    );
     return this.toResponseDto(pair);
   }
 
@@ -104,11 +110,13 @@ export class TransferService {
           : record.destination_account_id,
       side,
       bank_name:
-        side === 'source' ? record.source_bank ?? null : record.destination_bank ?? null,
+        side === 'source'
+          ? (record.source_bank ?? null)
+          : (record.destination_bank ?? null),
       account_type:
         side === 'source'
-          ? record.source_account ?? null
-          : record.destination_account ?? null,
+          ? (record.source_account ?? null)
+          : (record.destination_account ?? null),
       amount: Number(record.amount ?? 0),
       transaction_date: record.transaction_date,
       description: record.description ?? null,

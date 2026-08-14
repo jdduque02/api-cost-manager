@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { QueryFailedError } from 'typeorm';
 import { BankAccountRepository } from '@banking/repositories/bank-account.repository';
 import { BankAccount } from '@banking/entities/bank-account.entity';
@@ -17,6 +18,10 @@ const mockTypeOrmRepo = {
   findOne: jest.fn(),
   merge: jest.fn(),
   softRemove: jest.fn(),
+};
+
+const mockI18nService = {
+  t: jest.fn((key: string) => `[${key}]`),
 };
 
 const buildAccount = (overrides = {}): BankAccount =>
@@ -42,6 +47,7 @@ describe('BankAccountRepository', () => {
       providers: [
         BankAccountRepository,
         { provide: getRepositoryToken(BankAccount), useValue: mockTypeOrmRepo },
+        { provide: I18nService, useValue: mockI18nService },
       ],
     }).compile();
 
@@ -75,10 +81,10 @@ describe('BankAccountRepository', () => {
     });
 
     it('debe lanzar ConflictException por violación de unicidad (23505)', async () => {
-      const pgError = Object.assign(Object.create(QueryFailedError.prototype), {
-        message: 'duplicate key',
-        code: '23505',
-      });
+      const pgError = Object.assign(
+        Object.create(QueryFailedError.prototype) as QueryFailedError,
+        { message: 'duplicate key', code: '23505' },
+      );
       mockTypeOrmRepo.create.mockReturnValue(buildAccount());
       mockTypeOrmRepo.save.mockRejectedValue(pgError);
 

@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { I18nService } from 'nestjs-i18n';
 import { QueryFailedError } from 'typeorm';
 import { CategoryRepository } from '@catalog/repositories/category.repository';
 import { Category } from '@catalog/entities/category.entity';
@@ -17,6 +18,10 @@ const mockTypeOrmRepo = {
   find: jest.fn(),
   findOne: jest.fn(),
   merge: jest.fn(),
+};
+
+const mockI18nService = {
+  t: jest.fn((key: string) => `[${key}]`),
 };
 
 const buildCategory = (overrides = {}): Category =>
@@ -39,6 +44,7 @@ describe('CategoryRepository', () => {
       providers: [
         CategoryRepository,
         { provide: getRepositoryToken(Category), useValue: mockTypeOrmRepo },
+        { provide: I18nService, useValue: mockI18nService },
       ],
     }).compile();
 
@@ -67,10 +73,10 @@ describe('CategoryRepository', () => {
     });
 
     it('debe lanzar ConflictException por nombre duplicado (23505)', async () => {
-      const pgError = Object.assign(Object.create(QueryFailedError.prototype), {
-        message: 'duplicate key',
-        code: '23505',
-      });
+      const pgError = Object.assign(
+        Object.create(QueryFailedError.prototype) as QueryFailedError,
+        { message: 'duplicate key', code: '23505' },
+      );
       mockTypeOrmRepo.create.mockReturnValue(buildCategory());
       mockTypeOrmRepo.save.mockRejectedValue(pgError);
 

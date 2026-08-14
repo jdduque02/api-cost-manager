@@ -1,6 +1,15 @@
 import { ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import { HttpExceptionFilter } from '@shared/filters/http-exception.filter';
 
+interface FilterResponseBody {
+  status: number;
+  error: string;
+  message: unknown;
+  details: unknown;
+  path: string;
+  trace_id?: string;
+}
+
 jest.mock('uuid', () => ({
   v4: jest.fn(() => 'trace-123'),
 }));
@@ -58,7 +67,9 @@ describe('HttpExceptionFilter', () => {
 
     filter.catch(exception, host);
 
-    const body = response.json.mock.calls[0][0];
+    const body = (
+      response.json.mock.calls[0] as unknown[]
+    )[0] as FilterResponseBody;
     expect(response.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
     expect(body.status).toBe(HttpStatus.BAD_REQUEST);
     expect(body.error).toBe('Http');
@@ -76,7 +87,9 @@ describe('HttpExceptionFilter', () => {
 
     filter.catch(exception, host);
 
-    const body = response.json.mock.calls[0][0];
+    const body = (
+      response.json.mock.calls[0] as unknown[]
+    )[0] as FilterResponseBody;
     expect(body.message).toBe('Datos de entrada inválidos.');
     expect(body.details).toEqual(payload.message);
     expect(body.error).toBe('Bad Request');
@@ -91,7 +104,9 @@ describe('HttpExceptionFilter', () => {
 
     filter.catch(exception, host);
 
-    const body = response.json.mock.calls[0][0];
+    const body = (
+      response.json.mock.calls[0] as unknown[]
+    )[0] as FilterResponseBody;
     expect(body.message).toBe('No autorizado');
     expect(body.error).toBe('Unauthorized');
     expect(body.details).toEqual([]);
@@ -105,7 +120,9 @@ describe('HttpExceptionFilter', () => {
 
     filter.catch(exception, host);
 
-    const body = response.json.mock.calls[0][0];
+    const body = (
+      response.json.mock.calls[0] as unknown[]
+    )[0] as FilterResponseBody;
     expect(response.status).toHaveBeenCalledWith(
       HttpStatus.INTERNAL_SERVER_ERROR,
     );

@@ -3,6 +3,7 @@ import { BankAccountController } from '@banking/controller/bank-account.controll
 import { BankAccountService } from '@banking/service/bank-account.service';
 import { CreateBankAccountDto } from '@banking/dto/bank-account/create-bank-account.dto';
 import { UpdateBankAccountDto } from '@banking/dto/bank-account/update-bank-account.dto';
+import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 
 const mockBankAccountService = {
   create: jest.fn(),
@@ -22,7 +23,10 @@ const buildAccount = (overrides = {}) => ({
   ...overrides,
 });
 
-const currentUser = { sub: 'kc-uuid', username: 'testuser' } as any;
+const currentUser: IntrospectResponse = {
+  sub: 'kc-uuid',
+  username: 'testuser',
+};
 
 describe('BankAccountController', () => {
   let controller: BankAccountController;

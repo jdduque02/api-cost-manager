@@ -10,6 +10,8 @@ import { UpdateUserDto } from '@identity/dto/user/update-user.dto';
 import { UserQueryDto } from '@identity/dto/user/user-query.dto';
 import { AppUser } from '@identity/entities/app-user.entity';
 import { EncryptionService } from '@shared/services/encryption.service';
+import { PresenceService } from '@shared/services/presence.service';
+import { AuditLogService } from '@audit/service/audit-log.service';
 
 const mockUserRepository = {
   create: jest.fn(),
@@ -22,6 +24,15 @@ const mockUserRepository = {
 const mockKeycloakAdminService = {
   createUser: jest.fn(),
   deleteUser: jest.fn(),
+  assignRealmRoles: jest.fn(),
+  removeRealmRoles: jest.fn(),
+  getUserRealmRoles: jest.fn(),
+  setUserEnabled: jest.fn(),
+  revokeAllSessions: jest.fn(),
+  sendResetPasswordEmail: jest.fn(),
+  getUserSessions: jest.fn(),
+  getUserEvents: jest.fn(),
+  revokeSession: jest.fn(),
 };
 
 const mockCacheManager = {
@@ -37,10 +48,22 @@ const mockEncryptionService = {
 
 const mockI18nService = {
   translate: jest.fn((_key: string) => ''),
+  t: jest.fn((key: string) => key),
 };
 
 const mockConfigService = {
   get: jest.fn((_key: string, defaultVal?: unknown) => defaultVal),
+};
+
+const mockPresenceService = {
+  getOnlineMap: jest.fn(() => new Set<string>()),
+  isOnline: jest.fn(() => false),
+  markOnline: jest.fn(),
+  markOffline: jest.fn(),
+};
+
+const mockAuditLogService = {
+  write: jest.fn(),
 };
 
 const buildUser = (overrides: Partial<AppUser> = {}): AppUser =>
@@ -52,6 +75,8 @@ const buildUser = (overrides: Partial<AppUser> = {}): AppUser =>
     locale: 'es-CO',
     timezone: 'America/Bogota',
     metadata: {},
+    roles: ['user'],
+    last_login_at: null,
     is_active: true,
     created_at: new Date(),
     updated_at: new Date(),
@@ -71,11 +96,14 @@ describe('UserService', () => {
         { provide: CACHE_MANAGER, useValue: mockCacheManager },
         { provide: I18nService, useValue: mockI18nService },
         { provide: EncryptionService, useValue: mockEncryptionService },
+        { provide: PresenceService, useValue: mockPresenceService },
+        { provide: AuditLogService, useValue: mockAuditLogService },
       ],
     }).compile();
 
     service = module.get<UserService>(UserService);
     jest.clearAllMocks();
+    mockKeycloakAdminService.assignRealmRoles.mockResolvedValue(undefined);
   });
 
   // ─────────────────────────────────────────────────────────────

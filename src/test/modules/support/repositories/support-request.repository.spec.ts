@@ -79,7 +79,9 @@ describe('SupportRequestRepository', () => {
 
       expect(mockRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ user_id: 10 }),
+          where: expect.objectContaining({
+            user_id: 10,
+          }) as Record<string, unknown>,
           order: { created_at: 'DESC' },
         }),
       );
@@ -141,7 +143,10 @@ describe('SupportRequestRepository', () => {
 
       expect(mockRepo.findOne).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ id: 1, user_id: 10 }),
+          where: expect.objectContaining({
+            id: 1,
+            user_id: 10,
+          }) as Record<string, unknown>,
         }),
       );
       expect(mockRepo.softRemove).toHaveBeenCalledWith(request);

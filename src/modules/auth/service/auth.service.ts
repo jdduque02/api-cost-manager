@@ -12,7 +12,12 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, MoreThan } from 'typeorm';
-import { createHash, createHmac, randomInt, timingSafeEqual } from 'node:crypto';
+import {
+  createHash,
+  createHmac,
+  randomInt,
+  timingSafeEqual,
+} from 'node:crypto';
 import { I18nService } from 'nestjs-i18n';
 import { firstValueFrom } from 'rxjs';
 import { LoginDto } from '@auth/dto/login.dto';
@@ -20,7 +25,10 @@ import { RefreshTokenDto } from '@auth/dto/refresh-token.dto';
 import { ChangePasswordDto } from '@auth/dto/change-password.dto';
 import { SessionResponseDto } from '@auth/dto/session-response.dto';
 import { EventResponseDto } from '@auth/dto/event-response.dto';
-import { KeycloakAdminService } from '@auth/service/keycloak-admin.service';
+import {
+  KeycloakAdminService,
+  KeycloakAdminError,
+} from '@auth/service/keycloak-admin.service';
 import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 import { KeycloakTokenResponse } from '@auth/interfaces/KeycloakTokenResponse.dto';
 import { UserRepository } from '@identity/repositories/app-user.repositories';
@@ -32,6 +40,16 @@ import { MailService } from '@mail/service/mail.service';
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 min
 const OTP_MAX_ATTEMPTS = 3;
 const RESET_TOKEN_TTL_MS = 15 * 60 * 1000; // 15 min
+
+interface KeycloakIntrospectResponse {
+  active: boolean;
+  exp?: number;
+  iat?: number;
+  sub?: string;
+  preferred_username?: string;
+  email?: string;
+  realm_access?: { roles?: string[] };
+}
 
 @Injectable()
 export class AuthService {
@@ -105,9 +123,30 @@ export class AuthService {
       const data = response.data;
       data.userId = Number.parseInt(user.id, 10);
 
+      // Snapshot de roles desde el access_token (JWT payload) + last_login_at
+      let roles: string[] = Array.isArray(user.roles) ? user.roles : [];
+      try {
+        const payloadPart = data.access_token?.split('.')?.[1];
+        if (payloadPart) {
+          const payload = JSON.parse(
+            Buffer.from(payloadPart, 'base64url').toString('utf8'),
+          ) as { realm_access?: { roles?: string[] } };
+          if (payload?.realm_access?.roles?.length) {
+            roles = payload.realm_access.roles.filter(
+              (r) => r === 'user' || r === 'admin',
+            );
+            if (!roles.includes('user')) roles.push('user');
+          }
+        }
+      } catch {
+        // ignore JWT parse errors; keep previous snapshot
+      }
+      await this.userRepository.recordLogin(user.id, roles);
+
       return data;
-    } catch (error: any) {
-      const status = error?.response?.status;
+    } catch (error: unknown) {
+      const err = error as KeycloakAdminError;
+      const status = err?.response?.status;
       if (status === 401 || status === 400) {
         const { blocked, remainingAttempts } =
           await this.ipBlockService.recordFailedAttempt(ip);
@@ -118,7 +157,7 @@ export class AuthService {
           this.i18n.t('auth.CREDENTIALS_INVALID'),
         );
       }
-      this.logger.error('[login]', error?.response?.data);
+      this.logger.error('[login]', err?.response?.data);
       throw new InternalServerErrorException(
         this.i18n.t('auth.KEYCLOAK_AUTH_ERROR'),
       );
@@ -127,6 +166,9 @@ export class AuthService {
   async refresh(
     refreshTokenDto: RefreshTokenDto,
   ): Promise<KeycloakTokenResponse> {
+    if (!refreshTokenDto.refresh_token) {
+      throw new UnauthorizedException(this.i18n.t('auth.SESSION_EXPIRED'));
+    }
     const body = new URLSearchParams({
       grant_type: 'refresh_token',
       client_id: this.clientId,
@@ -145,12 +187,13 @@ export class AuthService {
         ),
       );
       return response.data;
-    } catch (error: any) {
-      const status = error?.response?.status;
+    } catch (error: unknown) {
+      const err = error as KeycloakAdminError;
+      const status = err?.response?.status;
       if (status === 400 || status === 401) {
         throw new UnauthorizedException(this.i18n.t('auth.SESSION_EXPIRED'));
       }
-      this.logger.error('[refresh]', error?.response?.data);
+      this.logger.error('[refresh]', err?.response?.data);
       throw new InternalServerErrorException(this.i18n.t('auth.REFRESH_ERROR'));
     }
   }
@@ -174,8 +217,9 @@ export class AuthService {
         }),
       );
       this.logger.log('Sesión cerrada en Keycloak.');
-    } catch (error: any) {
-      this.logger.error('[logout]', error?.response?.data);
+    } catch (error: unknown) {
+      const err = error as KeycloakAdminError;
+      this.logger.error('[logout]', err?.response?.data);
       throw new InternalServerErrorException(this.i18n.t('auth.LOGOUT_ERROR'));
     }
   }
@@ -191,7 +235,9 @@ export class AuthService {
     try {
       keycloakId = await this.keycloakAdminService.findKeycloakIdByEmail(email);
     } catch {
-      this.logger.warn(`Recuperación solicitada para email no registrado: ${email}`);
+      this.logger.warn(
+        `Recuperación solicitada para email no registrado: ${email}`,
+      );
       return;
     }
 
@@ -206,6 +252,10 @@ export class AuthService {
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     const codeHash = createHash('sha256').update(code).digest('hex');
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+    this.logger.log(
+      `[forgotPassword] code=${code} codeHash=${codeHash} userId=${user.id} email=${email}`,
+    );
 
     // Invalida códigos previos no consumidos del mismo usuario.
     await this.otpRepo.update(
@@ -233,7 +283,11 @@ export class AuthService {
     email: string,
     code: string,
   ): Promise<{ reset_token: string; expires_in_seconds: number }> {
+    this.logger.log(`[verifyOtp] email=${email} code=${code}`);
     const user = await this.findUserByEmail(email);
+    this.logger.log(
+      `[verifyOtp] userId=${user.id} external_id=${user.external_id}`,
+    );
 
     const otp = await this.otpRepo.findOne({
       where: {
@@ -244,8 +298,16 @@ export class AuthService {
       order: { created_at: 'DESC' },
     });
 
+    this.logger.log(
+      `[verifyOtp] otp found=${!!otp} otp_id=${otp?.id} expires_at=${otp?.expires_at?.toISOString() ?? null} consumed_at=${otp?.consumed_at?.toISOString() ?? null} attempts=${otp?.attempts}`,
+    );
+
     const expectedHash = createHash('sha256').update(code).digest('hex');
+    this.logger.log(
+      `[verifyOtp] expectedHash=${expectedHash} storedHash=${otp?.code_hash}`,
+    );
     const matches = otp ? this.safeEqual(expectedHash, otp.code_hash) : false;
+    this.logger.log(`[verifyOtp] matches=${matches}`);
     if (!otp || !matches) {
       if (otp) {
         otp.attempts += 1;
@@ -288,7 +350,10 @@ export class AuthService {
       );
     }
 
-    await this.keycloakAdminService.changePassword(user.external_id, newPassword);
+    await this.keycloakAdminService.changePassword(
+      user.external_id,
+      newPassword,
+    );
 
     // Consume cualquier OTP pendiente del usuario.
     await this.otpRepo.update(
@@ -384,20 +449,25 @@ export class AuthService {
       client_secret: this.clientSecret,
     });
 
-    let data: Record<string, any>;
+    let data: KeycloakIntrospectResponse;
 
     try {
       const response = await firstValueFrom(
-        this.httpService.post<Record<string, any>>(url, body.toString(), {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        }),
+        this.httpService.post<KeycloakIntrospectResponse>(
+          url,
+          body.toString(),
+          {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          },
+        ),
       );
       data = response.data;
-    } catch (error: any) {
-      const kcData = error?.response?.data;
+    } catch (error: unknown) {
+      const err = error as KeycloakAdminError;
+      const kcData = err?.response?.data;
       const errMsg = kcData
         ? JSON.stringify(kcData)
-        : error?.message || String(error);
+        : (err?.message as string) || String(error);
       this.logger.error('[introspect] Keycloak error:', errMsg);
       throw new InternalServerErrorException(
         this.i18n.t('auth.KEYCLOAK_INTROSPECT_ERROR'),
@@ -411,6 +481,10 @@ export class AuthService {
     const now = Math.floor(Date.now() / 1000);
     const expiresInSeconds = data.exp ? data.exp - now : undefined;
 
+    if (!data.preferred_username) {
+      throw new UnauthorizedException(this.i18n.t('auth.TOKEN_EXPIRED'));
+    }
+
     const user = await this.userRepository.findByUsername(
       data.preferred_username,
     );
@@ -422,7 +496,9 @@ export class AuthService {
       sub: data.sub,
       username: data.preferred_username,
       email: data.email,
-      realm_access: data.realm_access,
+      realm_access: data.realm_access
+        ? { roles: data.realm_access.roles ?? [] }
+        : undefined,
       expires_in_seconds: expiresInSeconds,
       userId: Number.parseInt(user.id, 10),
     };
@@ -477,13 +553,13 @@ export class AuthService {
     );
 
     return sessions.map(
-      (s: any) =>
+      (s) =>
         new SessionResponseDto({
           id: s.id,
           ipAddress: s.ipAddress,
           browser: s.clients?.join(', ') ?? '',
-          start: s.start,
-          lastAccess: s.lastAccess,
+          start: String(s.start),
+          lastAccess: s.lastAccess != null ? String(s.lastAccess) : null,
         }),
     );
   }
@@ -531,11 +607,11 @@ export class AuthService {
     );
 
     return events.map(
-      (e: any) =>
+      (e) =>
         new EventResponseDto({
           type: e.type,
           ipAddress: e.ipAddress,
-          time: e.time,
+          time: String(e.time),
           error: e.error ?? null,
           details: e.details ?? {},
         }),

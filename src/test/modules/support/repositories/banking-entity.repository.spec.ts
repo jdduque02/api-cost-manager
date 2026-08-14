@@ -90,7 +90,9 @@ describe('BankingEntityRepository', () => {
 
       expect(mockRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ is_active: true }),
+          where: expect.objectContaining({
+            is_active: true,
+          }) as Record<string, unknown>,
         }),
       );
       expect(result).toHaveLength(2);

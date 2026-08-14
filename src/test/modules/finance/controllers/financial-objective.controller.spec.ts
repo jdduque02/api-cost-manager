@@ -4,6 +4,7 @@ import { FinancialObjectiveService } from '@finance/service/financial-objective.
 import { CreateFinancialObjectiveDto } from '@finance/dto/financial-objective/create-financial-objective.dto';
 import { UpdateFinancialObjectiveDto } from '@finance/dto/financial-objective/update-financial-objective.dto';
 import { FinancialObjectiveTypeEnum } from '@shared/enums';
+import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 
 const mockFinancialObjectiveService = {
   create: jest.fn(),
@@ -22,7 +23,7 @@ const buildObjective = (overrides = {}) => ({
   ...overrides,
 });
 
-const currentUser = { sub: 'kc-uuid' } as any;
+const currentUser: IntrospectResponse = { sub: 'kc-uuid' };
 
 describe('FinancialObjectiveController', () => {
   let controller: FinancialObjectiveController;

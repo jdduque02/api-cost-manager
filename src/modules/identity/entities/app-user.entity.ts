@@ -35,6 +35,13 @@ export class AppUser {
   @Column({ type: 'jsonb', default: '{}' })
   metadata!: Record<string, unknown>;
 
+  @Column({ type: 'jsonb', default: () => "'[]'" })
+  roles!: string[];
+
+  @Column({ type: 'timestamp', nullable: true })
+  @Index('idx_user_last_login_at')
+  last_login_at!: Date | null;
+
   @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 

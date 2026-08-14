@@ -44,7 +44,8 @@ export class NewsItemRepository {
 
     qb.orderBy('n.published_at', 'DESC')
       .addOrderBy('n.created_at', 'DESC')
-      .take(limit);
+      .take(limit)
+      .cache(`news:list:${category ?? ''}:${search ?? ''}:${limit}`, 45_000);
 
     const results = await qb.getMany();
     this.logger.debug(`NewsItem: ${results.length} noticias encontradas`);

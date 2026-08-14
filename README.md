@@ -133,8 +133,25 @@ src/
 - `POST /auth/login`
 - `POST /auth/refresh`
 - `POST /auth/logout`
-- `POST /auth/forgot-password`
 - `POST /auth/introspect`
+- `POST /auth/change-password`
+- `GET /auth/sessions`
+- `DELETE /auth/sessions/:sessionId`
+- `GET /auth/access-history`
+- `POST /auth/encrypt`
+
+**Recuperación de contraseña (flujo OTP)**
+
+- `POST /auth/forgot-password` — genera un OTP de 6 dígitos y lo envía por correo (no revela si el email existe: siempre responde `204`).
+- `POST /auth/verify-otp` — valida el código y devuelve un `reset_token` de un solo uso.
+- `POST /auth/reset-password` — cambia la contraseña en Keycloak con el `reset_token`.
+
+Detalles del flujo:
+
+- El código se genera con `randomInt` de `node:crypto` (6 dígitos con ceros a la izquierda) y se almacena **hasheado** (SHA-256) en `identity.password_reset_otp`; nunca en claro.
+- TTL de 10 minutos, máx. 3 intentos de verificación y un solo OTP activo por usuario (los anteriores se invalidan).
+- El correo se envía con Nodemailer + react-email. La plantilla se persiste en `mail.email_template` (clave `otp_password_reset`) **con marcadores** `{{otp}}`, `{{name}}` y `{{year}}`; `sendOtp` los sustituye por el código real de cada envío. Si la plantilla guardada no contiene `{{otp}}` (por ejemplo, versiones previas que incrustaban un código fijo), se renderiza la react-email por defecto con el código real, y al arrancar la app se repara automáticamente la plantilla.
+- Con `MAIL_ENABLED=false` (o sin `MAIL_HOST`) no se envía correo real: el envío se registra en logs (modo mock para desarrollo).
 
 ### Identidad (usuarios)
 
@@ -272,6 +289,16 @@ COOKIE_SECRET=my-super-secret
 CORS_ORIGINS=http://localhost:3000
 CSRF_SECRET=csrf-super-secret
 
+# Correo (OTP de recuperación de contraseña). Con MAIL_ENABLED=false el envío
+# se registra en logs y no se hace (modo mock para desarrollo).
+MAIL_ENABLED=false
+MAIL_HOST=smtp.example.com
+MAIL_PORT=465
+MAIL_SECURE=true
+MAIL_USER=no-reply@example.com
+MAIL_PASS=secret
+MAIL_FROM="Cost Manager <no-reply@cost-manager.local>"
+
 LOG_SERVICE_URL=http://localhost:3000
 SERVICE_NAME=cost-manager
 LOG_MAX_RETRIES=3
@@ -334,8 +361,9 @@ Scripts disponibles:
 Estado observado:
 
 - `npm run build`: OK.
-- `npm test -- --runInBand`: falla en pruebas del controlador de usuarios por dependencias no resueltas de `AuthGuard`.
-- `test/config/rabbitmq.config.spec.ts`: pasa.
+- `npx eslint "src/**/*.ts"`: 0 errores (7 warnings pre-existentes).
+- `npx jest`: 68/68 suites y 502/502 tests pasan.
+- Los errores de tipos de `tsc` quedan solo en los mocks de los specs (`src/test/**`); no afectan runtime (ts-jest no typechequea), lint ni build.
 
 Flujo sugerido para calidad:
 
@@ -349,6 +377,6 @@ npm run sonar
 
 ## Observaciones
 
-- El proyecto usa Swagger con las etiquetas `auth`, `users`, `financial-profile`, `banking`, `catalog`, `finance` y `audit`.
+- El proyecto usa Swagger con las etiquetas `auth`, `users`, `financial-profile`, `banking`, `catalog`, `finance`, `audit` y `support`.
 - El módulo `intelligence` contiene únicamente entidades (`financial-summary`, `summary-category-breakdown`, `tax-summary`) y está pendiente de implementación de servicios y controladores.
-- El directorio de pruebas de identidad mantiene el nombre `indetity` en varios archivos; el README conserva esa referencia al describir el fallo actual porque así está en el repositorio.
+- La plantilla de correo OTP vive en `src/modules/mail/templates/otp-password-reset.tsx`; los correos personalizados se guardan en `mail.email_template` con los marcadores `{{otp}}`, `{{name}}` y `{{year}}`.

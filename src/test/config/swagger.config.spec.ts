@@ -1,6 +1,11 @@
 import { ConfigService } from '@nestjs/config';
 import { getSwaggerConfig } from '@config/swagger.config';
 
+interface SwaggerShape {
+  components: { securitySchemes: Record<string, unknown> };
+  servers: { url: string; description: string }[];
+}
+
 describe('getSwaggerConfig', () => {
   const buildConfig = (env: Record<string, string | undefined>) => {
     const mockConfigService = {
@@ -31,7 +36,8 @@ describe('getSwaggerConfig', () => {
 
   it('debe registrar el esquema BearerAuth', () => {
     const config = buildConfig({ NODE_ENV: 'DEV', VERSION: '1' });
-    const schemes = (config as any).components?.securitySchemes;
+    const schemes = (config as unknown as SwaggerShape).components
+      ?.securitySchemes;
     expect(schemes).toBeDefined();
     expect(Object.keys(schemes)).toContain('bearer');
   });
@@ -49,7 +55,7 @@ describe('getSwaggerConfig', () => {
 
   it('debe agregar un server por defecto para LOCAL', () => {
     const config = buildConfig({ NODE_ENV: 'LOCAL', VERSION: '1' });
-    const servers = (config as any).servers;
+    const servers = (config as unknown as SwaggerShape).servers;
     expect(servers).toBeDefined();
     expect(servers.length).toBe(1);
     expect(servers[0].url).toContain('localhost');
@@ -58,7 +64,7 @@ describe('getSwaggerConfig', () => {
 
   it('debe agregar un server para DEV', () => {
     const config = buildConfig({ NODE_ENV: 'DEV', VERSION: '1' });
-    const servers = (config as any).servers;
+    const servers = (config as unknown as SwaggerShape).servers;
     expect(servers).toBeDefined();
     expect(servers[0].url).toContain('api-dev');
     expect(servers[0].description).toContain('DEV');
@@ -66,15 +72,16 @@ describe('getSwaggerConfig', () => {
 
   it('debe agregar un server para PROD', () => {
     const config = buildConfig({ NODE_ENV: 'PROD', VERSION: '2' });
-    const servers = (config as any).servers;
+    const servers = (config as unknown as SwaggerShape).servers;
     expect(servers).toBeDefined();
     expect(servers[0].url).toContain('api.costmanager.com');
     expect(servers[0].description).toContain('PROD');
   });
 
-  it('debe incluir la versión en la URL del server', () => {
+  it('debe incluir la versión en la descripción del server', () => {
     const config = buildConfig({ NODE_ENV: 'LOCAL', VERSION: '2' });
-    const servers = (config as any).servers;
-    expect(servers[0].url).toContain('/api/v2');
+    const servers = (config as unknown as SwaggerShape).servers;
+    expect(servers[0].url).toContain('localhost');
+    expect(servers[0].description).toContain('(v2)');
   });
 });

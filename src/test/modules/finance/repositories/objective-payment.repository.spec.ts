@@ -145,7 +145,10 @@ describe('ObjectivePaymentRepository', () => {
 
       expect(mockPaymentRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ objective_id: 5, user_id: 10 }),
+          where: expect.objectContaining({
+            objective_id: 5,
+            user_id: 10,
+          }) as Record<string, unknown>,
           order: { payment_date: 'DESC' },
         }),
       );

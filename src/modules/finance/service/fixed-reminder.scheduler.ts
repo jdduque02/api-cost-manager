@@ -1,7 +1,11 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { I18nService } from 'nestjs-i18n';
-import { FixedTypeEnum, FrequencyEnum, TransactionTypeEnum } from '@shared/enums';
+import {
+  FixedTypeEnum,
+  FrequencyEnum,
+  TransactionTypeEnum,
+} from '@shared/enums';
 import { TransactionRecordRepository } from '@finance/repositories/transaction-record.repository';
 import { TransactionRecord } from '@finance/entities/transaction-record.entity';
 import { NotificationService } from '@notification/service/notification.service';
@@ -62,10 +66,7 @@ export function nextBiweeklyOccurrence(
   return new Date(current.getTime() + (14 - offset) * DAY_MS);
 }
 
-export function nextWeeklyOccurrence(
-  createdDate: Date,
-  today: Date,
-): Date {
+export function nextWeeklyOccurrence(createdDate: Date, today: Date): Date {
   const current = startOfDay(today);
   const anchor = startOfDay(createdDate);
   const elapsed = Math.floor((current.getTime() - anchor.getTime()) / DAY_MS);

@@ -42,7 +42,8 @@ export class CashArqueoController {
   @Get('reconciliation')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Conciliación del mes: registros del aplicativo vs extractos cargados',
+    summary:
+      'Conciliación del mes: registros del aplicativo vs extractos cargados',
     description:
       'Contrasta los registros/suscripciones del mes (source=manual) con los movimientos de los extractos cargados (source=import): totales, coincidencias y discrepancias.',
   })

@@ -5,12 +5,33 @@ import {
   NOTIFICATION_EVENTS,
   NOTIFICATION_ROOMS,
 } from '@notification/constants/notification.events';
+import { ConfigService } from '@nestjs/config';
+import { AuthService } from '@auth/service/auth.service';
+import { I18nService } from 'nestjs-i18n';
+import { PresenceService } from '@shared/services/presence.service';
 
 // ─────────────────────────────────────────────────────────────
 // Mocks del Server y Socket de socket.io
 // ─────────────────────────────────────────────────────────────
-const mockServerTo = { emit: jest.fn() };
-const mockServer = { to: jest.fn().mockReturnValue(mockServerTo) };
+interface MockServerTo {
+  emit: jest.Mock;
+}
+
+interface MockServer {
+  to: jest.Mock;
+}
+
+interface MockSocketClient {
+  id: string;
+  data?: Record<string, unknown>;
+  join?: jest.Mock;
+  leave?: jest.Mock;
+}
+
+const mockServerTo: MockServerTo = { emit: jest.fn() };
+const mockServer: MockServer = {
+  to: jest.fn().mockReturnValue(mockServerTo),
+};
 
 const mockGateway = {
   sendNotificationToUser: jest.fn(),
@@ -26,6 +47,7 @@ const buildPayload = (overrides = {}): NotificationPayload => ({
   is_read: false,
   is_active: true,
   scheduled_at: null,
+  reference: null,
   created_at: new Date(),
   ...overrides,
 });
@@ -75,12 +97,17 @@ describe('NotificationGateway — métodos de emisión', () => {
 
   beforeEach(() => {
     gateway = new NotificationGateway(
-      {} as any, // ConfigService — no se usa en los métodos de emisión
-      {} as any, // AuthService  — no se usa en los métodos de emisión
+      {} as unknown as ConfigService, // ConfigService — no se usa en los métodos de emisión
+      {} as unknown as AuthService, // AuthService  — no se usa en los métodos de emisión
+      { t: jest.fn((key: string) => `[${key}]`) } as unknown as I18nService,
+      {
+        markOnline: jest.fn(),
+        markOffline: jest.fn(),
+      } as unknown as PresenceService,
     );
 
     // Inyectar el server mock en la propiedad privada
-    (gateway as any).server = mockServer;
+    (gateway as unknown as { server: MockServer }).server = mockServer;
     jest.clearAllMocks();
     mockServer.to.mockReturnValue(mockServerTo);
   });
@@ -131,15 +158,15 @@ describe('NotificationGateway — métodos de emisión', () => {
 
   describe('handleConnection / handleDisconnect', () => {
     it('handleConnection no debe lanzar excepción', () => {
-      const socket = {
+      const socket: MockSocketClient = {
         id: 'socket-1',
         data: { user: { sub: 'kc-uuid' } },
-      } as any;
+      };
       expect(() => gateway.handleConnection(socket)).not.toThrow();
     });
 
     it('handleDisconnect no debe lanzar excepción', () => {
-      const socket = { id: 'socket-1' } as any;
+      const socket: MockSocketClient = { id: 'socket-1', data: {} };
       expect(() => gateway.handleDisconnect(socket)).not.toThrow();
     });
   });
@@ -147,7 +174,11 @@ describe('NotificationGateway — métodos de emisión', () => {
   describe('handleSubscribe', () => {
     it('debe unir al cliente a la sala del usuario', () => {
       const join = jest.fn();
-      const client = { id: 'socket-1', join, data: {} } as any;
+      const client: MockSocketClient = {
+        id: 'socket-1',
+        join,
+        data: { user: { userId: 10 } },
+      };
 
       gateway.handleSubscribe({ user_id: 10 }, client);
 
@@ -159,7 +190,11 @@ describe('NotificationGateway — métodos de emisión', () => {
   describe('handleUnsubscribe', () => {
     it('debe sacar al cliente de la sala del usuario', () => {
       const leave = jest.fn();
-      const client = { id: 'socket-1', leave, data: {} } as any;
+      const client: MockSocketClient = {
+        id: 'socket-1',
+        leave,
+        data: { user: { userId: 10 } },
+      };
 
       gateway.handleUnsubscribe({ user_id: 10 }, client);
 
@@ -169,7 +204,7 @@ describe('NotificationGateway — métodos de emisión', () => {
 
   describe('handleMarkAsRead', () => {
     it('no debe lanzar excepción al recibir el evento', () => {
-      const client = { id: 'socket-1', data: {} } as any;
+      const client: MockSocketClient = { id: 'socket-1', data: {} };
       expect(() =>
         gateway.handleMarkAsRead({ notification_id: 5 }, client),
       ).not.toThrow();
@@ -178,12 +213,15 @@ describe('NotificationGateway — métodos de emisión', () => {
 
   describe('handleMarkAllAsRead', () => {
     it('no debe lanzar excepción cuando el cliente tiene user_id', () => {
-      const client = { id: 'socket-1', data: { user_id: 10 } } as any;
+      const client: MockSocketClient = {
+        id: 'socket-1',
+        data: { user_id: 10 },
+      };
       expect(() => gateway.handleMarkAllAsRead(client)).not.toThrow();
     });
 
     it('no debe lanzar excepción cuando el cliente no tiene user_id', () => {
-      const client = { id: 'socket-1', data: {} } as any;
+      const client: MockSocketClient = { id: 'socket-1', data: {} };
       expect(() => gateway.handleMarkAllAsRead(client)).not.toThrow();
     });
   });

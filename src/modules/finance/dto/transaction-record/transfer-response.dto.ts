@@ -4,10 +4,15 @@ export class TransferMovementDto {
   @ApiProperty({ example: 100 })
   id!: number;
 
-  @ApiProperty({ description: 'ID de la cuenta bancaria de este lado.', example: 1 })
+  @ApiProperty({
+    description: 'ID de la cuenta bancaria de este lado.',
+    example: 1,
+  })
   account_id!: number | null;
 
-  @ApiProperty({ description: 'Lado del movimiento: origen (debita) o destino (acredita).' })
+  @ApiProperty({
+    description: 'Lado del movimiento: origen (debita) o destino (acredita).',
+  })
   side!: 'source' | 'destination';
 
   @ApiPropertyOptional({ example: 'Bancolombia', nullable: true })
@@ -22,7 +27,10 @@ export class TransferMovementDto {
   @ApiProperty({ example: '2026-08-07' })
   transaction_date!: Date;
 
-  @ApiPropertyOptional({ example: 'Transferencia entre cuentas', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Transferencia entre cuentas',
+    nullable: true,
+  })
   description!: string | null;
 
   @ApiPropertyOptional({ example: 'TRF-2026-001', nullable: true })

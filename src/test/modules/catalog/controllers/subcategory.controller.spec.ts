@@ -3,6 +3,7 @@ import { SubcategoryController } from '@catalog/controller/subcategory.controlle
 import { SubcategoryService } from '@catalog/service/subcategory.service';
 import { CreateSubcategoryDto } from '@catalog/dto/subcategory/create-subcategory.dto';
 import { UpdateSubcategoryDto } from '@catalog/dto/subcategory/update-subcategory.dto';
+import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 
 const mockSubcategoryService = {
   create: jest.fn(),
@@ -21,7 +22,10 @@ const buildSubcategory = (overrides = {}) => ({
   ...overrides,
 });
 
-const currentUser = { sub: 'kc-uuid', username: 'testuser' } as any;
+const currentUser: IntrospectResponse = {
+  sub: 'kc-uuid',
+  username: 'testuser',
+};
 
 describe('SubcategoryController', () => {
   let controller: SubcategoryController;

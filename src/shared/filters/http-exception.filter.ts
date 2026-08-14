@@ -78,7 +78,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       path,
     };
 
-    if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
+    if (status === Number(HttpStatus.INTERNAL_SERVER_ERROR)) {
       body['trace_id'] = uuidv4();
     }
 

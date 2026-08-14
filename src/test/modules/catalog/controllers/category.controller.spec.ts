@@ -4,6 +4,7 @@ import { CategoryService } from '@catalog/service/category.service';
 import { CreateCategoryDto } from '@catalog/dto/category/create-category.dto';
 import { UpdateCategoryDto } from '@catalog/dto/category/update-category.dto';
 import { TransactionTypeEnum } from '@shared/enums';
+import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 
 const mockCategoryService = {
   create: jest.fn(),
@@ -22,7 +23,10 @@ const buildCategory = (overrides = {}) => ({
   ...overrides,
 });
 
-const currentUser = { sub: 'kc-uuid', username: 'testuser' } as any;
+const currentUser: IntrospectResponse = {
+  sub: 'kc-uuid',
+  username: 'testuser',
+};
 
 describe('CategoryController', () => {
   let controller: CategoryController;

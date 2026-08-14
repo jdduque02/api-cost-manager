@@ -1,10 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { I18nService } from 'nestjs-i18n';
 import { TransactionRecordRepository } from '@finance/repositories/transaction-record.repository';
 import { TransactionRecord } from '@finance/entities/transaction-record.entity';
+import { TransactionCategoryRule } from '@finance/entities/transaction-category-rule.entity';
 import { FinancialObjective } from '@finance/entities/financial-objective.entity';
 import { CreateTransactionRecordDto } from '@finance/dto/transaction-record/create-transaction-record.dto';
 import { UpdateTransactionRecordDto } from '@finance/dto/transaction-record/update-transaction-record.dto';
@@ -17,6 +18,19 @@ import { EncryptionService } from '@shared/services/encryption.service';
 // ─────────────────────────────────────────────────────────────
 // QueryBuilder mock
 // ─────────────────────────────────────────────────────────────
+type TransactionRecordRepoMock = jest.Mocked<
+  Pick<
+    Repository<TransactionRecord>,
+    | 'create'
+    | 'save'
+    | 'findOne'
+    | 'findOneBy'
+    | 'merge'
+    | 'softRemove'
+    | 'createQueryBuilder'
+  >
+>;
+
 const mockQb = {
   where: jest.fn().mockReturnThis(),
   andWhere: jest.fn().mockReturnThis(),
@@ -34,7 +48,7 @@ const mockQb = {
   getRawMany: jest.fn(),
 };
 
-const mockTypeOrmRepo = {
+const mockTypeOrmRepo: TransactionRecordRepoMock = {
   create: jest.fn(),
   save: jest.fn(),
   findOne: jest.fn(),
@@ -42,6 +56,12 @@ const mockTypeOrmRepo = {
   merge: jest.fn(),
   softRemove: jest.fn(),
   createQueryBuilder: jest.fn().mockReturnValue(mockQb),
+};
+
+const mockCategoryRuleRepo = {
+  findOne: jest.fn(),
+  find: jest.fn(),
+  upsert: jest.fn(),
 };
 
 const mockManager = {
@@ -80,7 +100,7 @@ const buildRecord = (overrides = {}): TransactionRecord =>
     ...overrides,
   }) as unknown as TransactionRecord;
 
-const linkedRepos = new Map<string, any>([
+const linkedRepos = new Map<string, TransactionRecordRepoMock>([
   [FinancialObjective.name, { ...mockTypeOrmRepo }],
   [BankAccount.name, { ...mockTypeOrmRepo }],
   [FinancialAsset.name, { ...mockTypeOrmRepo }],
@@ -97,6 +117,10 @@ describe('TransactionRecordRepository', () => {
         {
           provide: getRepositoryToken(TransactionRecord),
           useValue: mockTypeOrmRepo,
+        },
+        {
+          provide: getRepositoryToken(TransactionCategoryRule),
+          useValue: mockCategoryRuleRepo,
         },
         { provide: I18nService, useValue: mockI18nService },
         { provide: EncryptionService, useValue: mockEncryptionService },
@@ -119,9 +143,11 @@ describe('TransactionRecordRepository', () => {
     mockQb.addGroupBy.mockReturnThis();
     mockQb.setParameter.mockReturnThis();
     mockTypeOrmRepo.createQueryBuilder.mockReturnValue(mockQb);
-    mockManager.getRepository.mockImplementation((entity: any) => {
+    mockManager.getRepository.mockImplementation((entity: unknown) => {
       if (entity === TransactionRecord) return mockTypeOrmRepo;
-      return linkedRepos.get(entity?.name) ?? mockTypeOrmRepo;
+      if (entity === TransactionCategoryRule) return mockCategoryRuleRepo;
+      const name = (entity as { name?: string } | null)?.name;
+      return linkedRepos.get(name ?? '') ?? mockTypeOrmRepo;
     });
   });
 
@@ -131,7 +157,7 @@ describe('TransactionRecordRepository', () => {
   describe('create', () => {
     const dto: CreateTransactionRecordDto = {
       amount: 100,
-      type: 'EXPENSE' as any,
+      type: 'EXPENSE' as unknown as CreateTransactionRecordDto['type'],
       category_id: 1,
     };
 
@@ -162,26 +188,28 @@ describe('TransactionRecordRepository', () => {
     };
 
     beforeEach(() => {
-      mockTypeOrmRepo.save.mockImplementation((entity: any) =>
+      mockTypeOrmRepo.save.mockImplementation((entity: TransactionRecord) =>
         Promise.resolve(entity),
       );
-      mockTypeOrmRepo.findOneBy.mockImplementation((criteria: any) => {
-        const entity =
-          criteria?.id === 999
-            ? null
-            : {
-                ...defaultLinkedEntity[
-                  criteria?.id === 3
-                    ? 'objective'
-                    : criteria?.id === 1
-                      ? 'account'
-                      : criteria?.id === 2
-                        ? 'asset'
-                        : 'liability'
-                ],
-              };
-        return Promise.resolve(entity);
-      });
+      mockTypeOrmRepo.findOneBy.mockImplementation(
+        (criteria: { id?: number }) => {
+          const entity =
+            criteria?.id === 999
+              ? null
+              : {
+                  ...defaultLinkedEntity[
+                    criteria?.id === 3
+                      ? 'objective'
+                      : criteria?.id === 1
+                        ? 'account'
+                        : criteria?.id === 2
+                          ? 'asset'
+                          : 'liability'
+                  ],
+                };
+          return Promise.resolve(entity);
+        },
+      );
     });
 
     it('create: ingreso vinculado a una meta suma a current_balance', async () => {
@@ -194,7 +222,7 @@ describe('TransactionRecordRepository', () => {
 
       await repo.create(10, {
         amount: 100,
-        type: 'income' as any,
+        type: 'income' as unknown as CreateTransactionRecordDto['type'],
         category_id: 1,
         objective_id: 3,
       });
@@ -216,7 +244,7 @@ describe('TransactionRecordRepository', () => {
 
       await repo.create(10, {
         amount: 250,
-        type: 'expense' as any,
+        type: 'expense' as unknown as CreateTransactionRecordDto['type'],
         category_id: 1,
         liability_id: 4,
       });
@@ -253,7 +281,7 @@ describe('TransactionRecordRepository', () => {
       mockTypeOrmRepo.findOne.mockResolvedValue(old);
       // Simula Repository.merge(): muta `old` en su lugar en lugar de
       // devolver un objeto nuevo; así el snapshot previo es imprescindible.
-      mockTypeOrmRepo.merge.mockImplementation((target: any) => {
+      mockTypeOrmRepo.merge.mockImplementation((target: TransactionRecord) => {
         Object.assign(target, linked);
         return target;
       });
@@ -308,7 +336,7 @@ describe('TransactionRecordRepository', () => {
         limit: 10,
         category_id: 1,
         subcategory_id: 2,
-        type: 'EXPENSE' as any,
+        type: 'EXPENSE' as unknown as TransactionRecordQueryDto['type'],
         date_from: new Date('2024-01-01'),
         date_to: new Date('2024-01-31'),
       };
@@ -447,9 +475,11 @@ describe('TransactionRecordRepository', () => {
 
       await repo.getSummary(10, { type: 'expense', group_by: 'week' });
 
-      const typeCalls = mockQb.andWhere.mock.calls.filter(
-        (c) => c[0] === 'tr.type = :type',
-      );
+      const typeCalls = (
+        mockQb.andWhere.mock.calls as Array<
+          [string, Record<string, unknown> | undefined]
+        >
+      ).filter((c) => c[0] === 'tr.type = :type');
       expect(typeCalls.length).toBeGreaterThan(0);
       expect(typeCalls[0][1]).toEqual({ type: 'expense' });
       expect(mockQb.setParameter).toHaveBeenCalledWith('trunc', 'week');
