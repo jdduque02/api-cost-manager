@@ -17,9 +17,9 @@ export const getSwaggerConfig = (
   const serverUrl = SERVER_URLS[environment];
 
   const builder = new DocumentBuilder()
-    .setTitle(`Cost Manager API`)
+    .setTitle(`Sprig API`)
     .setDescription(
-      `Documentación interactiva de la API de **Cost Manager**.\n\n` +
+      `Documentación interactiva de la API de **Sprig**.\n\n` +
         `Ambiente actual: **${environment}**\n\n` +
         `> Autenticación: obtén un token JWT en \`POST /auth/login\` y pégalo en el campo Authorize.`,
     )

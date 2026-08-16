@@ -56,6 +56,8 @@ export class StatementImportRepository {
           skip_duplicates: options.skip_duplicates !== 'false',
           default_type: options.default_type,
           assign_categories: options.assign_categories !== 'false',
+          capture_companies: options.capture_companies === 'true',
+          default_company_id: options.default_company_id,
         },
       });
       const savedJob = await manager.getRepository(StatementImport).save(job);

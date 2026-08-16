@@ -1,8 +1,8 @@
-# Cost Manager API
+# Sprig API
 
 Backend en NestJS v11 para autenticación, gestión financiera personal y administración de usuarios. El servicio integra PostgreSQL, Redis, Keycloak, RabbitMQ y Swagger; además incluye cobertura de pruebas unitarias y análisis estático con SonarQube.
 
-> Descripción de marca, **prompt de logo generado a partir de la descripción del proyecto**, naming candidato y taglines: [`docs/service-description.md`](docs/service-description.md).
+> Descripción de marca y prompt de logo: [`docs/service-description.md`](docs/service-description.md).
 
 ## Estado actual
 
@@ -251,10 +251,10 @@ MAIL_PORT=465
 MAIL_SECURE=true
 MAIL_USER=no-reply@example.com
 MAIL_PASS=secret
-MAIL_FROM="Cost Manager <no-reply@cost-manager.local>"
+MAIL_FROM="Sprig <no-reply@sprig.local>"
 
 LOG_SERVICE_URL=http://localhost:3000
-SERVICE_NAME=cost-manager
+SERVICE_NAME=sprig
 LOG_MAX_RETRIES=3
 APP_DEV=true
 ```

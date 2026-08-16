@@ -37,6 +37,13 @@ export class TransferMovementDto {
   reference_code!: string | null;
 
   @ApiPropertyOptional({
+    description: 'ID de la empresa/comercio asociada.',
+    example: 5,
+    nullable: true,
+  })
+  company_id!: number | null;
+
+  @ApiPropertyOptional({
     description:
       'ID de la meta financiera vinculada (se aplica al lado destino).',
     example: 12,

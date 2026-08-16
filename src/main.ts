@@ -73,7 +73,16 @@ async function bootstrap() {
     configService.get<string>('CSRF_ENABLED', isProd ? 'true' : 'false') ===
     'true';
   if (csrfEnabled) {
-    app.use(getCsrfProtection(configService));
+    const csrfMiddleware = getCsrfProtection(configService);
+    // Skip CSRF for requests with Bearer token (mobile/SPA clients use Authorization header,
+    // not cookies, so CSRF protection is not needed).
+    app.use((req, res, next) => {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        return next();
+      }
+      return csrfMiddleware(req, res, next);
+    });
   }
 
   // Global Prefix for all routes (e.g., /api/v1)
@@ -107,7 +116,7 @@ async function bootstrap() {
   SwaggerModule.setup(`api/v${swaggerVersion}/docs`, app, documentFactory, {
     customCss: getSwaggerCustomCss(),
     customJs: getSwaggerCustomJs(logoBase64),
-    customSiteTitle: 'Cost Manager API Docs',
+    customSiteTitle: 'Sprig API Docs',
     customfavIcon: `data:image/svg+xml;base64,${logoBase64}`,
     jsonDocumentUrl: `api/v${swaggerVersion}/docs-json`,
     yamlDocumentUrl: `api/v${swaggerVersion}/docs-yaml`,

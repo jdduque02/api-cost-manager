@@ -29,6 +29,7 @@ import {
 @Index('idx_transaction_account', ['account_id'])
 @Index('idx_transaction_asset', ['asset_id'])
 @Index('idx_transaction_liability', ['liability_id'])
+@Index('idx_transaction_company', ['company_id'])
 @Index('idx_transaction_category_status', ['user_id', 'category_status'])
 @Index('idx_transaction_description', ['user_id', 'description'])
 @Index('idx_transaction_transfer_group', ['transfer_group_id'])
@@ -147,6 +148,9 @@ export class TransactionRecord {
 
   @Column({ type: 'bigint', nullable: true })
   liability_id!: number | null;
+
+  @Column({ type: 'bigint', nullable: true })
+  company_id!: number | null;
 
   @Column({ type: 'bigint', nullable: true })
   origin_account_id!: number | null;

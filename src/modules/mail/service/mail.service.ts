@@ -115,7 +115,7 @@ export class MailService implements OnApplicationBootstrap {
   private get from(): string {
     return (
       this.configService.get<string>('MAIL_FROM') ??
-      'Cost Manager <no-reply@cost-manager.local>'
+      'Sprig <no-reply@sprig.local>'
     );
   }
 

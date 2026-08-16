@@ -1,8 +1,8 @@
 -- ============================================================
 -- SCHEMA COMPLETO: api-cost-manager
 -- Base de datos: PostgreSQL 16
--- Generado: 2026-08-15
--- Total: 9 schemas, 11 enums, 25 tablas
+-- Generado: 2026-08-16
+-- Total: 9 schemas, 11 enums, 26 tablas
 -- ============================================================
 -- USO:
 --   psql -U <usuario> -d <database> -f schema.sql
@@ -875,6 +875,41 @@ ALTER TABLE finance.financial_objective
   ADD CONSTRAINT fk_financial_objective_account
   FOREIGN KEY (account_id) REFERENCES banking.bank_account (id)
   ON DELETE SET NULL;
+
+-- ============================================================
+-- finance.empresa
+-- ============================================================
+CREATE TABLE IF NOT EXISTS finance.empresa (
+  id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id    BIGINT NOT NULL,
+  name       VARCHAR(200) NOT NULL,
+  default_category_id BIGINT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL,
+  deleted_at TIMESTAMP NULL
+);
+
+ALTER TABLE finance.empresa
+  ADD CONSTRAINT fk_empresa_category
+  FOREIGN KEY (default_category_id) REFERENCES catalog.category (id)
+  ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_empresa_user ON finance.empresa (user_id);
+
+COMMENT ON TABLE finance.empresa IS 'Entidades/comercios con los que interactúa el usuario (Netflix, Éxito, etc.)';
+
+-- company_id en transaction_record
+ALTER TABLE finance.transaction_record
+  ADD COLUMN IF NOT EXISTS company_id BIGINT;
+
+ALTER TABLE finance.transaction_record
+  ADD CONSTRAINT fk_transaction_company
+  FOREIGN KEY (company_id) REFERENCES finance.empresa (id)
+  ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_transaction_company ON finance.transaction_record (company_id);
+
+COMMENT ON COLUMN finance.transaction_record.company_id IS 'Empresa/comercio asociado a la transacción';
 
 -- ============================================================
 -- FIN DEL SCHEMA

@@ -12,6 +12,7 @@ import { TransactionRecord } from './entities/transaction-record.entity';
 import { ObjectivePayment } from './entities/objective-payment.entity';
 import { Notification } from './entities/notification.entity';
 import { CashArqueo } from './entities/cash-arqueo.entity';
+import { Empresa } from './entities/empresa.entity';
 import { StatementImport } from './entities/statement-import.entity';
 import { StatementImportFile } from './entities/statement-import-file.entity';
 import { TransactionCategoryRule } from './entities/transaction-category-rule.entity';
@@ -25,6 +26,7 @@ import { ObjectivePaymentController } from './controller/objective-payment.contr
 import { StatementImportController } from './controller/statement-import.controller';
 import { TransferController } from './controller/transfer.controller';
 import { CashArqueoController } from './controller/cash-arqueo.controller';
+import { EmpresaController } from './controller/empresa.controller';
 import { FinancialObjectiveService } from './service/financial-objective.service';
 import { FinancialPeriodService } from './service/financial-period.service';
 import { TransactionRecordService } from './service/transaction-record.service';
@@ -32,6 +34,7 @@ import { ObjectivePaymentService } from './service/objective-payment.service';
 import { StatementImportService } from './service/statement-import.service';
 import { TransferService } from './service/transfer.service';
 import { CashArqueoService } from './service/cash-arqueo.service';
+import { EmpresaService } from './service/empresa.service';
 import { FixedReminderScheduler } from './service/fixed-reminder.scheduler';
 import { FinancialObjectiveRepository } from './repositories/financial-objective.repository';
 import { FinancialPeriodRepository } from './repositories/financial-period.repository';
@@ -39,6 +42,7 @@ import { TransactionRecordRepository } from './repositories/transaction-record.r
 import { ObjectivePaymentRepository } from './repositories/objective-payment.repository';
 import { StatementImportRepository } from './repositories/statement-import.repository';
 import { CashArqueoRepository } from './repositories/cash-arqueo.repository';
+import { EmpresaRepository } from './repositories/empresa.repository';
 
 @Module({
   imports: [
@@ -49,6 +53,7 @@ import { CashArqueoRepository } from './repositories/cash-arqueo.repository';
       ObjectivePayment,
       Notification,
       CashArqueo,
+      Empresa,
       StatementImport,
       StatementImportFile,
       TransactionCategoryRule,
@@ -71,6 +76,7 @@ import { CashArqueoRepository } from './repositories/cash-arqueo.repository';
     StatementImportController,
     TransferController,
     CashArqueoController,
+    EmpresaController,
   ],
   providers: [
     FinancialObjectiveService,
@@ -80,6 +86,7 @@ import { CashArqueoRepository } from './repositories/cash-arqueo.repository';
     StatementImportService,
     TransferService,
     CashArqueoService,
+    EmpresaService,
     FixedReminderScheduler,
     FinancialObjectiveRepository,
     FinancialPeriodRepository,
@@ -87,6 +94,7 @@ import { CashArqueoRepository } from './repositories/cash-arqueo.repository';
     ObjectivePaymentRepository,
     StatementImportRepository,
     CashArqueoRepository,
+    EmpresaRepository,
   ],
   exports: [
     FinancialObjectiveService,

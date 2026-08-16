@@ -75,4 +75,24 @@ export class CreateStatementImportDto {
   @IsOptional()
   @IsEnum(TransactionTypeEnum)
   default_type?: TransactionTypeEnum;
+
+  @ApiPropertyOptional({
+    description:
+      'Capturar empresas/comercios de los movimientos y asociarlos a la transacción (fuzzy match por addressee/descripción contra nombres de empresa del usuario).',
+    example: 'true',
+  })
+  @IsOptional()
+  @IsBooleanString()
+  capture_companies?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'ID de empresa por defecto para asignar a todas las transacciones del extracto.',
+    example: 5,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  default_company_id?: number;
 }

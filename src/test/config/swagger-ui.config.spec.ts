@@ -23,7 +23,7 @@ describe('swagger-ui.config', () => {
   it('getSwaggerCustomJs inyecta el logo y el título', () => {
     const js = getSwaggerCustomJs('bG9nbw==');
     expect(js).toContain('data:image/svg+xml;base64,bG9nbw==');
-    expect(js).toContain('Cost Manager API');
+    expect(js).toContain('Sprig API');
     expect(js).toContain('getElementById');
   });
 });

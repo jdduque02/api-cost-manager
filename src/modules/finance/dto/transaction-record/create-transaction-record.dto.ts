@@ -276,6 +276,17 @@ export class CreateTransactionRecordDto {
 
   @ApiPropertyOptional({
     description:
+      'ID de la empresa/comercio asociada (finance.empresa). Si se asigna empresa y no hay categoría, se usa la categoría por defecto de la empresa.',
+    example: 5,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  company_id?: number;
+
+  @ApiPropertyOptional({
+    description:
       'Procedencia del registro: manual (digita el usuario) o import (extracto cargado). Usado por la conciliación del arqueo de caja.',
     enum: ['manual', 'import'],
     example: 'manual',

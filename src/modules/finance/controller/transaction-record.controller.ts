@@ -37,6 +37,7 @@ import { TransactionSummaryQueryDto } from '@finance/dto/transaction-record/tran
 import { TransactionRecordResponseDto } from '@finance/dto/transaction-record/transaction-record-response.dto';
 import { TransactionSummaryResponseDto } from '@finance/dto/transaction-record/transaction-summary-response.dto';
 import { UpcomingPaymentDto } from '@finance/dto/transaction-record/upcoming-payment.dto';
+import { CloneTransactionDto } from '@finance/dto/transaction-record/clone-transaction.dto';
 import { ErrorResponseDto } from '@shared/dto/error-response.dto';
 
 @ApiTags('finance')
@@ -235,6 +236,27 @@ export class TransactionRecordController {
     @CurrentUser() _currentUser: IntrospectResponse,
   ) {
     return this.transactionRecordService.findOne(id, userId);
+  }
+
+  @Post(':id/clone')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Clonar transacción' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Transacción clonada.',
+    type: TransactionRecordResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Transacción no encontrada.',
+    type: ErrorResponseDto,
+  })
+  async clone(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CloneTransactionDto,
+    @CurrentUser() _currentUser: IntrospectResponse,
+  ) {
+    return this.transactionRecordService.clone(id, userId, dto);
   }
 
   @Patch(':id')

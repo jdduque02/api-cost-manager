@@ -109,4 +109,15 @@ export class CreateTransferDto {
   @IsInt()
   @Min(1)
   objective_id?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'ID de la empresa/comercio asociada. Se asigna a ambos movimientos de la transferencia.',
+    example: 5,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  company_id?: number;
 }

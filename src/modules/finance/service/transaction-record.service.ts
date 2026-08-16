@@ -6,6 +6,7 @@ import { CreateTransactionRecordDto } from '@finance/dto/transaction-record/crea
 import { UpdateTransactionRecordDto } from '@finance/dto/transaction-record/update-transaction-record.dto';
 import { TransactionRecordQueryDto } from '@finance/dto/transaction-record/transaction-record-query.dto';
 import { TransactionSummaryQueryDto } from '@finance/dto/transaction-record/transaction-summary-query.dto';
+import { CloneTransactionDto } from '@finance/dto/transaction-record/clone-transaction.dto';
 import {
   nextOccurrence,
   startOfDay,
@@ -97,6 +98,16 @@ export class TransactionRecordService {
     );
     await this.invalidateSummary(userId);
     return result;
+  }
+
+  async clone(id: number, userId: number, dto: CloneTransactionDto) {
+    const cloned = await this.transactionRecordRepository.clone(
+      id,
+      userId,
+      dto,
+    );
+    await this.invalidateSummary(userId);
+    return cloned;
   }
 
   /**

@@ -186,7 +186,24 @@ export class AuthService {
           },
         ),
       );
-      return response.data;
+      const data = response.data;
+      try {
+        const payloadPart = data.access_token?.split('.')?.[1];
+        if (payloadPart) {
+          const payload = JSON.parse(
+            Buffer.from(payloadPart, 'base64url').toString('utf8'),
+          ) as { preferred_username?: string };
+          if (payload?.preferred_username) {
+            const user = await this.userRepository.findByUsername(
+              payload.preferred_username,
+            );
+            data.userId = Number.parseInt(user.id, 10);
+          }
+        }
+      } catch {
+        // ignore JWT parse errors; userId queda undefined
+      }
+      return data;
     } catch (error: unknown) {
       const err = error as KeycloakAdminError;
       const status = err?.response?.status;

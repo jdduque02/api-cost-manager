@@ -123,6 +123,7 @@ export class TransferService {
       description: record.description ?? null,
       reference_code: record.reference_code ?? null,
       objective_id: record.objective_id ?? null,
+      company_id: record.company_id ?? null,
       created_at: record.created_at,
       updated_at: record.updated_at,
     };

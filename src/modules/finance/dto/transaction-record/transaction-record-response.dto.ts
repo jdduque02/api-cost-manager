@@ -107,6 +107,13 @@ export class TransactionRecordResponseDto {
   })
   liability_id!: number | null;
 
+  @ApiPropertyOptional({
+    example: 5,
+    nullable: true,
+    description: 'Empresa/comercio asociada.',
+  })
+  company_id!: number | null;
+
   @ApiProperty({ example: '2026-04-25T10:00:00.000Z' })
   created_at!: Date;
 

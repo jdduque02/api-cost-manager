@@ -1,7 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
-  <circle cx="60" cy="60" r="56" fill="#0F3D2E"/>
-  <text x="60" y="48" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#F4F1EA">COST</text>
-  <text x="60" y="72" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#F4F1EA">MGR</text>
-  <path d="M30 82 L45 68 L58 76 L75 58 L90 50" stroke="#F4F1EA" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="90" cy="50" r="4" fill="#C4A35A"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <circle cx="512" cy="590" r="255" fill="#D4A53A"/>
+  <circle cx="512" cy="590" r="221" fill="none" stroke="#1E5C3A" stroke-width="30"/>
+  <path d="M512 337 C511 291 508 254 500 214" fill="none" stroke="#1E5C3A" stroke-width="25" stroke-linecap="round"/>
+  <path d="M500 241 C445 193 385 184 331 205 C354 270 411 303 500 292 C499 274 499 257 500 241Z" fill="#1E5C3A"/>
+  <path d="M497 283 C454 254 414 226 366 210" fill="none" stroke="#F4F1E7" stroke-width="7" stroke-linecap="round"/>
+  <path d="M512 225 C526 145 585 87 674 73 C676 161 632 226 513 269 C513 251 513 237 512 225Z" fill="#1E5C3A"/>
+  <path d="M520 252 C562 212 607 160 655 103" fill="none" stroke="#F4F1E7" stroke-width="7" stroke-linecap="round"/>
 </svg>

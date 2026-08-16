@@ -51,6 +51,23 @@ export class TransactionSeriesItemDto {
   count!: number;
 }
 
+export class TransactionCompanySummaryDto {
+  @ApiProperty({ example: 1 })
+  company_id!: number;
+
+  @ApiPropertyOptional({ example: 'Netflix', nullable: true })
+  company_name!: string | null;
+
+  @ApiProperty({ example: 2400000 })
+  expenses!: number;
+
+  @ApiProperty({ example: 12 })
+  count!: number;
+
+  @ApiProperty({ example: 35.5 })
+  percent_of_total!: number;
+}
+
 export class TransactionSummaryResponseDto {
   @ApiPropertyOptional({ example: '2026-08-01' })
   date_from?: string;
@@ -69,4 +86,7 @@ export class TransactionSummaryResponseDto {
 
   @ApiProperty({ type: [TransactionSeriesItemDto] })
   series!: TransactionSeriesItemDto[];
+
+  @ApiPropertyOptional({ type: [TransactionCompanySummaryDto] })
+  by_company?: TransactionCompanySummaryDto[];
 }

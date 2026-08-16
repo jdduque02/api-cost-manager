@@ -111,4 +111,14 @@ export class TransactionRecordQueryDto {
   @IsInt()
   @IsPositive()
   liability_id?: number;
+
+  @ApiPropertyOptional({
+    example: 5,
+    description: 'Filtrar por empresa/comercio asociada.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  company_id?: number;
 }

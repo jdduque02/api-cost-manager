@@ -383,10 +383,8 @@ export class AuthController {
     type: ErrorResponseDto,
   })
   encryptPassword(@Body() dto: EncryptPasswordDto) {
-    const env = this.configService.get<string>('NODE_ENV', 'LOCAL');
-    const appDev = this.configService.get<string>('APP_DEV', 'false');
-    const isProd = env === 'PROD' || env === 'DEPLOY' || env === 'production';
-    if (isProd && appDev !== 'true') {
+    const encryptEnabled = this.configService.get<string>('AUTH_ENCRYPT_ENABLED', 'true');
+    if (encryptEnabled !== 'true') {
       throw new ForbiddenException(this.i18n.t('auth.ENCRYPT_DISABLED'));
     }
     const encrypted = this.authService.encryptPassword(dto.password);

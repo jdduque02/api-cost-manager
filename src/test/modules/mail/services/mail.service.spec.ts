@@ -463,7 +463,7 @@ describe('MailService', () => {
 
       expect(transporter.sendMail).toHaveBeenCalledWith(
         expect.objectContaining({
-          from: 'Cost Manager <no-reply@cost-manager.local>',
+          from: 'Sprig <no-reply@sprig.local>',
         }),
       );
     });

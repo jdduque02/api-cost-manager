@@ -119,7 +119,7 @@ export default function OtpPasswordResetEmail({
               lineHeight: '18px',
             }}
           >
-            © {year} Cost Manager. Este es un correo automático, por favor no
+            © {year} Sprig. Este es un correo automático, por favor no
             respondas.
           </Text>
         </Container>

@@ -19,10 +19,12 @@ import { randomUUID } from 'crypto';
 import { TransactionRecord } from '@finance/entities/transaction-record.entity';
 import { TransactionCategoryRule } from '@finance/entities/transaction-category-rule.entity';
 import { FinancialObjective } from '@finance/entities/financial-objective.entity';
+import { Empresa } from '@finance/entities/empresa.entity';
 import { CreateTransactionRecordDto } from '@finance/dto/transaction-record/create-transaction-record.dto';
 import { UpdateTransactionRecordDto } from '@finance/dto/transaction-record/update-transaction-record.dto';
 import { CreateTransferDto } from '@finance/dto/transaction-record/create-transfer.dto';
 import { UpdateTransferDto } from '@finance/dto/transaction-record/update-transfer.dto';
+import { CloneTransactionDto } from '@finance/dto/transaction-record/clone-transaction.dto';
 import { TransactionRecordQueryDto } from '@finance/dto/transaction-record/transaction-record-query.dto';
 import { TransactionSummaryQueryDto } from '@finance/dto/transaction-record/transaction-summary-query.dto';
 import { TransactionSummaryResponseDto } from '@finance/dto/transaction-record/transaction-summary-response.dto';
@@ -123,6 +125,20 @@ export class TransactionRecordRepository {
       // Auto-categorización: si el usuario no indicó categoría, se busca una
       // regla aprendida por descripción; si no hay, queda pendiente por editar.
       await this.applyAutoCategory(ruleRepo, record, dto.category_id);
+
+      // Si no hay categoría y hay empresa asignada, usar la categoría por defecto de la empresa
+      if (record.category_id == null && dto.company_id != null) {
+        const empresaRepo = manager.getRepository(Empresa);
+        const empresa = await empresaRepo.findOne({
+          where: { id: dto.company_id, user_id: userId, deleted_at: IsNull() },
+          select: ['default_category_id'],
+        });
+        if (empresa?.default_category_id != null) {
+          record.category_id = empresa.default_category_id;
+          record.category_status = ReviewStatusEnum.CATEGORIZED;
+        }
+      }
+
       if (dto.category_id != null) {
         await this.learnRule(
           ruleRepo,
@@ -184,6 +200,31 @@ export class TransactionRecordRepository {
           if (record.category_id == null) {
             record.category_status = ReviewStatusEnum.PENDING;
           } else {
+            record.category_status = ReviewStatusEnum.CATEGORIZED;
+          }
+        }
+      }
+
+      // Si no hay categoría y hay empresa asignada, usar la categoría por defecto de la empresa
+      const empresaRepo = manager.getRepository(Empresa);
+      const empresaCache = new Map<number, number | null>();
+      for (const record of records) {
+        if (record.category_id == null && record.company_id != null) {
+          let defaultCategoryId = empresaCache.get(record.company_id);
+          if (!empresaCache.has(record.company_id)) {
+            const empresa = await empresaRepo.findOne({
+              where: {
+                id: record.company_id,
+                user_id: userId,
+                deleted_at: IsNull(),
+              },
+              select: ['default_category_id'],
+            });
+            defaultCategoryId = empresa?.default_category_id ?? null;
+            empresaCache.set(record.company_id, defaultCategoryId);
+          }
+          if (defaultCategoryId != null) {
+            record.category_id = defaultCategoryId;
             record.category_status = ReviewStatusEnum.CATEGORIZED;
           }
         }
@@ -275,6 +316,7 @@ export class TransactionRecordRepository {
       account_id,
       asset_id,
       liability_id,
+      company_id,
       page = 1,
       limit = 20,
     } = query;
@@ -310,6 +352,7 @@ export class TransactionRecordRepository {
     if (asset_id) qb.andWhere('tr.asset_id = :asset_id', { asset_id });
     if (liability_id)
       qb.andWhere('tr.liability_id = :liability_id', { liability_id });
+    if (company_id) qb.andWhere('tr.company_id = :company_id', { company_id });
 
     const [data, total] = await qb.getManyAndCount();
     return { data, total };
@@ -418,6 +461,23 @@ export class TransactionRecordRepository {
       // Si no hay categoría, se intenta auto-categorizar; si no matchea
       // ninguna regla queda pendiente por editar.
       await this.applyAutoCategory(ruleRepo, merged, newCategoryId);
+
+      // Si no hay categoría y hay empresa asignada, usar la categoría por defecto de la empresa
+      if (merged.category_id == null && merged.company_id != null) {
+        const empresaRepo = manager.getRepository(Empresa);
+        const empresa = await empresaRepo.findOne({
+          where: {
+            id: merged.company_id,
+            user_id: userId,
+            deleted_at: IsNull(),
+          },
+          select: ['default_category_id'],
+        });
+        if (empresa?.default_category_id != null) {
+          merged.category_id = empresa.default_category_id;
+          merged.category_status = ReviewStatusEnum.CATEGORIZED;
+        }
+      }
 
       const saved = await recordRepo.save(merged);
       await this.applyLinkAdjustments(manager, previous, saved);
@@ -553,6 +613,7 @@ export class TransactionRecordRepository {
         source_bank: source.bank_name,
         destination_account: destination.account_type,
         destination_bank: destination.bank_name,
+        company_id: dto.company_id ?? null,
       };
 
       const origin = recordRepo.create({
@@ -940,6 +1001,93 @@ export class TransactionRecordRepository {
   }
 
   /**
+   * Clona una transacción existente creando una nueva con los campos copiados.
+   * Permite sobreescribir fecha, monto, descripción, categoría y empresa.
+   */
+  async clone(
+    id: number,
+    userId: number,
+    dto: CloneTransactionDto,
+  ): Promise<TransactionRecord> {
+    const original = await this.findById(id, userId);
+    return this.dataSource.transaction(async (manager) => {
+      const recordRepo = manager.getRepository(TransactionRecord);
+      const ruleRepo = manager.getRepository(TransactionCategoryRule);
+
+      const cloned = recordRepo.create({
+        user_id: userId,
+        category_id: dto.category_id ?? original.category_id,
+        subcategory_id: original.subcategory_id,
+        type: original.type,
+        amount: dto.amount ?? original.amount,
+        is_fixed: original.is_fixed,
+        fixed_type: original.fixed_type,
+        frequency: original.frequency,
+        due_day: original.due_day,
+        reminder_days: original.reminder_days,
+        payment_method: original.payment_method,
+        description: dto.description ?? original.description,
+        reference_code: original.reference_code,
+        attachments: original.attachments,
+        source_account: original.source_account,
+        destination_account: original.destination_account,
+        source_bank: original.source_bank,
+        destination_bank: original.destination_bank,
+        addressee: original.addressee,
+        transaction_date: dto.transaction_date ?? original.transaction_date,
+        objective_id: original.objective_id,
+        account_id: original.account_id,
+        asset_id: original.asset_id,
+        liability_id: original.liability_id,
+        company_id: dto.company_id ?? original.company_id,
+        origin_account_id: original.origin_account_id,
+        destination_account_id: original.destination_account_id,
+        source: original.source,
+        category_status: ReviewStatusEnum.CATEGORIZED,
+      });
+
+      const clonedCategoryId = dto.category_id ?? original.category_id;
+      await this.applyAutoCategory(ruleRepo, cloned, clonedCategoryId);
+
+      if (cloned.category_id == null && cloned.company_id != null) {
+        const empresaRepo = manager.getRepository(Empresa);
+        const empresa = await empresaRepo.findOne({
+          where: {
+            id: cloned.company_id,
+            user_id: userId,
+            deleted_at: IsNull(),
+          },
+          select: ['default_category_id'],
+        });
+        if (empresa?.default_category_id != null) {
+          cloned.category_id = empresa.default_category_id;
+          cloned.category_status = ReviewStatusEnum.CATEGORIZED;
+        }
+      }
+
+      const saved = await recordRepo.save(cloned);
+      await this.applyLinkAdjustments(manager, null, saved);
+      this.logger.log(
+        `Transacción ID ${id} clonada como ID ${saved.id} para usuario ID: ${userId}`,
+      );
+      return saved;
+    });
+  }
+
+  /**
+   * Lista empresas del usuario para uso interno (summary, imports).
+   */
+  async findEmpresasForUser(
+    userId: number,
+  ): Promise<{ id: number; name: string }[]> {
+    const repo = this.dataSource.getRepository(Empresa);
+    return repo.find({
+      where: { user_id: userId, deleted_at: IsNull() },
+      select: ['id', 'name'],
+    });
+  }
+
+  /**
    * Resumen/agregación por intervalos de tiempo. Agrupa por transaction_date
    * (día/semana/mes) y devuelve totales + desglose por categoría.
    */
@@ -1001,6 +1149,18 @@ export class TransactionRecordRepository {
       .addGroupBy('tr.type')
       .orderBy('DATE_TRUNC(:trunc, tr.transaction_date)::date', 'ASC')
       .getRawMany<SeriesRawRow>();
+
+    const companyRaw = await applyFilters(
+      this.repo
+        .createQueryBuilder('tr')
+        .select('tr.company_id', 'company_id')
+        .addSelect('COALESCE(SUM(tr.amount), 0)', 'amount')
+        .addSelect('COUNT(*)', 'count')
+        .andWhere('tr.type = :type', { type: TransactionTypeEnum.EXPENSE })
+        .andWhere('tr.company_id IS NOT NULL'),
+    )
+      .groupBy('tr.company_id')
+      .getRawMany<{ company_id: string; amount: string; count: string }>();
 
     const totals = { income: 0, expenses: 0, investments: 0, count: 0 };
     for (const row of totalsRaw) {
@@ -1089,6 +1249,31 @@ export class TransactionRecordRepository {
     }
     const series = Array.from(seriesMap.values());
 
+    const empresaNames = new Map<number, string>();
+    const empresaIds = companyRaw.map((r) => Number(r.company_id));
+    if (empresaIds.length > 0) {
+      const empresas = await this.findEmpresasForUser(userId);
+      for (const e of empresas) {
+        if (empresaIds.includes(e.id)) empresaNames.set(e.id, e.name);
+      }
+    }
+    const by_company = companyRaw.map((row) => {
+      const companyId = Number(row.company_id);
+      const expenses = Number(row.amount ?? 0);
+      const count = Number(row.count ?? 0);
+      const percentOfTotal =
+        totals.expenses > 0
+          ? Math.round((expenses / totals.expenses) * 10000) / 100
+          : 0;
+      return {
+        company_id: companyId,
+        company_name: empresaNames.get(companyId) ?? null,
+        expenses,
+        count,
+        percent_of_total: percentOfTotal,
+      };
+    });
+
     return {
       date_from: from,
       date_to: to,
@@ -1096,6 +1281,7 @@ export class TransactionRecordRepository {
       totals,
       by_category,
       series,
+      by_company,
     };
   }
 

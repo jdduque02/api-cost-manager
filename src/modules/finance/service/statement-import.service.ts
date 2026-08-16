@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { StatementImportRepository } from '@finance/repositories/statement-import.repository';
 import { TransactionRecordRepository } from '@finance/repositories/transaction-record.repository';
+import { EmpresaRepository } from '@finance/repositories/empresa.repository';
 import {
   StatementImport,
   StatementImportStatusEnum,
@@ -45,6 +46,8 @@ export interface StatementImportJobOptions {
   skip_duplicates: boolean;
   default_type?: TransactionTypeEnum;
   assign_categories?: boolean;
+  capture_companies?: boolean;
+  default_company_id?: number;
 }
 
 export interface StatementImportProgressPayload extends Record<
@@ -94,6 +97,7 @@ export class StatementImportService {
   constructor(
     private readonly statementImportRepository: StatementImportRepository,
     private readonly transactionRecordRepository: TransactionRecordRepository,
+    private readonly empresaRepository: EmpresaRepository,
     private readonly notificationService: NotificationService,
     private readonly bankingEntityService: BankingEntityService,
     @Inject(I18nService) private readonly i18n: I18nService,
@@ -470,6 +474,13 @@ export class StatementImportService {
 
     const categoryId = options.default_category_id ?? null;
     const assignCategories = options.assign_categories !== false;
+    const captureCompanies = options.capture_companies === true;
+
+    // Pre-cargar empresas del usuario para fuzzy match
+    let empresas: { id: number; name: string }[] = [];
+    if (captureCompanies) {
+      empresas = await this.empresaRepository.findAll(userId);
+    }
 
     const dtos: CreateTransactionRecordDto[] = [];
     let records_skipped = 0;
@@ -498,7 +509,25 @@ export class StatementImportService {
         continue;
       }
       seenInBatch.add(fp);
-      const dto = this.toTransactionDto(tx, categoryId, options.account_id);
+
+      // Resolver company_id por fuzzy match (addressee o descripción vs nombres de empresa)
+      let companyId = options.default_company_id;
+      if (captureCompanies && !companyId && empresas.length > 0) {
+        const searchTerm = tx.description ?? '';
+        const match = empresas.find(
+          (e) =>
+            searchTerm.toLowerCase().includes(e.name.toLowerCase()) ||
+            e.name.toLowerCase().includes(searchTerm.toLowerCase()),
+        );
+        if (match) companyId = match.id;
+      }
+
+      const dto = this.toTransactionDto(
+        tx,
+        categoryId,
+        options.account_id,
+        companyId,
+      );
       // Si no hay categoría explícita ni auto-categorización, la transacción
       // queda pendiente por editar.
       if (dto.category_id == null && !assignCategories) records_uncategorized++;
@@ -542,6 +571,7 @@ export class StatementImportService {
     tx: ParsedStatementTransaction,
     categoryId: number | null,
     accountId?: number,
+    companyId?: number,
   ): CreateTransactionRecordDto {
     const dto: CreateTransactionRecordDto = {
       type: tx.type,
@@ -552,6 +582,7 @@ export class StatementImportService {
     };
     if (categoryId != null) dto.category_id = categoryId;
     if (accountId) dto.account_id = accountId;
+    if (companyId) dto.company_id = companyId;
     if (tx.reference) dto.reference_code = tx.reference;
     if (tx.installments !== undefined) dto.installments = tx.installments;
     if (tx.installment_value !== undefined)

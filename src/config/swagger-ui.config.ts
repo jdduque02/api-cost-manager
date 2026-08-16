@@ -38,9 +38,9 @@ export const getSwaggerCustomJs = (logoBase64: string): string => `
   var header = document.createElement('div');
   header.className = 'swagger-header';
   header.innerHTML =
-    '<img src="data:image/svg+xml;base64,${logoBase64}" alt="Cost Manager" />' +
+    '<img src="data:image/svg+xml;base64,${logoBase64}" alt="Sprig" />' +
     '<div>' +
-      '<h1>Cost Manager API</h1>' +
+      '<h1>Sprig API</h1>' +
       '<p>Documentación interactiva &mdash; explora y prueba los endpoints en vivo</p>' +
     '</div>';
   var ui = document.getElementById('swagger-ui');
