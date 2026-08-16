@@ -61,3 +61,4 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 financial-app-context.md
 .env.sonar
 .sonar-project.properties
+*.sql
