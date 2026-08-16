@@ -5,8 +5,13 @@ import { Repository } from 'typeorm';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import { render } from '@react-email/render';
+import { UserRepository } from '@identity/repositories/app-user.repositories';
 import { EmailTemplate } from '../entities/email-template.entity';
 import OtpPasswordResetEmail from '../templates/otp-password-reset';
+import {
+  BroadcastEmailDto,
+  BroadcastEmailResponseDto,
+} from '../dto/broadcast-email.dto';
 
 export const OTP_EMAIL_TEMPLATE_KEY = 'otp_password_reset';
 export const DEFAULT_OTP_SUBJECT = 'Tu código de recuperación de contraseña';
@@ -28,6 +33,7 @@ export class MailService implements OnApplicationBootstrap {
     private readonly configService: ConfigService,
     @InjectRepository(EmailTemplate)
     private readonly templateRepo: Repository<EmailTemplate>,
+    private readonly userRepository: UserRepository,
   ) {
     const enabled =
       this.configService.get<string>('MAIL_ENABLED', 'false') === 'true';
@@ -154,6 +160,59 @@ export class MailService implements OnApplicationBootstrap {
       subject,
       html,
       text: `Su código de recuperación es ${code}`,
+    });
+  }
+
+  /**
+   * Crea un correo tipo noticia y lo envía a todos los usuarios activos.
+   * Persiste la plantilla en mail.email_template con key `broadcast_<ts>`.
+   * Marcadores soportados: {{name}}, {{year}}.
+   */
+  async sendBroadcast(
+    dto: BroadcastEmailDto,
+  ): Promise<BroadcastEmailResponseDto> {
+    const key = `broadcast_${Date.now()}`;
+    const year = String(new Date().getFullYear());
+
+    await this.templateRepo.save(
+      this.templateRepo.create({
+        key,
+        subject: dto.subject,
+        html_body: dto.html_body,
+      }),
+    );
+    this.logger.log(`Plantilla de broadcast guardada: ${key}`);
+
+    const recipients = await this.userRepository.findAllActiveEmails();
+    let sent = 0;
+    const errors: string[] = [];
+
+    for (const user of recipients) {
+      const html = dto.html_body
+        .replace(/{{name}}/g, user.full_name ?? '')
+        .replace(/{{year}}/g, year);
+      try {
+        await this.send({
+          to: user.email,
+          subject: dto.subject,
+          html,
+          text: dto.subject,
+        });
+        sent += 1;
+      } catch (error) {
+        const msg = `${user.email}: ${(error as Error).message}`;
+        errors.push(msg);
+        this.logger.warn(`Broadcast falló para ${msg}`);
+      }
+    }
+
+    return new BroadcastEmailResponseDto({
+      key,
+      subject: dto.subject,
+      recipients: recipients.length,
+      sent,
+      failed: errors.length,
+      errors: errors.length ? errors : undefined,
     });
   }
 

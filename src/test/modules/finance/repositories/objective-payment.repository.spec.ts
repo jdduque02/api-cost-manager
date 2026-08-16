@@ -131,6 +131,18 @@ describe('ObjectivePaymentRepository', () => {
       expect(objective.current_balance).toBe(300);
       expect(objective.is_completed).toBe(false);
     });
+
+    it('trata current_balance y amount nulos como cero', async () => {
+      const payment = buildPayment({ amount: null });
+      const objective = buildObjective({ current_balance: null });
+      mockObjectiveRepo.findOneBy.mockResolvedValue(objective);
+      mockPaymentRepo.create.mockReturnValue(payment);
+      mockPaymentRepo.save.mockResolvedValue(payment);
+
+      await repo.create(10, { ...dto, amount: null });
+
+      expect(objective.current_balance).toBe(0);
+    });
   });
 
   // ─────────────────────────────────────────────────────────────
@@ -201,6 +213,31 @@ describe('ObjectivePaymentRepository', () => {
       mockPaymentRepo.findOneBy.mockResolvedValue(null);
 
       await expect(repo.remove(999, 10)).rejects.toThrow(NotFoundException);
+    });
+
+    it('no revierte el saldo si la meta ya no existe', async () => {
+      const payment = buildPayment();
+      mockPaymentRepo.findOneBy.mockResolvedValue(payment);
+      mockPaymentRepo.softRemove.mockResolvedValue(payment);
+      mockObjectiveRepo.findOneBy.mockResolvedValue(null);
+
+      await repo.remove(1, 10);
+
+      expect(mockPaymentRepo.softRemove).toHaveBeenCalledWith(payment);
+      expect(mockObjectiveRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('trata current_balance y amount nulos como cero al revertir', async () => {
+      const payment = buildPayment({ amount: null });
+      const objective = buildObjective({ current_balance: null });
+      mockPaymentRepo.findOneBy.mockResolvedValue(payment);
+      mockPaymentRepo.softRemove.mockResolvedValue(payment);
+      mockObjectiveRepo.findOneBy.mockResolvedValue(objective);
+
+      await repo.remove(1, 10);
+
+      expect(objective.current_balance).toBe(0);
+      expect(mockObjectiveRepo.save).toHaveBeenCalledWith(objective);
     });
   });
 });

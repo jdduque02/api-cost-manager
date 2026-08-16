@@ -430,6 +430,12 @@ export class TransactionRecordRepository {
 
   async softDelete(id: number, userId: number): Promise<void> {
     const old = await this.findById(id, userId);
+    // Si la transacción es un miembro de una transferencia, eliminar el par
+    // completo (origen + destino) para no dejar registros huérfanos.
+    if (old.transfer_group_id) {
+      await this.softDeleteTransfer(id, userId);
+      return;
+    }
     await this.dataSource.transaction(async (manager) => {
       await manager.getRepository(TransactionRecord).softRemove(old);
       await this.applyLinkAdjustments(manager, old, null);
@@ -448,7 +454,7 @@ export class TransactionRecordRepository {
     if (ids.length === 0) return 0;
     return this.dataSource.transaction(async (manager) => {
       const recordRepo = manager.getRepository(TransactionRecord);
-      const records = await recordRepo.find({
+      let records = await recordRepo.find({
         where: { id: In(ids), user_id: userId, deleted_at: IsNull() },
       });
       if (records.length === 0) {
@@ -457,6 +463,22 @@ export class TransactionRecordRepository {
             args: { id: ids[0] },
           }),
         );
+      }
+
+      // Expandir pares de transferencia: si un miembro del par está en la
+      // selección, eliminar también su gemelo para no dejar huérfanos.
+      const transferGroupIds = records
+        .map((r) => r.transfer_group_id)
+        .filter((g): g is string => !!g);
+      if (transferGroupIds.length > 0) {
+        const siblings = await recordRepo.find({
+          where: {
+            transfer_group_id: In(transferGroupIds),
+            user_id: userId,
+            deleted_at: IsNull(),
+          },
+        });
+        records = Array.from(new Map(siblings.map((r) => [r.id, r])).values());
       }
 
       const net = new Map<string, number>();
@@ -540,6 +562,7 @@ export class TransactionRecordRepository {
       const destinationRecord = recordRepo.create({
         ...base,
         destination_account_id: dto.destination_account_id,
+        objective_id: dto.objective_id,
       });
 
       const savedOrigin = await recordRepo.save(origin);
@@ -627,6 +650,12 @@ export class TransactionRecordRepository {
         fields.reference_code = dto.reference_code;
       for (const record of records) {
         const merged = recordRepo.merge(record, fields);
+        if (
+          dto.objective_id !== undefined &&
+          record.destination_account_id != null
+        ) {
+          merged.objective_id = dto.objective_id ?? null;
+        }
         const saved = await recordRepo.save(merged);
         await this.applyTransferAdjustment(manager, saved, 1);
       }
@@ -650,8 +679,9 @@ export class TransactionRecordRepository {
   }
 
   /**
-   * Aplica el efecto de una transferencia sobre el saldo de sus cuentas:
-   * origen debita (-monto), destino acredita (+monto). `sign = -1` revierte.
+   * Aplica el efecto de una transferencia sobre el saldo de sus cuentas y la
+   * meta vinculada: origen debita (-monto), destino acredita (+monto) y la meta
+   * vinculada se abona (+monto). `sign = -1` revierte.
    */
   private async applyTransferAdjustment(
     manager: EntityManager,
@@ -672,6 +702,14 @@ export class TransactionRecordRepository {
         manager,
         'account',
         tx.destination_account_id,
+        amount * sign,
+      );
+    }
+    if (tx.objective_id != null) {
+      await this.applyToEntity(
+        manager,
+        'objective',
+        tx.objective_id,
         amount * sign,
       );
     }
@@ -818,6 +856,19 @@ export class TransactionRecordRepository {
     net: Map<string, number>,
   ): void {
     if (!tx) return;
+    const amount = Number(tx.amount ?? 0);
+    if (tx.type === TransactionTypeEnum.TRANSFER) {
+      // Las transferencias ligan cuentas por origin/destination_account_id
+      // (no por account_id), así que sus saldos se revierten explícitamente.
+      if (tx.origin_account_id != null) {
+        const key = `account:${tx.origin_account_id}`;
+        net.set(key, (net.get(key) ?? 0) + sign * -amount);
+      }
+      if (tx.destination_account_id != null) {
+        const key = `account:${tx.destination_account_id}`;
+        net.set(key, (net.get(key) ?? 0) + sign * amount);
+      }
+    }
     for (const kind of LINK_KINDS) {
       const id = tx[`${kind}_id` as keyof TransactionRecord] as
         number | null | undefined;

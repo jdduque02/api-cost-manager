@@ -21,6 +21,7 @@ import {
   ApiInternalServerErrorResponse,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@auth/guards/auth.guard';
+import { AdminGuard } from '@auth/guards/admin.guard';
 import { ApiIntrospectGuardResponse } from '@auth/decorators/api-introspect-guard-response.decorator';
 import { NewsItemService } from '@news/service/news-item.service';
 import { NewsQueryDto } from '@news/dto/news-query.dto';
@@ -38,8 +39,9 @@ export class NewsItemController {
   constructor(private readonly newsItemService: NewsItemService) {}
 
   @Post()
+  @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Crear una nueva noticia' })
+  @ApiOperation({ summary: 'Crear una nueva noticia (admin)' })
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: 'Noticia creada exitosamente.',
@@ -93,8 +95,9 @@ export class NewsItemController {
   }
 
   @Patch(':id')
+  @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Actualizar una noticia' })
+  @ApiOperation({ summary: 'Actualizar una noticia (admin)' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Noticia actualizada exitosamente.',
@@ -116,8 +119,9 @@ export class NewsItemController {
   }
 
   @Delete(':id')
+  @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Eliminar una noticia' })
+  @ApiOperation({ summary: 'Eliminar una noticia (admin)' })
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
     description: 'Noticia eliminada exitosamente.',

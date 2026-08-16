@@ -88,6 +88,26 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy Vercel') {
+            when {
+                branch 'main'
+            }
+            steps {
+                withCredentials([
+                    string(credentialsId: 'vercel-token', variable: 'VERCEL_TOKEN'),
+                    string(credentialsId: 'vercel-org-id', variable: 'VERCEL_ORG_ID'),
+                    string(credentialsId: 'vercel-project-id', variable: 'VERCEL_PROJECT_ID')
+                ]) {
+                    sh '''
+                        npm install -g vercel@latest
+                        vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+                        vercel build --prod --token=$VERCEL_TOKEN
+                        vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+                    '''
+                }
+            }
+        }
     }
 
     post {

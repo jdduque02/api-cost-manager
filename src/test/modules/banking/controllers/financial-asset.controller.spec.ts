@@ -11,6 +11,7 @@ const mockFinancialAssetService = {
   findOne: jest.fn(),
   update: jest.fn(),
   remove: jest.fn(),
+  refreshQuotes: jest.fn(),
 };
 
 const buildAsset = (overrides = {}) => ({
@@ -80,6 +81,21 @@ describe('FinancialAssetController', () => {
       const result = await controller.findAll(10, currentUser);
 
       expect(result).toEqual([]);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // getQuotes
+  // ─────────────────────────────────────────────────────────────
+  describe('getQuotes', () => {
+    it('debe refrescar cotizaciones delegando al servicio', async () => {
+      const quotes = [{ id: 1, symbol: 'EC', quote: 2800 }];
+      mockFinancialAssetService.refreshQuotes.mockResolvedValue(quotes);
+
+      const result = await controller.getQuotes(10, currentUser);
+
+      expect(mockFinancialAssetService.refreshQuotes).toHaveBeenCalledWith(10);
+      expect(result).toEqual(quotes);
     });
   });
 

@@ -49,6 +49,36 @@ describe('ResponseHelper', () => {
       const response = ResponseHelper.error('Main error', { error });
       expect(response.error).toBe('Custom object error');
     });
+
+    it('should handle a plain string as the error', () => {
+      const response = ResponseHelper.error('Main error', {
+        error: 'Plain string error',
+      });
+      expect(response.error).toBe('Plain string error');
+    });
+
+    it('should extract error message from an object with error property', () => {
+      const error = { error: 'Error property object' };
+      const response = ResponseHelper.error('Main error', { error });
+      expect(response.error).toBe('Error property object');
+    });
+
+    it('should stringify a non-extractable error object', () => {
+      const response = ResponseHelper.error('Main error', {
+        error: { code: 123 } as unknown as Error,
+      });
+      expect(response.error).toBe('[object Object]');
+    });
+
+    it('should stringify a primitive non-string error', () => {
+      const response = ResponseHelper.error('Main error', { error: 42 });
+      expect(response.error).toBe('42');
+    });
+
+    it('should fall back to the default message when message is empty', () => {
+      const response = ResponseHelper.error('');
+      expect(response.message).toBe('shared.INTERNAL_ERROR');
+    });
   });
 
   describe('notFound', () => {
@@ -74,6 +104,42 @@ describe('ResponseHelper', () => {
       const response = ResponseHelper.validationError(errors);
       expect(response.status).toBe(HttpStatus.BAD_REQUEST);
       expect(response.body).toEqual({ validationErrors: errors });
+    });
+
+    it('should return a 400 response with a custom message', () => {
+      const errors = { email: ['Email is required'] };
+      const response = ResponseHelper.validationError(errors, 'Custom message');
+      expect(response.status).toBe(HttpStatus.BAD_REQUEST);
+      expect(response.message).toBe('Custom message');
+      expect(response.body).toEqual({ validationErrors: errors });
+    });
+  });
+
+  describe('unauthorized', () => {
+    it('should return a 401 response with default message', () => {
+      const response = ResponseHelper.unauthorized();
+      expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
+      expect(response.message).toBe('shared.UNAUTHORIZED');
+    });
+
+    it('should return a 401 response with a custom message', () => {
+      const response = ResponseHelper.unauthorized('Custom unauthorized');
+      expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
+      expect(response.message).toBe('Custom unauthorized');
+    });
+  });
+
+  describe('forbidden', () => {
+    it('should return a 403 response with default message', () => {
+      const response = ResponseHelper.forbidden();
+      expect(response.status).toBe(HttpStatus.FORBIDDEN);
+      expect(response.message).toBe('shared.FORBIDDEN');
+    });
+
+    it('should return a 403 response with a custom message', () => {
+      const response = ResponseHelper.forbidden('Custom forbidden');
+      expect(response.status).toBe(HttpStatus.FORBIDDEN);
+      expect(response.message).toBe('Custom forbidden');
     });
   });
 });

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 import { I18nService } from 'nestjs-i18n';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { StatementImportService } from '@finance/service/statement-import.service';
@@ -53,6 +53,8 @@ const mockStatementImportRepository = {
   markFileFailed: jest.fn(),
   finishJob: jest.fn(),
   clearStoragePath: jest.fn(),
+  findFailedFilesWithStorage: jest.fn(),
+  resetFailedFilesForRetry: jest.fn(),
 };
 
 const mockTransactionRecordRepository = {
@@ -181,6 +183,13 @@ describe('StatementImportService', () => {
     mockStatementImportRepository.findFilesByImport.mockResolvedValue([
       buildFile(),
     ]);
+    mockStatementImportRepository.findFailedFilesWithStorage.mockResolvedValue(
+      [],
+    );
+    mockStatementImportRepository.resetFailedFilesForRetry.mockResolvedValue(
+      undefined,
+    );
+    mockStatementImportRepository.clearStoragePath.mockResolvedValue(undefined);
     mockTransactionRecordRepository.findExistingFingerprints.mockResolvedValue(
       new Set(),
     );
@@ -271,6 +280,71 @@ describe('StatementImportService', () => {
         expect.objectContaining({ default_category_id: 7 }),
       );
     });
+
+    it('acepta un archivo cuyo mimetype no es PDF pero su nombre termina en .pdf', async () => {
+      const file = {
+        originalname: 'extracto.pdf',
+        mimetype: 'text/plain',
+        size: 10,
+        buffer: pdfBuffer,
+      };
+
+      await service.createJob(10, [file], { skip_duplicates: 'true' });
+
+      const [, stored] = mockStatementImportRepository.createJob.mock
+        .calls[0] as [
+        number,
+        Array<{ filename: string; mimetype: string }>,
+        Record<string, unknown>,
+      ];
+      expect(stored[0]).toMatchObject({
+        filename: 'extracto.pdf',
+        mimetype: 'text/plain',
+      });
+    });
+
+    it('usa nombres y mimetypes por defecto cuando el archivo no los trae', async () => {
+      const file = { mimetype: 'application/pdf', size: 10, buffer: pdfBuffer };
+      const fileConMimetypeVacio = {
+        originalname: 'nota.pdf',
+        mimetype: '',
+        size: 10,
+        buffer: pdfBuffer,
+      };
+
+      await service.createJob(10, [file, fileConMimetypeVacio], {
+        skip_duplicates: 'true',
+      });
+
+      const [, stored] = mockStatementImportRepository.createJob.mock
+        .calls[0] as [
+        number,
+        Array<{ filename: string; mimetype: string }>,
+        Record<string, unknown>,
+      ];
+      expect(stored[0]).toMatchObject({
+        filename: 'extracto.pdf',
+        mimetype: 'application/pdf',
+      });
+      expect(stored[1]).toMatchObject({
+        filename: 'nota.pdf',
+        mimetype: 'application/pdf',
+      });
+    });
+
+    it('limpia el directorio temporal y relanza el error si falla la escritura', async () => {
+      (writeFile as jest.Mock).mockRejectedValue(new Error('disco lleno'));
+      (rm as jest.Mock).mockRejectedValueOnce(new Error('rm falló'));
+
+      await expect(
+        service.createJob(10, [pdfFile], { skip_duplicates: 'true' }),
+      ).rejects.toThrow('disco lleno');
+      expect(rm).toHaveBeenCalledWith(
+        expect.stringContaining('cm-import-'),
+        expect.objectContaining({ recursive: true, force: true }),
+      );
+      expect(mockStatementImportRepository.createJob).not.toHaveBeenCalled();
+    });
   });
 
   describe('findAll', () => {
@@ -286,6 +360,19 @@ describe('StatementImportService', () => {
         40,
       );
       expect(result).toEqual(payload);
+    });
+
+    it('usa límite y offset por defecto', async () => {
+      const payload = { data: [], total: 0 };
+      mockStatementImportRepository.findJobsByUser.mockResolvedValue(payload);
+
+      await service.findAll(10);
+
+      expect(mockStatementImportRepository.findJobsByUser).toHaveBeenCalledWith(
+        10,
+        10,
+        0,
+      );
     });
   });
 
@@ -736,6 +823,496 @@ describe('StatementImportService', () => {
       expect(
         mockStatementImportRepository.findFilesByImport,
       ).not.toHaveBeenCalled();
+    });
+
+    it('registra el error si la cadena de procesamiento falla', async () => {
+      const errorSpy = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+      mockStatementImportRepository.findJobById.mockRejectedValue(
+        new Error('boom'),
+      );
+
+      await service.createJob(10, [pdfFile], {
+        skip_duplicates: 'true',
+      });
+      await flushChain();
+      await flushChain();
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error procesando lote'),
+        expect.any(Error),
+      );
+      errorSpy.mockRestore();
+    });
+
+    it('continúa procesando si no se pueden cargar las detecciones bancarias', async () => {
+      mockParsePdfStatement.mockResolvedValue({
+        transactions: [buildParsedTx()],
+        bank: 'bancolombia',
+      });
+      mockBankingEntityService.getActiveDetections.mockRejectedValue(
+        new Error('db caído'),
+      );
+      mockTransactionRecordRepository.createMany.mockResolvedValue([
+        { id: 99, category_id: 2 },
+      ]);
+
+      await service.createJob(10, [pdfFile], {
+        skip_duplicates: 'true',
+      });
+      await flushChain();
+      await flushChain();
+
+      expect(mockTransactionRecordRepository.createMany).toHaveBeenCalled();
+      expect(mockStatementImportRepository.markFileSuccess).toHaveBeenCalled();
+    });
+
+    it('marca el archivo como fallido si no tiene storage_path', async () => {
+      mockStatementImportRepository.findFilesByImport.mockResolvedValue([
+        buildFile({ storage_path: null }),
+      ]);
+
+      await service.createJob(10, [pdfFile], {
+        skip_duplicates: 'true',
+      });
+      await flushChain();
+      await flushChain();
+
+      expect(mockStatementImportRepository.markFileFailed).toHaveBeenCalledWith(
+        1,
+        'PDF_INVALID',
+        expect.any(String),
+      );
+      expect(mockStatementImportRepository.finishJob).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ failed_files: 1 }),
+      );
+    });
+
+    it('clasifica el archivo como contraseña requerida', async () => {
+      mockParsePdfStatement.mockRejectedValue(
+        Object.assign(new Error('se requiere la clave'), {
+          name: 'PasswordException',
+        }),
+      );
+      mockStatementImportRepository.findFilesByImport.mockResolvedValue([
+        buildFile(),
+      ]);
+
+      await service.createJob(10, [pdfFile], {
+        skip_duplicates: 'true',
+      });
+      await flushChain();
+      await flushChain();
+
+      expect(mockStatementImportRepository.markFileFailed).toHaveBeenCalledWith(
+        1,
+        'PDF_PASSWORD_REQUIRED',
+        expect.any(String),
+      );
+    });
+
+    it('clasifica el archivo como PDF inválido por el nombre del error', async () => {
+      mockParsePdfStatement.mockRejectedValue(
+        Object.assign(new Error('estructura ilegible'), {
+          name: 'InvalidPDFError',
+        }),
+      );
+      mockStatementImportRepository.findFilesByImport.mockResolvedValue([
+        buildFile(),
+      ]);
+
+      await service.createJob(10, [pdfFile], {
+        skip_duplicates: 'true',
+      });
+      await flushChain();
+      await flushChain();
+
+      expect(mockStatementImportRepository.markFileFailed).toHaveBeenCalledWith(
+        1,
+        'PDF_INVALID',
+        expect.any(String),
+      );
+    });
+
+    it('cuenta no categorizadas cuando assign_categories=false', async () => {
+      mockParsePdfStatement.mockResolvedValue({
+        transactions: [buildParsedTx()],
+        bank: 'bancolombia',
+      });
+      mockStatementImportRepository.findJobById.mockResolvedValue(
+        buildJob({
+          options: { skip_duplicates: false, assign_categories: false },
+        }),
+      );
+      mockStatementImportRepository.findFilesByImport.mockResolvedValue([
+        buildFile(),
+      ]);
+      mockTransactionRecordRepository.createMany.mockResolvedValue([
+        { id: 99, category_id: null },
+      ]);
+
+      await service.createJob(10, [pdfFile], {
+        skip_duplicates: 'false',
+        assign_categories: 'false',
+      });
+      await flushChain();
+      await flushChain();
+
+      expect(mockTransactionRecordRepository.createMany).toHaveBeenCalledWith(
+        10,
+        [expect.objectContaining({ amount: 1547390 })],
+        { assignCategories: false },
+      );
+      expect(
+        mockStatementImportRepository.markFileSuccess,
+      ).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ records_uncategorized: 2 }),
+      );
+    });
+
+    it('incluye cuotas e installment_value en el DTO', async () => {
+      mockParsePdfStatement.mockResolvedValue({
+        transactions: [
+          buildParsedTx({ installments: 3, installment_value: 500000 }),
+        ],
+        bank: 'bancolombia',
+      });
+      mockTransactionRecordRepository.createMany.mockResolvedValue([
+        { id: 99, category_id: 2 },
+      ]);
+
+      await service.createJob(10, [pdfFile], {
+        skip_duplicates: 'true',
+      });
+      await flushChain();
+      await flushChain();
+
+      expect(mockTransactionRecordRepository.createMany).toHaveBeenCalledWith(
+        10,
+        [
+          expect.objectContaining({
+            installments: 3,
+            installment_value: 500000,
+          }),
+        ],
+        expect.any(Object),
+      );
+    });
+
+    it('usa el primer error como mensaje cuando varios archivos fallan', async () => {
+      mockParsePdfStatement
+        .mockRejectedValueOnce(new Error('primera falla'))
+        .mockRejectedValueOnce(new Error('segunda falla'));
+      mockStatementImportRepository.findFilesByImport.mockResolvedValue([
+        buildFile({ id: 1, storage_path: '/tmp/one.pdf' }),
+        buildFile({ id: 2, storage_path: '/tmp/two.pdf' }),
+      ]);
+
+      await service.createJob(10, [pdfFile], {
+        skip_duplicates: 'true',
+      });
+      await flushChain();
+      await flushChain();
+
+      expect(
+        mockStatementImportRepository.markFileFailed,
+      ).toHaveBeenCalledTimes(2);
+      const [, totals] = mockStatementImportRepository.finishJob.mock
+        .calls[0] as [number, { error?: { code: string; message: string } }];
+      expect(totals.error?.code).toBe('PARTIAL_FAILURES');
+      expect(totals.error?.message).toBe(
+        mockI18n.t('finance.STATEMENT_IMPORT_INVALID_PDF', {
+          args: { file: '/tmp/one.pdf' },
+        }),
+      );
+    });
+
+    it('no interrumpe el lote si falla la notificación de finalización', async () => {
+      mockParsePdfStatement.mockResolvedValue({
+        transactions: [buildParsedTx()],
+        bank: 'bancolombia',
+      });
+      mockNotificationService.create.mockRejectedValue(new Error('queue down'));
+      mockTransactionRecordRepository.createMany.mockResolvedValue([
+        { id: 99, category_id: 2 },
+      ]);
+      const warnSpy = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+
+      await service.createJob(10, [pdfFile], {
+        skip_duplicates: 'true',
+      });
+      await flushChain();
+      await flushChain();
+
+      expect(mockStatementImportRepository.finishJob).toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('No se pudo crear la notificación'),
+        expect.any(Error),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('continúa si no se puede emitir el progreso del lote', async () => {
+      mockParsePdfStatement.mockResolvedValue({
+        transactions: [buildParsedTx()],
+        bank: 'bancolombia',
+      });
+      const job = buildJob();
+      mockStatementImportRepository.findJobById
+        .mockResolvedValueOnce(job)
+        .mockRejectedValueOnce(new Error('emit fail'))
+        .mockResolvedValue(job);
+      mockTransactionRecordRepository.createMany.mockResolvedValue([
+        { id: 99, category_id: 2 },
+      ]);
+      const debugSpy = jest
+        .spyOn(Logger.prototype, 'debug')
+        .mockImplementation(() => undefined);
+
+      await service.createJob(10, [pdfFile], {
+        skip_duplicates: 'true',
+      });
+      await flushChain();
+      await flushChain();
+
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringContaining('No se pudo emitir progreso'),
+        expect.any(Error),
+      );
+      expect(mockStatementImportRepository.finishJob).toHaveBeenCalled();
+      debugSpy.mockRestore();
+    });
+
+    it('finaliza el lote sin archivos sin limpiar ningún directorio', async () => {
+      mockStatementImportRepository.findFilesByImport.mockResolvedValue([]);
+
+      await service.createJob(10, [pdfFile], {
+        skip_duplicates: 'true',
+      });
+      await flushChain();
+      await flushChain();
+
+      expect(mockStatementImportRepository.finishJob).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          processed_files: 0,
+          success_files: 0,
+          failed_files: 0,
+          error: null,
+        }),
+      );
+      expect(mockNotificationService.create).toHaveBeenCalled();
+    });
+
+    it('clasifica errores lanzados sin objeto Error', async () => {
+      mockParsePdfStatement.mockRejectedValue(null);
+      mockStatementImportRepository.findFilesByImport.mockResolvedValue([
+        buildFile(),
+      ]);
+
+      await service.createJob(10, [pdfFile], {
+        skip_duplicates: 'true',
+      });
+      await flushChain();
+      await flushChain();
+
+      expect(mockStatementImportRepository.markFileFailed).toHaveBeenCalledWith(
+        1,
+        'PDF_INVALID',
+        expect.any(String),
+      );
+    });
+  });
+
+  describe('retryJob', () => {
+    it('lanza BadRequestException si no hay archivos reintentables', async () => {
+      mockStatementImportRepository.findFailedFilesWithStorage.mockResolvedValue(
+        [],
+      );
+
+      await expect(service.retryJob(1, 10)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(
+        mockStatementImportRepository.resetFailedFilesForRetry,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('lanza BadRequestException si hay archivos fallidos sin storage_path', async () => {
+      mockStatementImportRepository.findFailedFilesWithStorage.mockResolvedValue(
+        [buildFile({ id: 7, filename: 'roto.pdf', storage_path: null })],
+      );
+
+      await expect(service.retryJob(1, 10)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockI18n.t).toHaveBeenCalledWith(
+        'finance.STATEMENT_IMPORT_STORAGE_MISSING_RETRY',
+        { args: { files: 'roto.pdf' } },
+      );
+      expect(
+        mockStatementImportRepository.resetFailedFilesForRetry,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('re-procesa los archivos fallidos con la contraseña y las entidades', async () => {
+      mockParsePdfStatement.mockResolvedValue({
+        transactions: [buildParsedTx()],
+        bank: 'bancolombia',
+      });
+      mockStatementImportRepository.findFailedFilesWithStorage.mockResolvedValue(
+        [buildFile()],
+      );
+      mockStatementImportRepository.findFilesByImport.mockResolvedValue([
+        buildFile({ status: StatementImportFileStatusEnum.PENDING }),
+      ]);
+      const entities = [{ code: 'daviplata', detect_patterns: ['x'] }];
+      mockBankingEntityService.getActiveDetections.mockResolvedValue(entities);
+      mockTransactionRecordRepository.createMany.mockResolvedValue([
+        { id: 99, category_id: 2 },
+      ]);
+
+      const result = await service.retryJob(1, 10, 'clave');
+
+      expect(result).toEqual(buildJob());
+      expect(
+        mockStatementImportRepository.resetFailedFilesForRetry,
+      ).toHaveBeenCalledWith(1);
+      await flushChain();
+      await flushChain();
+
+      expect(mockStatementImportRepository.markProcessing).toHaveBeenCalledWith(
+        1,
+      );
+      expect(mockParsePdfStatement).toHaveBeenCalledWith(
+        pdfBuffer,
+        'clave',
+        undefined,
+        entities,
+      );
+      expect(mockStatementImportRepository.markFileSuccess).toHaveBeenCalled();
+      expect(mockStatementImportRepository.finishJob).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ success_files: 1, failed_files: 0 }),
+      );
+      expect(mockNotificationService.create).toHaveBeenCalled();
+      expect(
+        mockStatementImportRepository.clearStoragePath,
+      ).toHaveBeenCalledWith(1);
+    });
+
+    it('usa detecciones vacías si la consulta falla durante el reintento', async () => {
+      mockParsePdfStatement.mockResolvedValue({
+        transactions: [buildParsedTx()],
+        bank: 'bancolombia',
+      });
+      mockStatementImportRepository.findFailedFilesWithStorage.mockResolvedValue(
+        [buildFile()],
+      );
+      mockStatementImportRepository.findFilesByImport.mockResolvedValue([
+        buildFile({ status: StatementImportFileStatusEnum.PENDING }),
+      ]);
+      mockBankingEntityService.getActiveDetections.mockRejectedValue(
+        new Error('db caído'),
+      );
+      mockTransactionRecordRepository.createMany.mockResolvedValue([
+        { id: 99, category_id: 2 },
+      ]);
+
+      await service.retryJob(1, 10);
+      await flushChain();
+      await flushChain();
+
+      expect(mockParsePdfStatement).toHaveBeenCalledWith(
+        pdfBuffer,
+        undefined,
+        undefined,
+        [],
+      );
+    });
+
+    it('marca el archivo como fallido si el reintento falla', async () => {
+      mockParsePdfStatement.mockRejectedValue(
+        Object.assign(new Error('Incorrect password'), {
+          name: 'PasswordException',
+        }),
+      );
+      mockStatementImportRepository.findFailedFilesWithStorage.mockResolvedValue(
+        [buildFile()],
+      );
+      mockStatementImportRepository.findFilesByImport.mockResolvedValue([
+        buildFile({ status: StatementImportFileStatusEnum.PENDING }),
+      ]);
+
+      await service.retryJob(1, 10, 'clave');
+      await flushChain();
+      await flushChain();
+
+      expect(mockStatementImportRepository.markFileFailed).toHaveBeenCalledWith(
+        1,
+        'PDF_WRONG_PASSWORD',
+        expect.any(String),
+      );
+      expect(mockStatementImportRepository.finishJob).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ failed_files: 1 }),
+      );
+    });
+
+    it('no limpia el directorio ni reporta errores si no quedan archivos pendientes', async () => {
+      mockStatementImportRepository.findFailedFilesWithStorage.mockResolvedValue(
+        [buildFile()],
+      );
+      mockStatementImportRepository.findFilesByImport.mockResolvedValue([
+        buildFile({ status: StatementImportFileStatusEnum.SUCCESS }),
+      ]);
+
+      await service.retryJob(1, 10);
+      await flushChain();
+      await flushChain();
+
+      expect(mockStatementImportRepository.finishJob).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          processed_files: 0,
+          success_files: 0,
+          failed_files: 0,
+          error: null,
+        }),
+      );
+      expect(
+        mockStatementImportRepository.markFileSuccess,
+      ).not.toHaveBeenCalled();
+      expect(mockNotificationService.create).toHaveBeenCalled();
+    });
+
+    it('registra el error si la cadena de reintento falla', async () => {
+      const errorSpy = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+      mockStatementImportRepository.findFailedFilesWithStorage.mockResolvedValue(
+        [buildFile()],
+      );
+      mockStatementImportRepository.markProcessing.mockRejectedValue(
+        new Error('update falló'),
+      );
+
+      const result = await service.retryJob(1, 10);
+
+      expect(result).toEqual(buildJob());
+      await flushChain();
+      await flushChain();
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error reintentando lote'),
+        expect.any(Error),
+      );
+      errorSpy.mockRestore();
     });
   });
 });

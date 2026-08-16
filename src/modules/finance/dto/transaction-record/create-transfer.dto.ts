@@ -98,4 +98,15 @@ export class CreateTransferDto {
   @IsOptional()
   @IsBoolean()
   is_fixed?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'ID de la meta financiera a la que se vincula el movimiento (abona al saldo de la meta).',
+    example: 12,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  objective_id?: number;
 }

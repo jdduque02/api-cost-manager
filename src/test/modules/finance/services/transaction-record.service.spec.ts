@@ -6,7 +6,7 @@ import { UpdateTransactionRecordDto } from '@finance/dto/transaction-record/upda
 import { TransactionRecordQueryDto } from '@finance/dto/transaction-record/transaction-record-query.dto';
 import { NotFoundException } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { TransactionTypeEnum } from '@shared/enums';
+import { TransactionTypeEnum, FrequencyEnum } from '@shared/enums';
 
 const mockCacheManager = {
   get: jest.fn(),
@@ -21,6 +21,8 @@ const mockTransactionRecordRepository = {
   findById: jest.fn(),
   update: jest.fn(),
   softDelete: jest.fn(),
+  softDeleteMany: jest.fn(),
+  findUpcomingSubscriptions: jest.fn(),
 };
 
 const buildTransaction = (overrides = {}) => ({
@@ -29,6 +31,22 @@ const buildTransaction = (overrides = {}) => ({
   category_id: 2,
   type: TransactionTypeEnum.EXPENSE,
   amount: 50000,
+  ...overrides,
+});
+
+const buildSubscription = (overrides = {}) => ({
+  id: 1,
+  user_id: 10,
+  type: TransactionTypeEnum.EXPENSE,
+  amount: '30000',
+  is_fixed: true,
+  fixed_type: 'deduction',
+  frequency: FrequencyEnum.MONTHLY,
+  due_day: 20,
+  reminder_days: 3,
+  description: 'Suscripción Netflix',
+  payment_method: 'debit_card',
+  created_at: new Date('2026-01-01'),
   ...overrides,
 });
 
@@ -136,6 +154,42 @@ describe('TransactionRecordService', () => {
       );
       expect(result).toEqual(payload);
     });
+
+    it('debe devolver el resumen desde la caché sin consultar al repositorio', async () => {
+      const summary = { totals: { income: 100 } };
+      mockCacheManager.get
+        .mockResolvedValueOnce(3)
+        .mockResolvedValueOnce(summary);
+
+      const result = await service.getSummary(10, {
+        date_from: '2026-08-01',
+        date_to: '2026-08-31',
+        group_by: 'week',
+        type: TransactionTypeEnum.INCOME,
+      });
+
+      expect(mockTransactionRecordRepository.getSummary).not.toHaveBeenCalled();
+      expect(mockCacheManager.get).toHaveBeenCalledWith('tx:summary:gen:10');
+      expect(mockCacheManager.get).toHaveBeenCalledWith(
+        'tx:summary:10:2026-08-01:2026-08-31:week:income:g3',
+      );
+      expect(result).toEqual(summary);
+    });
+
+    it('debe usar valores por defecto en la clave cuando el query viene vacío', async () => {
+      const payload = { totals: {} };
+      mockCacheManager.get.mockResolvedValue(undefined);
+      mockTransactionRecordRepository.getSummary.mockResolvedValue(payload);
+
+      const result = await service.getSummary(10, {});
+
+      expect(mockCacheManager.set).toHaveBeenCalledWith(
+        'tx:summary:10:::day::g0',
+        payload,
+        expect.any(Number),
+      );
+      expect(result).toEqual(payload);
+    });
   });
 
   describe('update', () => {
@@ -165,6 +219,117 @@ describe('TransactionRecordService', () => {
         1,
         10,
       );
+    });
+  });
+
+  describe('removeMany', () => {
+    it('debe delegar la eliminación masiva e incrementar la generación de caché', async () => {
+      mockTransactionRecordRepository.softDeleteMany.mockResolvedValue(2);
+      mockCacheManager.get.mockResolvedValueOnce(7);
+
+      const result = await service.removeMany([1, 2], 10);
+
+      expect(
+        mockTransactionRecordRepository.softDeleteMany,
+      ).toHaveBeenCalledWith([1, 2], 10);
+      expect(result).toBe(2);
+      expect(mockCacheManager.get).toHaveBeenCalledWith('tx:summary:gen:10');
+      expect(mockCacheManager.set).toHaveBeenCalledWith(
+        'tx:summary:gen:10',
+        8,
+        86_400_000,
+      );
+    });
+  });
+
+  describe('getUpcomingPayments', () => {
+    it('debe calcular los próximos pagos de suscripciones ordenados por fecha', async () => {
+      const monthly = buildSubscription({ id: 1 });
+      const daily = buildSubscription({
+        id: 2,
+        frequency: FrequencyEnum.DAILY,
+        due_day: null,
+        description: null,
+        amount: undefined,
+        payment_method: null,
+        reminder_days: null,
+      });
+      mockTransactionRecordRepository.findUpcomingSubscriptions.mockResolvedValue(
+        [monthly, daily],
+      );
+
+      const result = await service.getUpcomingPayments(10);
+
+      expect(
+        mockTransactionRecordRepository.findUpcomingSubscriptions,
+      ).toHaveBeenCalledWith(10, expect.any(Date));
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe(2);
+      expect(result[0].frequency).toBe('daily');
+      expect(result[0].description).toBeNull();
+      expect(result[0].amount).toBe(0);
+      expect(result[0].payment_method).toBeNull();
+      expect(result[0].due_day).toBeNull();
+      expect(result[0].reminder_days).toBeNull();
+      expect(result[0].days_remaining).toBe(0);
+      expect(result[0].next_payment_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(result[1].id).toBe(1);
+      expect(result[1].description).toBe('Suscripción Netflix');
+      expect(result[1].amount).toBe(30000);
+      expect(result[1].payment_method).toBe('debit_card');
+      expect(result[1].frequency).toBe('monthly');
+      expect(result[1].due_day).toBe(20);
+      expect(result[1].reminder_days).toBe(3);
+    });
+
+    it('debe respetar el orden ya ordenado de los próximos pagos', async () => {
+      const daily = buildSubscription({
+        id: 2,
+        frequency: FrequencyEnum.DAILY,
+        due_day: null,
+      });
+      const monthly = buildSubscription({ id: 1 });
+      mockTransactionRecordRepository.findUpcomingSubscriptions.mockResolvedValue(
+        [daily, monthly],
+      );
+
+      const result = await service.getUpcomingPayments(10);
+
+      expect(result.map((p) => p.id)).toEqual([2, 1]);
+    });
+
+    it('debe omitir suscripciones sin siguiente ocurrencia', async () => {
+      const noNext = buildSubscription({
+        id: 3,
+        frequency: null,
+        due_day: null,
+      });
+      mockTransactionRecordRepository.findUpcomingSubscriptions.mockResolvedValue(
+        [noNext],
+      );
+
+      const result = await service.getUpcomingPayments(10);
+
+      expect(result).toEqual([]);
+    });
+
+    it('debe calcular la siguiente ocurrencia con frecuencia nula si hay due_day', async () => {
+      const noFrequency = buildSubscription({
+        id: 4,
+        frequency: null,
+        due_day: 20,
+      });
+      mockTransactionRecordRepository.findUpcomingSubscriptions.mockResolvedValue(
+        [noFrequency],
+      );
+
+      const result = await service.getUpcomingPayments(10);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(4);
+      expect(result[0].frequency).toBeNull();
+      expect(result[0].due_day).toBe(20);
+      expect(result[0].next_payment_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
   });
 });

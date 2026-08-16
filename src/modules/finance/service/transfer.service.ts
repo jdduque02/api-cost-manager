@@ -93,6 +93,7 @@ export class TransferService {
       transaction_date: first.transaction_date,
       description: first.description ?? null,
       reference_code: first.reference_code ?? null,
+      objective_id: destination.objective_id ?? null,
       source: this.toMovementDto(source, 'source'),
       destination: this.toMovementDto(destination, 'destination'),
     };
@@ -121,6 +122,7 @@ export class TransferService {
       transaction_date: record.transaction_date,
       description: record.description ?? null,
       reference_code: record.reference_code ?? null,
+      objective_id: record.objective_id ?? null,
       created_at: record.created_at,
       updated_at: record.updated_at,
     };

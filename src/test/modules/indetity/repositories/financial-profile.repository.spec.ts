@@ -87,6 +87,20 @@ describe('FinancialProfileRepository', () => {
       expect(mockTypeOrmRepo.save).toHaveBeenCalledTimes(1);
     });
 
+    it('debe encriptar monthly_income cuando viene en el dto', async () => {
+      const profile = buildProfile({ monthly_income: '6000' });
+      mockTypeOrmRepo.findOne.mockResolvedValue(null);
+      mockTypeOrmRepo.create.mockReturnValue(profile);
+      mockTypeOrmRepo.save.mockResolvedValue(profile);
+
+      const result = await repo.create(2, { ...dto, monthly_income: 6000 });
+      expect(mockEncryptionService.encryptField).toHaveBeenCalledWith(
+        '6000',
+        'finance',
+      );
+      expect(result.monthly_income).toBe(6000);
+    });
+
     it('debe lanzar ConflictException si ya existe un perfil para el usuario', async () => {
       mockTypeOrmRepo.findOne.mockResolvedValue(buildProfile()); // ya existe
 
@@ -105,6 +119,28 @@ describe('FinancialProfileRepository', () => {
 
       const result = await repo.findByUserId(2);
       expect(result.user_id).toBe(2);
+    });
+
+    it('debe descifrar monthly_income encriptado', async () => {
+      const profile = buildProfile({ monthly_income: 'encrypted-5000' });
+      mockTypeOrmRepo.findOne.mockResolvedValue(profile);
+      mockEncryptionService.decryptField.mockReturnValue('5000');
+
+      const result = await repo.findByUserId(2);
+      expect(mockEncryptionService.decryptField).toHaveBeenCalledWith(
+        'encrypted-5000',
+        'finance',
+      );
+      expect(result.monthly_income).toBe(5000);
+    });
+
+    it('debe setear monthly_income a null si la descifrado devuelve vacío', async () => {
+      const profile = buildProfile({ monthly_income: 'encrypted-empty' });
+      mockTypeOrmRepo.findOne.mockResolvedValue(profile);
+      mockEncryptionService.decryptField.mockReturnValue('');
+
+      const result = await repo.findByUserId(2);
+      expect(result.monthly_income).toBeNull();
     });
 
     it('debe lanzar NotFoundException si no existe el perfil', async () => {
@@ -130,6 +166,24 @@ describe('FinancialProfileRepository', () => {
       const result = await repo.update(2, dto);
       expect(result.needs_ratio).toBe(60);
       expect(mockTypeOrmRepo.merge).toHaveBeenCalledWith(original, dto);
+    });
+
+    it('debe encriptar monthly_income al actualizar si viene en el dto', async () => {
+      const original = buildProfile({ monthly_income: '5000' });
+      const updatedProfile = buildProfile({ monthly_income: '7000' });
+      mockTypeOrmRepo.findOne.mockResolvedValue(original);
+      mockTypeOrmRepo.merge.mockReturnValue(updatedProfile);
+      mockTypeOrmRepo.save.mockResolvedValue(updatedProfile);
+      mockEncryptionService.decryptField.mockImplementation(
+        (value: string | null | undefined) => value,
+      );
+
+      const result = await repo.update(2, { monthly_income: 7000 });
+      expect(mockEncryptionService.encryptField).toHaveBeenCalledWith(
+        '7000',
+        'finance',
+      );
+      expect(result.monthly_income).toBe(7000);
     });
 
     it('debe lanzar NotFoundException si el perfil no existe', async () => {

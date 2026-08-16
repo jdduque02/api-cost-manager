@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from '@auth/service/auth.service';
 import { I18nService } from 'nestjs-i18n';
 import { PresenceService } from '@shared/services/presence.service';
+import { WsException } from '@nestjs/websockets';
 
 // ─────────────────────────────────────────────────────────────
 // Mocks del Server y Socket de socket.io
@@ -19,11 +20,16 @@ interface MockServerTo {
 
 interface MockServer {
   to: jest.Mock;
+  use: jest.Mock;
 }
 
 interface MockSocketClient {
   id: string;
   data?: Record<string, unknown>;
+  handshake?: {
+    auth?: { token?: string };
+    headers?: { authorization?: string };
+  };
   join?: jest.Mock;
   leave?: jest.Mock;
 }
@@ -31,6 +37,7 @@ interface MockSocketClient {
 const mockServerTo: MockServerTo = { emit: jest.fn() };
 const mockServer: MockServer = {
   to: jest.fn().mockReturnValue(mockServerTo),
+  use: jest.fn(),
 };
 
 const mockGateway = {
@@ -38,6 +45,22 @@ const mockGateway = {
   confirmMarkRead: jest.fn(),
   confirmMarkAllRead: jest.fn(),
 };
+
+const mockAuthService = {
+  introspect: jest.fn(),
+};
+
+const mockPresenceService = {
+  markOnline: jest.fn(),
+  markOffline: jest.fn(),
+};
+
+const mockGatewayI18n = {
+  t: jest.fn((key: string) => `[${key}]`),
+};
+
+const flush = (): Promise<void> =>
+  new Promise((resolve) => setImmediate(resolve));
 
 const buildPayload = (overrides = {}): NotificationPayload => ({
   id: 1,
@@ -98,18 +121,123 @@ describe('NotificationGateway — métodos de emisión', () => {
   beforeEach(() => {
     gateway = new NotificationGateway(
       {} as unknown as ConfigService, // ConfigService — no se usa en los métodos de emisión
-      {} as unknown as AuthService, // AuthService  — no se usa en los métodos de emisión
-      { t: jest.fn((key: string) => `[${key}]`) } as unknown as I18nService,
-      {
-        markOnline: jest.fn(),
-        markOffline: jest.fn(),
-      } as unknown as PresenceService,
+      mockAuthService as unknown as AuthService,
+      mockGatewayI18n as unknown as I18nService,
+      mockPresenceService as unknown as PresenceService,
     );
 
     // Inyectar el server mock en la propiedad privada
     (gateway as unknown as { server: MockServer }).server = mockServer;
     jest.clearAllMocks();
     mockServer.to.mockReturnValue(mockServerTo);
+    mockAuthService.introspect.mockResolvedValue({ sub: 'kc-uuid' });
+  });
+
+  describe('afterInit / authenticateSocket', () => {
+    const setupMiddleware = (): ((
+      socket: MockSocketClient,
+      next: (err?: Error) => void,
+    ) => void) => {
+      gateway.afterInit(mockServer as unknown as never);
+      const calls = mockServer.use.mock.calls as unknown as Array<
+        Array<(socket: MockSocketClient, next: (err?: Error) => void) => void>
+      >;
+      return calls[0][0];
+    };
+
+    it('registra el middleware de autenticación al inicializar', () => {
+      gateway.afterInit(mockServer as unknown as never);
+      expect(mockServer.use).toHaveBeenCalledWith(expect.any(Function));
+    });
+
+    it('rechaza conexiones sin token', async () => {
+      const middleware = setupMiddleware();
+      const next = jest.fn();
+      const socket: MockSocketClient = {
+        id: 'socket-1',
+        handshake: { auth: {}, headers: {} },
+      };
+
+      middleware(socket, next);
+      await flush();
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: '[notification.AUTH_TOKEN_REQUIRED]',
+        }),
+      );
+      expect(mockAuthService.introspect).not.toHaveBeenCalled();
+    });
+
+    it('autentica con el token del handshake', async () => {
+      const user = { sub: 'kc-uuid', userId: 5 };
+      mockAuthService.introspect.mockResolvedValue(user);
+      const middleware = setupMiddleware();
+      const next = jest.fn();
+      const socket: MockSocketClient = {
+        id: 'socket-1',
+        data: {},
+        handshake: { auth: { token: 'abc' }, headers: {} },
+      };
+
+      middleware(socket, next);
+      await flush();
+
+      expect(mockAuthService.introspect).toHaveBeenCalledWith('abc');
+      expect(next).toHaveBeenCalledWith();
+      expect(socket.data).toMatchObject({ token: 'abc', user });
+    });
+
+    it('autentica con el token del encabezado Authorization', async () => {
+      const middleware = setupMiddleware();
+      const next = jest.fn();
+      const socket: MockSocketClient = {
+        id: 'socket-1',
+        data: {},
+        handshake: { auth: {}, headers: { authorization: 'Bearer xyz' } },
+      };
+
+      middleware(socket, next);
+      await flush();
+
+      expect(mockAuthService.introspect).toHaveBeenCalledWith('xyz');
+      expect(next).toHaveBeenCalledWith();
+    });
+
+    it('rechaza conexiones con token inválido', async () => {
+      mockAuthService.introspect.mockRejectedValue(new Error('invalid'));
+      const middleware = setupMiddleware();
+      const next = jest.fn();
+      const socket: MockSocketClient = {
+        id: 'socket-1',
+        handshake: { auth: { token: 'bad' }, headers: {} },
+      };
+
+      middleware(socket, next);
+      await flush();
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: '[notification.AUTH_TOKEN_INVALID]',
+        }),
+      );
+    });
+
+    it('las excepciones Ws de autenticación son instancias de WsException', async () => {
+      const middleware = setupMiddleware();
+      const next = jest.fn();
+      const socket: MockSocketClient = {
+        id: 'socket-1',
+        handshake: { auth: {}, headers: {} },
+      };
+
+      middleware(socket, next);
+      await flush();
+
+      const [err] = next.mock.calls[0] as [WsException];
+      expect(err).toBeInstanceOf(WsException);
+      expect(err.getError()).toBe('[notification.AUTH_TOKEN_REQUIRED]');
+    });
   });
 
   describe('sendNotificationToUser', () => {
@@ -122,6 +250,21 @@ describe('NotificationGateway — métodos de emisión', () => {
       expect(mockServer.to).toHaveBeenCalledWith(expectedRoom);
       expect(mockServerTo.emit).toHaveBeenCalledWith(
         NOTIFICATION_EVENTS.NEW_NOTIFICATION,
+        payload,
+      );
+    });
+  });
+
+  describe('sendStatementImportProgress', () => {
+    it('debe emitir el progreso del extracto a la sala del usuario', () => {
+      const payload = { id: 1, status: 'processing' };
+      const expectedRoom = NOTIFICATION_ROOMS.user(10);
+
+      gateway.sendStatementImportProgress(10, payload);
+
+      expect(mockServer.to).toHaveBeenCalledWith(expectedRoom);
+      expect(mockServerTo.emit).toHaveBeenCalledWith(
+        NOTIFICATION_EVENTS.STATEMENT_IMPORT_PROGRESS,
         payload,
       );
     });
@@ -163,11 +306,41 @@ describe('NotificationGateway — métodos de emisión', () => {
         data: { user: { sub: 'kc-uuid' } },
       };
       expect(() => gateway.handleConnection(socket)).not.toThrow();
+      expect(mockPresenceService.markOnline).not.toHaveBeenCalled();
+    });
+
+    it('handleConnection debe marcar online al usuario autenticado', () => {
+      const socket: MockSocketClient = {
+        id: 'socket-1',
+        data: { user: { sub: 'kc-uuid', userId: 7 } },
+      };
+      gateway.handleConnection(socket);
+
+      expect(mockPresenceService.markOnline).toHaveBeenCalledWith(7);
+      expect(socket.data.user_id).toBe(7);
+    });
+
+    it('handleConnection sin usuario no marca online', () => {
+      const socket: MockSocketClient = { id: 'socket-1', data: {} };
+      gateway.handleConnection(socket);
+
+      expect(mockPresenceService.markOnline).not.toHaveBeenCalled();
     });
 
     it('handleDisconnect no debe lanzar excepción', () => {
       const socket: MockSocketClient = { id: 'socket-1', data: {} };
       expect(() => gateway.handleDisconnect(socket)).not.toThrow();
+      expect(mockPresenceService.markOffline).not.toHaveBeenCalled();
+    });
+
+    it('handleDisconnect debe marcar offline al usuario', () => {
+      const socket: MockSocketClient = {
+        id: 'socket-1',
+        data: { user_id: 10 },
+      };
+      gateway.handleDisconnect(socket);
+
+      expect(mockPresenceService.markOffline).toHaveBeenCalledWith(10);
     });
   });
 
@@ -185,6 +358,34 @@ describe('NotificationGateway — métodos de emisión', () => {
       expect(join).toHaveBeenCalledWith(NOTIFICATION_ROOMS.user(10));
       expect(client.data.user_id).toBe(10);
     });
+
+    it('debe lanzar WsException si el user_id no coincide con el autenticado', () => {
+      const join = jest.fn();
+      const client: MockSocketClient = {
+        id: 'socket-1',
+        join,
+        data: { user: { userId: 10 } },
+      };
+
+      expect(() => gateway.handleSubscribe({ user_id: 99 }, client)).toThrow(
+        WsException,
+      );
+      expect(join).not.toHaveBeenCalled();
+    });
+
+    it('debe lanzar WsException si no hay usuario autenticado', () => {
+      const join = jest.fn();
+      const client: MockSocketClient = {
+        id: 'socket-1',
+        join,
+        data: {},
+      };
+
+      expect(() => gateway.handleSubscribe({ user_id: 10 }, client)).toThrow(
+        WsException,
+      );
+      expect(join).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleUnsubscribe', () => {
@@ -199,6 +400,20 @@ describe('NotificationGateway — métodos de emisión', () => {
       gateway.handleUnsubscribe({ user_id: 10 }, client);
 
       expect(leave).toHaveBeenCalledWith(NOTIFICATION_ROOMS.user(10));
+    });
+
+    it('debe lanzar WsException si el user_id no coincide con el autenticado', () => {
+      const leave = jest.fn();
+      const client: MockSocketClient = {
+        id: 'socket-1',
+        leave,
+        data: { user: { userId: 10 } },
+      };
+
+      expect(() => gateway.handleUnsubscribe({ user_id: 99 }, client)).toThrow(
+        WsException,
+      );
+      expect(leave).not.toHaveBeenCalled();
     });
   });
 
@@ -223,6 +438,32 @@ describe('NotificationGateway — métodos de emisión', () => {
     it('no debe lanzar excepción cuando el cliente no tiene user_id', () => {
       const client: MockSocketClient = { id: 'socket-1', data: {} };
       expect(() => gateway.handleMarkAllAsRead(client)).not.toThrow();
+    });
+  });
+
+  describe('configuración CORS del gateway', () => {
+    it('debe permitir cualquier origen', () => {
+      const options = Reflect.getMetadata(
+        'websockets:gateway_options',
+        NotificationGateway,
+      ) as {
+        cors: {
+          origin: (
+            origin: string,
+            cb: (err: Error | null, allow?: boolean) => void,
+          ) => void;
+        };
+      };
+      let errResult: Error | null = new Error('no llamado');
+      let allowResult: boolean | undefined = undefined;
+
+      options.cors.origin('http://localhost:3000', (err, allow) => {
+        errResult = err;
+        allowResult = allow;
+      });
+
+      expect(errResult).toBeNull();
+      expect(allowResult).toBe(true);
     });
   });
 });

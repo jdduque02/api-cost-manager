@@ -36,6 +36,14 @@ export class TransferMovementDto {
   @ApiPropertyOptional({ example: 'TRF-2026-001', nullable: true })
   reference_code!: string | null;
 
+  @ApiPropertyOptional({
+    description:
+      'ID de la meta financiera vinculada (se aplica al lado destino).',
+    example: 12,
+    nullable: true,
+  })
+  objective_id!: number | null;
+
   @ApiProperty({ example: '2026-08-07T10:00:00.000Z' })
   created_at!: Date;
 
@@ -61,6 +69,13 @@ export class TransferResponseDto {
 
   @ApiPropertyOptional({ nullable: true })
   reference_code!: string | null;
+
+  @ApiPropertyOptional({
+    description: 'ID de la meta financiera vinculada a la transferencia.',
+    example: 12,
+    nullable: true,
+  })
+  objective_id!: number | null;
 
   @ApiProperty({ type: TransferMovementDto })
   source!: TransferMovementDto;

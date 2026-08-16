@@ -14,6 +14,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { render } from '@react-email/render';
 import { AuthGuard } from '@auth/guards/auth.guard';
+import { AdminGuard } from '@auth/guards/admin.guard';
 import { EmailTemplate } from '../entities/email-template.entity';
 import {
   DEFAULT_OTP_SUBJECT,
@@ -72,10 +73,11 @@ export class MailTemplateController {
   }
 
   @Put(':key')
+  @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      'Guardar (crear o actualizar) una plantilla de correo personalizada.',
+      'Guardar (crear o actualizar) una plantilla de correo personalizada (admin).',
   })
   @ApiParam({ name: 'key', example: OTP_EMAIL_TEMPLATE_KEY })
   @ApiResponse({

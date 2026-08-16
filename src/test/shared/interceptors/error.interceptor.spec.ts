@@ -13,6 +13,15 @@ jest.mock('uuid', () => ({
   v4: jest.fn(() => 'trace-xyz'),
 }));
 
+class StringResponseHttpException extends HttpException {
+  constructor() {
+    super('no usado', HttpStatus.BAD_REQUEST);
+  }
+  override getResponse(): string {
+    return 'Mensaje crudo';
+  }
+}
+
 describe('ErrorsInterceptor', () => {
   const buildContext = (path = '/auth/login'): ExecutionContext =>
     ({
@@ -106,6 +115,119 @@ describe('ErrorsInterceptor', () => {
         details: ['campo requerido'],
       },
       status: HttpStatus.BAD_REQUEST,
+    });
+  });
+
+  it('debe usar message crudo cuando responseData es un string', async () => {
+    const interceptor = createInterceptor();
+    const context = buildContext('/raw');
+    const next: CallHandler = {
+      handle: () => throwError(() => new StringResponseHttpException()),
+    };
+
+    await expect(
+      firstValueFrom(interceptor.intercept(context, next)),
+    ).rejects.toMatchObject({
+      response: {
+        status: HttpStatus.BAD_REQUEST,
+        message: 'Mensaje crudo',
+      },
+      status: HttpStatus.BAD_REQUEST,
+    });
+  });
+
+  it('debe conservar el mensaje por defecto cuando message no es string', async () => {
+    const interceptor = createInterceptor();
+    const context = buildContext('/array-message');
+    const sourceError = new HttpException(
+      { message: ['campo requerido'] },
+      HttpStatus.BAD_REQUEST,
+    );
+    const next: CallHandler = { handle: () => throwError(() => sourceError) };
+
+    await expect(
+      firstValueFrom(interceptor.intercept(context, next)),
+    ).rejects.toMatchObject({
+      response: {
+        status: HttpStatus.BAD_REQUEST,
+        message: '[shared.UNEXPECTED_SERVER]',
+      },
+      status: HttpStatus.BAD_REQUEST,
+    });
+  });
+
+  it('debe usar [] cuando details no es un array', async () => {
+    const interceptor = createInterceptor();
+    const context = buildContext('/details');
+    const sourceError = new HttpException(
+      { message: 'validación', details: 'oops' },
+      HttpStatus.BAD_REQUEST,
+    );
+    const next: CallHandler = { handle: () => throwError(() => sourceError) };
+
+    await expect(
+      firstValueFrom(interceptor.intercept(context, next)),
+    ).rejects.toMatchObject({
+      response: {
+        status: HttpStatus.BAD_REQUEST,
+        message: 'validación',
+        details: [],
+      },
+      status: HttpStatus.BAD_REQUEST,
+    });
+  });
+
+  it('debe ignorar responseData sin message', async () => {
+    const interceptor = createInterceptor();
+    const context = buildContext('/no-message');
+    const sourceError = new HttpException(
+      { statusCode: 400, error: 'Bad Request' },
+      HttpStatus.BAD_REQUEST,
+    );
+    const next: CallHandler = { handle: () => throwError(() => sourceError) };
+
+    await expect(
+      firstValueFrom(interceptor.intercept(context, next)),
+    ).rejects.toMatchObject({
+      response: {
+        status: HttpStatus.BAD_REQUEST,
+        message: '[shared.UNEXPECTED_SERVER]',
+      },
+      status: HttpStatus.BAD_REQUEST,
+    });
+  });
+
+  it('debe tratar errores no-objeto como errores internos', async () => {
+    const interceptor = createInterceptor();
+    const context = buildContext('/primitive');
+    const next: CallHandler = { handle: () => throwError(() => 42) };
+
+    await expect(
+      firstValueFrom(interceptor.intercept(context, next)),
+    ).rejects.toMatchObject({
+      response: {
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        trace_id: 'trace-xyz',
+      },
+      status: HttpStatus.INTERNAL_SERVER_ERROR,
+    });
+  });
+
+  it('debe ignorar un stack que no es string', async () => {
+    const interceptor = createInterceptor();
+    const context = buildContext('/bad-stack');
+    const next: CallHandler = {
+      handle: () => throwError(() => ({ stack: 42 })),
+    };
+
+    await expect(
+      firstValueFrom(interceptor.intercept(context, next)),
+    ).rejects.toMatchObject({
+      response: {
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        trace_id: 'trace-xyz',
+      },
+      status: HttpStatus.INTERNAL_SERVER_ERROR,
     });
   });
 });

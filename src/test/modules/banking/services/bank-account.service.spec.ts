@@ -147,6 +147,43 @@ describe('BankAccountService', () => {
 
       await expect(service.findOne(999, 10)).rejects.toThrow(NotFoundException);
     });
+
+    it('debe manejar cuentas sin datos cifrados ni opcionales', async () => {
+      const account = buildAccount({
+        encrypted_balance: null,
+        encrypted_account_number: null,
+        annual_interest_rate: 4.5,
+        yield_frequency: 'quarterly',
+        updated_at: null,
+      });
+      mockBankAccountRepository.findById.mockResolvedValue(account);
+
+      const result = await service.findOne(1, 10);
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          masked_account_number: '****0000',
+          display_balance: '0',
+          annual_interest_rate: 4.5,
+          yield_frequency: 'quarterly',
+          updated_at: null,
+        }),
+      );
+    });
+
+    it('debe usar "0" como saldo visible si el descifrado no devuelve valor', async () => {
+      const account = buildAccount();
+      mockEncryptionService.decryptField.mockReturnValueOnce(null);
+      mockBankAccountRepository.findById.mockResolvedValue(account);
+
+      const result = await service.findOne(1, 10);
+
+      expect(mockEncryptionService.decryptField).toHaveBeenCalledWith(
+        'enc:1500000',
+        'banking',
+      );
+      expect(result.display_balance).toBe('0');
+    });
   });
 
   // ─────────────────────────────────────────────────────────────
@@ -195,6 +232,20 @@ describe('BankAccountService', () => {
       const [, , partial] = mockBankAccountRepository.update.mock.calls[0];
       expect(partial.encrypted_balance).toBe('enc:2000000');
     });
+
+    it('debe incluir annual_interest_rate y yield_frequency cuando se proveen', async () => {
+      const dto: UpdateBankAccountDto = {
+        annual_interest_rate: 6.5,
+        yield_frequency: 'daily',
+      };
+      mockBankAccountRepository.update.mockResolvedValue(buildAccount());
+
+      await service.update(1, 10, dto);
+
+      const [, , partial] = mockBankAccountRepository.update.mock.calls[0];
+      expect(partial.annual_interest_rate).toBe(6.5);
+      expect(partial.yield_frequency).toBe('daily');
+    });
   });
 
   // ─────────────────────────────────────────────────────────────
@@ -207,6 +258,77 @@ describe('BankAccountService', () => {
       await service.remove(1, 10);
 
       expect(mockBankAccountRepository.softDelete).toHaveBeenCalledWith(1, 10);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // getProjectedYield
+  // ─────────────────────────────────────────────────────────────
+  describe('getProjectedYield', () => {
+    it('debe calcular la proyección compuesta mensual con saldo descifrado', async () => {
+      const account = buildAccount({
+        encrypted_balance: 'enc:1000000',
+        annual_interest_rate: 12,
+        yield_frequency: 'monthly',
+      });
+      mockBankAccountRepository.findById.mockResolvedValue(account);
+
+      const result = await service.getProjectedYield(1, 10);
+
+      expect(mockBankAccountRepository.findById).toHaveBeenCalledWith(1, 10);
+      expect(mockEncryptionService.decryptField).toHaveBeenCalledWith(
+        'enc:1000000',
+        'banking',
+      );
+      expect(result.current_balance).toBe(1000000);
+      expect(result.annual_rate).toBe(12);
+      expect(result.yield_frequency).toBe('monthly');
+      expect(result.projected['1y']).toBeCloseTo(1126825.03, 2);
+      expect(result.projected['10y']).toBeGreaterThan(1000000);
+    });
+
+    it('debe manejar cuenta sin saldo, tasa ni frecuencia (proyección plana)', async () => {
+      const account = buildAccount({
+        encrypted_balance: null,
+        annual_interest_rate: null,
+        yield_frequency: null,
+      });
+      mockBankAccountRepository.findById.mockResolvedValue(account);
+
+      const result = await service.getProjectedYield(1, 10);
+
+      expect(result.current_balance).toBe(0);
+      expect(result.annual_rate).toBeNull();
+      expect(result.yield_frequency).toBe('monthly');
+      expect(result.projected['5y']).toBe(0);
+      expect(result.projected['10y']).toBe(0);
+    });
+
+    it('debe usar 365 períodos para frecuencia diaria', async () => {
+      const account = buildAccount({
+        annual_interest_rate: 0,
+        yield_frequency: 'daily',
+      });
+      mockBankAccountRepository.findById.mockResolvedValue(account);
+
+      const result = await service.getProjectedYield(1, 10);
+
+      expect(result.yield_frequency).toBe('daily');
+      expect(result.projected['1y']).toBe(1500000);
+      expect(result.projected['10y']).toBe(1500000);
+    });
+
+    it('debe usar 1 período anual para frecuencias distintas a diaria/mensual', async () => {
+      const account = buildAccount({
+        annual_interest_rate: 4,
+        yield_frequency: 'quarterly',
+      });
+      mockBankAccountRepository.findById.mockResolvedValue(account);
+
+      const result = await service.getProjectedYield(1, 10);
+
+      expect(result.yield_frequency).toBe('quarterly');
+      expect(result.projected['1y']).toBeCloseTo(1560000, 2);
     });
   });
 });

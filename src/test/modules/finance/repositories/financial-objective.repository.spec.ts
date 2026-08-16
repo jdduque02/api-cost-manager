@@ -126,6 +126,108 @@ describe('FinancialObjectiveRepository', () => {
       expect(result.progress_percent).toBe(100);
       expect(result.amount_remaining).toBe(0);
     });
+
+    it('debe cifrar el banco cuando se envía explícitamente', async () => {
+      const dto: CreateFinancialObjectiveDto = {
+        name: 'Fondo de emergencia',
+        target_amount: 5000,
+        type: FinancialObjectiveTypeEnum.SAVINGS,
+        bank: 'Bancolombia',
+      };
+      const objective = buildObjective({ bank: 'Bancolombia' });
+      mockTypeOrmRepo.create.mockReturnValue(objective);
+      mockTypeOrmRepo.save.mockResolvedValue(objective);
+
+      const result = await repo.create(10, dto);
+
+      expect(mockEncryptionService.encryptField).toHaveBeenCalledWith(
+        'Bancolombia',
+        'finance',
+      );
+      expect(result.bank).toBe('Bancolombia');
+    });
+
+    it('debe autocompletar banco y rentabilidad desde la cuenta vinculada', async () => {
+      const dto: CreateFinancialObjectiveDto = {
+        name: 'Fondo de emergencia',
+        target_amount: 5000,
+        type: FinancialObjectiveTypeEnum.SAVINGS,
+        account_id: 5,
+      };
+      mockBankAccountRepo.findOne.mockResolvedValue({
+        id: 5,
+        bank_name: 'Davivienda',
+        annual_interest_rate: 4.5,
+      });
+      const objective = buildObjective({
+        bank: 'Davivienda',
+        current_profitability: 4.5,
+      });
+      mockTypeOrmRepo.create.mockReturnValue(objective);
+      mockTypeOrmRepo.save.mockResolvedValue(objective);
+
+      const result = await repo.create(10, dto);
+
+      expect(mockBankAccountRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 5, user_id: 10, deleted_at: IsNull() },
+      });
+      expect(mockTypeOrmRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bank: 'Davivienda',
+          current_profitability: 4.5,
+        }),
+      );
+      expect(result.bank).toBe('Davivienda');
+    });
+
+    it('debe respetar banco y rentabilidad explícitos aunque haya cuenta vinculada', async () => {
+      const dto: CreateFinancialObjectiveDto = {
+        name: 'Fondo de emergencia',
+        target_amount: 5000,
+        type: FinancialObjectiveTypeEnum.SAVINGS,
+        account_id: 5,
+        bank: 'Mi banco',
+        current_profitability: 7,
+      };
+      mockBankAccountRepo.findOne.mockResolvedValue({
+        id: 5,
+        bank_name: 'Davivienda',
+        annual_interest_rate: 4.5,
+      });
+      const objective = buildObjective({
+        bank: 'Mi banco',
+        current_profitability: 7,
+      });
+      mockTypeOrmRepo.create.mockReturnValue(objective);
+      mockTypeOrmRepo.save.mockResolvedValue(objective);
+
+      const result = await repo.create(10, dto);
+
+      expect(mockTypeOrmRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bank: 'Mi banco',
+          current_profitability: 7,
+        }),
+      );
+      expect(result.bank).toBe('Mi banco');
+    });
+
+    it('debe continuar sin cuenta bancaria si la vinculada no existe', async () => {
+      const dto: CreateFinancialObjectiveDto = {
+        name: 'Fondo de emergencia',
+        target_amount: 5000,
+        type: FinancialObjectiveTypeEnum.SAVINGS,
+        account_id: 999,
+      };
+      mockBankAccountRepo.findOne.mockResolvedValue(null);
+      mockTypeOrmRepo.create.mockReturnValue(buildObjective());
+      mockTypeOrmRepo.save.mockResolvedValue(buildObjective());
+
+      const result = await repo.create(10, dto);
+
+      expect(mockEncryptionService.encryptField).not.toHaveBeenCalled();
+      expect(result).toBeDefined();
+    });
   });
 
   // ─────────────────────────────────────────────────────────────
@@ -221,6 +323,96 @@ describe('FinancialObjectiveRepository', () => {
       await expect(repo.update(999, 10, dto)).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('debe cifrar el banco al actualizar', async () => {
+      const existing = buildObjective();
+      const updated = buildObjective({ bank: 'Bancolombia' });
+      mockTypeOrmRepo.findOne.mockResolvedValue(existing);
+      mockTypeOrmRepo.merge.mockReturnValue(updated);
+      mockTypeOrmRepo.save.mockResolvedValue(updated);
+
+      const result = await repo.update(1, 10, { bank: 'Bancolombia' });
+
+      expect(mockEncryptionService.encryptField).toHaveBeenCalledWith(
+        'Bancolombia',
+        'finance',
+      );
+      expect(result.bank).toBe('Bancolombia');
+    });
+
+    it('debe usar completed_at provisto cuando se completa explícitamente', async () => {
+      const existing = buildObjective();
+      const updated = buildObjective();
+      mockTypeOrmRepo.findOne.mockResolvedValue(existing);
+      mockTypeOrmRepo.merge.mockReturnValue(updated);
+      mockTypeOrmRepo.save.mockResolvedValue(updated);
+
+      const result = await repo.update(1, 10, {
+        completed_at: '2026-01-15T00:00:00.000Z',
+      });
+
+      expect(result.is_completed).toBe(true);
+      expect(updated.completed_at).toEqual(
+        new Date('2026-01-15T00:00:00.000Z'),
+      );
+    });
+
+    it('debe limpiar completed_at al marcar como no completado', async () => {
+      const existing = buildObjective();
+      const updated = buildObjective();
+      mockTypeOrmRepo.findOne.mockResolvedValue(existing);
+      mockTypeOrmRepo.merge.mockReturnValue(updated);
+      mockTypeOrmRepo.save.mockResolvedValue(updated);
+
+      const result = await repo.update(1, 10, { is_completed: false });
+
+      expect(updated.is_completed).toBe(false);
+      expect(updated.completed_at).toBeNull();
+      expect(result.is_completed).toBe(false);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // resolveAccountForQuota
+  // ─────────────────────────────────────────────────────────────
+  describe('resolveAccountForQuota', () => {
+    it('debe devolver banco y tasa anual de la cuenta', async () => {
+      mockBankAccountRepo.findOne.mockResolvedValue({
+        id: 3,
+        bank_name: 'Bancolombia',
+        annual_interest_rate: 4.5,
+      });
+
+      const result = await repo.resolveAccountForQuota(10, 3);
+
+      expect(mockBankAccountRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 3, user_id: 10, deleted_at: IsNull() },
+      });
+      expect(result).toEqual({
+        bank: 'Bancolombia',
+        annual_interest_rate: 4.5,
+      });
+    });
+
+    it('debe devolver null si la cuenta no existe', async () => {
+      mockBankAccountRepo.findOne.mockResolvedValue(null);
+
+      const result = await repo.resolveAccountForQuota(10, 999);
+
+      expect(result).toBeNull();
+    });
+
+    it('debe tolerar cuenta sin banco ni tasa', async () => {
+      mockBankAccountRepo.findOne.mockResolvedValue({
+        id: 3,
+        bank_name: null,
+        annual_interest_rate: null,
+      });
+
+      const result = await repo.resolveAccountForQuota(10, 3);
+
+      expect(result).toEqual({ bank: null, annual_interest_rate: null });
     });
   });
 

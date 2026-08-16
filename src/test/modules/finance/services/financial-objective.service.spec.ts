@@ -16,12 +16,20 @@ const mockFinancialObjectiveRepository = {
   findById: jest.fn(),
   update: jest.fn(),
   softDelete: jest.fn(),
+  resolveAccountForQuota: jest.fn(),
 };
 
-const mockFinancialProfileRepository = {};
+const mockFinancialProfileRepository = {
+  findByUserId: jest.fn(),
+};
+
+const mockUserRepository = {
+  findById: jest.fn(),
+};
 
 const mockAuditLogService = {
   log: jest.fn(),
+  write: jest.fn().mockResolvedValue(undefined),
 };
 
 const mockI18nService = {
@@ -52,7 +60,7 @@ describe('FinancialObjectiveService', () => {
           provide: FinancialProfileRepository,
           useValue: mockFinancialProfileRepository,
         },
-        { provide: UserRepository, useValue: { findById: jest.fn() } },
+        { provide: UserRepository, useValue: mockUserRepository },
         { provide: AuditLogService, useValue: mockAuditLogService },
         { provide: I18nService, useValue: mockI18nService },
       ],
@@ -195,6 +203,224 @@ describe('FinancialObjectiveService', () => {
           frequency: 'monthly' as never,
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rechaza objetivo ya alcanzado cuando el saldo cubre la meta', async () => {
+      await expect(
+        service.calculateQuota(10, {
+          target_amount: 500000,
+          current_balance: 900000,
+          start_date: '2026-01-01',
+          end_date: '2026-12-31',
+          frequency: 'monthly' as never,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('mensual con día de fin menor al de inicio cuenta un periodo parcial', async () => {
+      const result = await service.calculateQuota(10, {
+        target_amount: 1000000,
+        current_balance: 0,
+        start_date: '2026-01-15',
+        end_date: '2026-02-10',
+        frequency: 'monthly' as never,
+      });
+
+      expect(result.total_periods).toBe(1);
+      expect(result.days_in_period).toBe(26);
+      expect(result.quota_amount).toBe(1000000);
+    });
+
+    it('usa perfil financiero y presupuesto dentro de la regla 50-30-20', async () => {
+      mockFinancialProfileRepository.findByUserId.mockResolvedValueOnce({
+        monthly_income: '6000000',
+      });
+      mockUserRepository.findById.mockResolvedValueOnce({
+        timezone: 'America/Bogota',
+      });
+
+      const result = await service.calculateQuota(10, {
+        target_amount: 12000000,
+        current_balance: 0,
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        frequency: 'monthly' as never,
+      });
+
+      expect(result.has_financial_profile).toBe(true);
+      expect(result.monthly_income).toBe('6000000');
+      expect(result.savings_ratio).toBe(20);
+      expect(result.max_allowed_per_period).toBe(1200000);
+      expect(result.is_within_budget).toBe(true);
+      expect(result.warnings).toHaveLength(0);
+    });
+
+    it('agrega advertencia y recomendación cuando la cuota excede el presupuesto', async () => {
+      mockFinancialProfileRepository.findByUserId.mockResolvedValueOnce({
+        monthly_income: '1200000',
+        savings_ratio: 10,
+      });
+      mockUserRepository.findById.mockResolvedValueOnce({});
+
+      const result = await service.calculateQuota(10, {
+        target_amount: 12000000,
+        current_balance: 0,
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        frequency: 'monthly' as never,
+      });
+
+      expect(result.is_within_budget).toBe(false);
+      expect(result.warnings.length).toBe(1);
+      expect(result.warnings[0]).toContain('excede');
+      expect(result.recommendations).toContain(
+        '[finance.REDUCE_OR_EXTEND_RECOMMENDATION]',
+      );
+    });
+
+    it('sin perfil financiero recomienda registrar ingreso y cargar perfil', async () => {
+      mockFinancialProfileRepository.findByUserId.mockRejectedValueOnce(
+        new Error('no profile'),
+      );
+
+      const result = await service.calculateQuota(10, {
+        target_amount: 1000000,
+        current_balance: 0,
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        frequency: 'monthly' as never,
+      });
+
+      expect(result.has_financial_profile).toBe(false);
+      expect(result.recommendations).toContain(
+        '[finance.REGISTER_INCOME_RECOMMENDATION]',
+      );
+      expect(result.recommendations).toContain(
+        '[finance.LOAD_PROFILE_RECOMMENDATION]',
+      );
+    });
+
+    it('usa la tasa de la cuenta bancaria para proyectar el saldo', async () => {
+      mockFinancialObjectiveRepository.resolveAccountForQuota.mockResolvedValueOnce(
+        { bank: 'Banco de Prueba', annual_interest_rate: 5 },
+      );
+
+      const result = await service.calculateQuota(10, {
+        target_amount: 6000000,
+        current_balance: 0,
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        frequency: 'monthly' as never,
+        account_id: 1,
+      });
+
+      expect(result.bank).toBe('Banco de Prueba');
+      expect(result.current_profitability).toBe(5);
+      expect(result.projected_final_balance).not.toBeNull();
+      expect(result.projected_final_balance).toBeGreaterThan(6000000);
+      expect(
+        result.recommendations.some((r) => r.includes('tasa anual del 5%')),
+      ).toBe(true);
+    });
+
+    it('proyecta el saldo sin saldo inicial cuando hay tasa de interés', async () => {
+      const result = await service.calculateQuota(10, {
+        target_amount: 6000000,
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        frequency: 'monthly' as never,
+        interest_rate: 5,
+      });
+
+      expect(result.current_balance).toBe(0);
+      expect(result.current_profitability).toBe(5);
+      expect(result.projected_final_balance).not.toBeNull();
+      expect(result.projected_final_balance).toBeGreaterThan(6000000);
+    });
+
+    it('mantiene la tasa explícita del dto por encima de la de la cuenta', async () => {
+      mockFinancialObjectiveRepository.resolveAccountForQuota.mockResolvedValueOnce(
+        { bank: 'Banco Y', annual_interest_rate: 5 },
+      );
+
+      const result = await service.calculateQuota(10, {
+        target_amount: 6000000,
+        current_balance: 0,
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        frequency: 'monthly' as never,
+        interest_rate: 10,
+        account_id: 1,
+      });
+
+      expect(result.bank).toBe('Banco Y');
+      expect(result.current_profitability).toBe(10);
+    });
+
+    it('no usa la tasa de la cuenta si la cuenta no tiene interés configurado', async () => {
+      mockFinancialObjectiveRepository.resolveAccountForQuota.mockResolvedValueOnce(
+        { bank: 'Banco Z', annual_interest_rate: null },
+      );
+
+      const result = await service.calculateQuota(10, {
+        target_amount: 6000000,
+        current_balance: 0,
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        frequency: 'monthly' as never,
+        account_id: 2,
+      });
+
+      expect(result.bank).toBe('Banco Z');
+      expect(result.current_profitability).toBeNull();
+      expect(result.projected_final_balance).toBeNull();
+    });
+
+    it('ignora la cuenta cuando no existe', async () => {
+      mockFinancialObjectiveRepository.resolveAccountForQuota.mockResolvedValueOnce(
+        null,
+      );
+
+      const result = await service.calculateQuota(10, {
+        target_amount: 1000000,
+        current_balance: 0,
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        frequency: 'monthly' as never,
+        account_id: 999,
+      });
+
+      expect(result.bank).toBeNull();
+      expect(result.current_profitability).toBeNull();
+    });
+
+    it('usa zona horaria por defecto si el usuario no tiene una definida', async () => {
+      mockUserRepository.findById.mockResolvedValueOnce({});
+
+      const result = await service.calculateQuota(10, {
+        target_amount: 1000000,
+        current_balance: 0,
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        frequency: 'monthly' as never,
+      });
+
+      expect(result.total_periods).toBe(12);
+    });
+
+    it('devuelve el resultado aunque falle el registro del audit log', async () => {
+      mockAuditLogService.write.mockRejectedValueOnce(new Error('db down'));
+
+      const result = await service.calculateQuota(10, {
+        target_amount: 1000000,
+        current_balance: 0,
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        frequency: 'monthly' as never,
+      });
+
+      expect(result.total_periods).toBe(12);
+      expect(result.quota_amount).toBe(83333.33);
     });
   });
 });

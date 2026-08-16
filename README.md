@@ -2,18 +2,22 @@
 
 Backend en NestJS v11 para autenticación, gestión financiera personal y administración de usuarios. El servicio integra PostgreSQL, Redis, Keycloak, RabbitMQ y Swagger; además incluye cobertura de pruebas unitarias y análisis estático con SonarQube.
 
+> Descripción de marca, **prompt de logo generado a partir de la descripción del proyecto**, naming candidato y taglines: [`docs/service-description.md`](docs/service-description.md).
+
 ## Estado actual
 
-Estado verificado el 26 de abril de 2026 sobre esta rama:
+Estado verificado el 15 de agosto de 2026:
 
-- La aplicación compila correctamente con `npm run build`.
-- El arranque en desarrollo alcanza la inicialización de Nest, pero falla si Redis no está disponible localmente.
-- El bootstrap conecta Redis, Keycloak, PostgreSQL y un microservicio RabbitMQ; no es un backend standalone sin infraestructura.
-- Swagger se publica en `/api/v{VERSION}/docs`.
-- Están implementados los módulos `auth`, `identity`, `banking`, `catalog`, `finance`, `audit` y `notification`.
-- La suite unitaria está mayormente verde, pero `npm test -- --runInBand` sigue fallando en `test/modules/indetity/controllers/user.controller.spec.ts` por resolución de dependencias de `AuthGuard` en el test.
+- Compila con `npm run build`.
+- Bootstrap requiere Redis, Keycloak, PostgreSQL y RabbitMQ (no es standalone).
+- Swagger en `/api/v{VERSION}/docs`.
+- Módulos: `auth`, `identity`, `banking`, `catalog`, `finance`, `audit`, `notification`, `news`, `mail`, `support`, `intelligence`.
+- Panel admin: listado de usuarios con metadata, roles, noticias (CRUD admin), plantillas de correo y broadcast de emails a usuarios activos.
+- Umbral de cobertura Jest: ≥80% en lines / functions / statements / branches.
+- CI (`Jenkinsfile`): lint → tests+coverage → SonarQube → Docker → **Deploy Vercel** (rama `main`).
 
 ## Stack tecnológico
+
 
 - Framework: NestJS 11
 - Runtime: Node.js / TypeScript
@@ -21,10 +25,12 @@ Estado verificado el 26 de abril de 2026 sobre esta rama:
 - Caché: Redis con `@nestjs/cache-manager`
 - Mensajería: RabbitMQ con `@nestjs/microservices`
 - WebSockets: Gateway de notificaciones con `@nestjs/websockets`
-- Identidad: Keycloak
+- Identidad: Keycloak (`user` / `admin`)
+- Correo: Nodemailer + react-email
 - Documentación: Swagger
-- Calidad: Jest, cobertura LCOV, SonarQube
+- Calidad: Jest (LCOV), SonarQube
 - Contenedores: Docker Compose
+- Deploy: Docker Hub + Vercel (Jenkins)
 
 ## Estructura del proyecto
 
@@ -33,97 +39,23 @@ src/
 ├── app.module.ts
 ├── main.ts
 ├── config/                          # Configuraciones globales
-│   ├── cors.config.ts
-│   ├── csrf.config.ts
-│   ├── data-source.ts
-│   ├── database.config.ts
-│   ├── helmet.config.ts
-│   ├── keycloak.config.ts
-│   ├── rabbitmq.config.ts
-│   ├── redis.config.ts
-│   └── swagger.config.ts
 ├── modules/
 │   ├── audit/                       # Registro de auditoría
-│   │   ├── controller/
-│   │   ├── dto/
-│   │   ├── entities/
-│   │   ├── repositories/
-│   │   └── service/
-│   ├── auth/                        # Autenticación con Keycloak
-│   │   ├── controller/
-│   │   ├── decorators/
-│   │   ├── dto/
-│   │   ├── guards/
-│   │   ├── interfaces/
-│   │   └── service/
-│   ├── banking/                     # Cuentas bancarias, activos y pasivos
-│   │   ├── controller/
-│   │   ├── dto/
-│   │   │   ├── bank-account/
-│   │   │   ├── financial-asset/
-│   │   │   └── financial-liability/
-│   │   ├── entities/
-│   │   ├── repositories/
-│   │   └── service/
+│   ├── auth/                        # Keycloak + guards (Auth, Admin, Ownership)
+│   ├── banking/                     # Cuentas, activos y pasivos
 │   ├── catalog/                     # Categorías y subcategorías
-│   │   ├── controller/
-│   │   ├── dto/
-│   │   │   ├── category/
-│   │   │   └── subcategory/
-│   │   ├── entities/
-│   │   ├── repositories/
-│   │   └── service/
-│   ├── finance/                     # Transacciones, objetivos y períodos
-│   │   ├── controller/
-│   │   ├── dto/
-│   │   │   ├── financial-objective/
-│   │   │   ├── financial-period/
-│   │   │   ├── objective-payment/
-│   │   │   └── transaction-record/
-│   │   ├── entities/
-│   │   ├── repositories/
-│   │   └── service/
-│   ├── identity/                    # Usuarios y perfiles financieros
-│   │   ├── controller/
-│   │   ├── dto/
-│   │   │   ├── financial-profile/
-│   │   │   └── user/
-│   │   ├── entities/
-│   │   ├── interfaces/
-│   │   ├── repositories/
-│   │   └── service/
-│   ├── intelligence/                # Entidades de resumen financiero (en desarrollo)
-│   │   └── entities/
-│   └── notification/                # Gateway WebSocket de notificaciones
-│       ├── constants/
-│       ├── filters/
-│       ├── gateway/
-│       ├── interfaces/
-│       └── service/
-├── shared/                          # Módulo compartido transversal
-│   ├── dto/
-│   ├── enums/
-│   ├── filters/
-│   ├── helpers/
-│   ├── interceptors/
-│   └── services/
-└── test/                            # Pruebas unitarias
-    ├── config/
-    ├── modules/
-    │   ├── auth/
-    │   │   ├── controllers/
-    │   │   ├── decorators/
-    │   │   ├── guards/
-    │   │   └── services/
-    │   └── indetity/
-    │       ├── controllers/
-    │       ├── repositories/
-    │       └── services/
-    └── shared/
-        ├── filters/
-        ├── helpers/
-        ├── interceptors/
-        └── services/
+│   ├── finance/                     # Transacciones, objetivos, períodos, extractos
+│   ├── identity/                    # Usuarios, admin users, perfiles
+│   ├── intelligence/                # Resúmenes financieros (entidades)
+│   ├── mail/                        # Plantillas + broadcast admin
+│   ├── news/                        # Noticias (CRUD admin / lectura auth)
+│   ├── notification/                # WebSocket
+│   └── support/                     # Soporte
+├── shared/
+└── test/                            # Specs unitarios (mirror de modules/)
+docs/
+├── keycloak-roles.md
+└── service-description.md           # Brand pack + prompt logo + nombres
 ```
 
 ## Funcionalidad implementada
@@ -160,6 +92,16 @@ Detalles del flujo:
 - `GET /user/:id`
 - `PATCH /user/:id`
 - `GET /user/public/status`
+
+### Admin — usuarios (requiere rol `admin`)
+
+- `GET /admin/users` — listado paginado con filtros (`search`, `role`, `is_active`, `sortBy`, `last_login_at`, online).
+- `GET /admin/users/:id` — detalle admin: PII, metadata, sesiones Keycloak e historial de acceso.
+- `PATCH /admin/users/:id/status` — activar / desactivar (revoca sesiones si se desactiva).
+- `PATCH /admin/users/:id/roles` — reemplazo de roles de realm (`user` / `admin`), sincronizado con Keycloak + audit log.
+- `POST /admin/users/:id/reset-password` — envía email de restablecimiento.
+- `DELETE /admin/users/:id/sessions` — revoca todas las sesiones.
+- `DELETE /admin/users/:id/sessions/:sessionId` — revoca una sesión.
 
 ### Perfil financiero
 
@@ -234,6 +176,17 @@ Detalles del flujo:
 - `GET /users/:userId/financial-periods/:id`
 - `PATCH /users/:userId/financial-periods/:id/close`
 
+### Noticias
+
+- `GET /news` / `GET /news/:id` — lectura (usuario autenticado).
+- `POST /news` / `PATCH /news/:id` / `DELETE /news/:id` — **solo admin**.
+
+### Correo (plantillas + broadcast)
+
+- `GET /email-templates/:key` — obtiene plantilla (custom o default OTP).
+- `PUT /email-templates/:key` — crear/actualizar plantilla (**solo admin**).
+- `POST /admin/emails/broadcast` — crea un correo tipo noticia (`subject` + `html_body`) y lo envía a **todos los usuarios activos**; persiste la plantilla con key `broadcast_<timestamp>`. Marcadores: `{{name}}`, `{{year}}`. (**solo admin**)
+
 ### Auditoría
 
 - `GET /audit`
@@ -247,6 +200,7 @@ Detalles del flujo:
 - Caché Redis para lectura de usuarios.
 - Configuración de transporte RabbitMQ al arrancar la aplicación.
 - Gateway WebSocket para notificaciones en tiempo real.
+- `AdminGuard` restringe endpoints de administración al rol Keycloak `admin`.
 
 ## Requisitos
 
@@ -356,27 +310,32 @@ Scripts disponibles:
 - `npm run test:watch`
 - `npm run test:cov`
 - `npm run test:e2e`
-- `npm run sonar`
+- `npm run sonar` — lee `SONAR_TOKEN` de `.env.sonar` o del entorno (`scripts/sonar.js`)
 
-Estado observado:
+Umbral global de cobertura (Jest): **≥80%** en branches, functions, lines y statements.
 
-- `npm run build`: OK.
-- `npx eslint "src/**/*.ts"`: 0 errores (7 warnings pre-existentes).
-- `npx jest`: 68/68 suites y 502/502 tests pasan.
-- Los errores de tipos de `tsc` quedan solo en los mocks de los specs (`src/test/**`); no afectan runtime (ts-jest no typechequea), lint ni build.
-
-Flujo sugerido para calidad:
+Flujo sugerido:
 
 ```bash
 npm run test:cov
-```
-
-```bash
 npm run sonar
 ```
 
+## CI / CD (Jenkins)
+
+El `Jenkinsfile` ejecuta:
+
+1. Checkout → Install → Lint → Tests + coverage  
+2. SonarQube + Quality Gate  
+3. Build Docker image (+ push a Docker Hub en `main`)  
+4. **Deploy Vercel** en `main` (`vercel pull` → `build` → `deploy --prebuilt --prod`)
+
+Credenciales Jenkins esperadas: `dockerhub-creds`, `vercel-token`, `vercel-org-id`, `vercel-project-id`.
+
 ## Observaciones
 
-- El proyecto usa Swagger con las etiquetas `auth`, `users`, `financial-profile`, `banking`, `catalog`, `finance`, `audit` y `support`.
-- El módulo `intelligence` contiene únicamente entidades (`financial-summary`, `summary-category-breakdown`, `tax-summary`) y está pendiente de implementación de servicios y controladores.
-- La plantilla de correo OTP vive en `src/modules/mail/templates/otp-password-reset.tsx`; los correos personalizados se guardan en `mail.email_template` con los marcadores `{{otp}}`, `{{name}}` y `{{year}}`.
+- Swagger tags: `auth`, `users`, `admin / users`, `admin / emails`, `financial-profile`, `banking`, `catalog`, `finance`, `audit`, `news`, `mail`, `support`.
+- El módulo `intelligence` contiene entidades de resumen y está pendiente de servicios/controladores.
+- Plantilla OTP: `src/modules/mail/templates/otp-password-reset.tsx`; plantillas custom y broadcasts en `mail.email_template`.
+- Roles Keycloak: ver [`docs/keycloak-roles.md`](docs/keycloak-roles.md).
+- Brand / logo / naming: ver [`docs/service-description.md`](docs/service-description.md).

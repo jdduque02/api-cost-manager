@@ -10,6 +10,7 @@ import {
   Section,
   Text,
 } from '@react-email/components';
+import { BRAND_PALETTE } from '@config/brand';
 
 export interface OtpPasswordResetEmailProps {
   /** Nombre o usuario a quien se envía el correo. */
@@ -20,8 +21,8 @@ export interface OtpPasswordResetEmailProps {
   year?: string;
 }
 
-const DEFAULT_BG = '#f4f5f7';
-const BRAND = '#0f766e';
+const DEFAULT_BG = BRAND_PALETTE.neutralLight;
+const BRAND = BRAND_PALETTE.primary;
 
 /**
  * Plantilla por defecto para el correo de recuperación de contraseña con
@@ -46,7 +47,7 @@ export default function OtpPasswordResetEmail({
       >
         <Container
           style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: BRAND_PALETTE.white,
             borderRadius: 12,
             marginTop: 24,
             marginBottom: 24,
@@ -55,18 +56,28 @@ export default function OtpPasswordResetEmail({
           }}
         >
           <Heading
-            style={{ color: '#111827', fontSize: 22, margin: '0 0 8px' }}
+            style={{
+              color: BRAND_PALETTE.neutralDark,
+              fontSize: 22,
+              margin: '0 0 8px',
+            }}
           >
             Recuperación de contraseña
           </Heading>
-          <Text style={{ color: '#374151', fontSize: 15, lineHeight: '22px' }}>
+          <Text
+            style={{
+              color: BRAND_PALETTE.bodyMuted,
+              fontSize: 15,
+              lineHeight: '22px',
+            }}
+          >
             Hola{name ? `, ${name}` : ''}: recibimos una solicitud para
             restablecer tu contraseña. Usa el siguiente código para continuar:
           </Text>
 
           <Section
             style={{
-              backgroundColor: '#f0fdfa',
+              backgroundColor: BRAND_PALETTE.neutralLight,
               borderRadius: 10,
               margin: '20px 0',
               padding: '16px 12px',
@@ -86,14 +97,28 @@ export default function OtpPasswordResetEmail({
             </Text>
           </Section>
 
-          <Text style={{ color: '#374151', fontSize: 14, lineHeight: '21px' }}>
+          <Text
+            style={{
+              color: BRAND_PALETTE.bodyMuted,
+              fontSize: 14,
+              lineHeight: '21px',
+            }}
+          >
             El código expira en <strong>10 minutos</strong>. Si no solicitaste
             este cambio, ignora este correo.
           </Text>
 
-          <Hr style={{ borderColor: '#e5e7eb', margin: '24px 0' }} />
+          <Hr
+            style={{ borderColor: BRAND_PALETTE.divider, margin: '24px 0' }}
+          />
 
-          <Text style={{ color: '#9ca3af', fontSize: 12, lineHeight: '18px' }}>
+          <Text
+            style={{
+              color: BRAND_PALETTE.footerMuted,
+              fontSize: 12,
+              lineHeight: '18px',
+            }}
+          >
             © {year} Cost Manager. Este es un correo automático, por favor no
             respondas.
           </Text>

@@ -11,6 +11,7 @@ const mockBankAccountService = {
   findOne: jest.fn(),
   update: jest.fn(),
   remove: jest.fn(),
+  getProjectedYield: jest.fn(),
 };
 
 const buildAccount = (overrides = {}) => ({
@@ -144,6 +145,24 @@ describe('BankAccountController', () => {
       await expect(controller.remove(10, 999, currentUser)).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // getProjectedYield
+  // ─────────────────────────────────────────────────────────────
+  describe('getProjectedYield', () => {
+    it('debe retornar la proyección de rendimiento delegando al servicio', async () => {
+      const projection = { months: 12, projected_yield: 150000 };
+      mockBankAccountService.getProjectedYield.mockResolvedValue(projection);
+
+      const result = await controller.getProjectedYield(10, 1, currentUser);
+
+      expect(mockBankAccountService.getProjectedYield).toHaveBeenCalledWith(
+        1,
+        10,
+      );
+      expect(result).toEqual(projection);
     });
   });
 });

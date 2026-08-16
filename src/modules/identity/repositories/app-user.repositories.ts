@@ -147,6 +147,25 @@ export class UserRepository {
     return user;
   }
 
+  /**
+   * Emails de usuarios activos (no eliminados) para envíos masivos.
+   */
+  async findAllActiveEmails(): Promise<
+    Array<{ email: string; full_name: string | null }>
+  > {
+    const rows = await this.repo
+      .createQueryBuilder('u')
+      .select(['u.email', 'u.full_name'])
+      .where('u.deleted_at IS NULL')
+      .andWhere('u.is_active = :active', { active: true })
+      .getMany();
+
+    return rows.map((u) => ({
+      email: u.email,
+      full_name: this.encryptionService.decryptField(u.full_name, this.SCHEMA),
+    }));
+  }
+
   async recordLogin(id: string, roles: string[]): Promise<void> {
     await this.repo.update(
       { id },

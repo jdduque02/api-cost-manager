@@ -15,6 +15,8 @@ const mockTransactionRecordService = {
   findOne: jest.fn(),
   update: jest.fn(),
   remove: jest.fn(),
+  getUpcomingPayments: jest.fn(),
+  removeMany: jest.fn(),
 };
 
 const buildTransaction = (overrides = {}) => ({
@@ -127,6 +129,48 @@ describe('TransactionRecordController', () => {
       await expect(controller.findOne(10, 999, currentUser)).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // upcomingPayments
+  // ─────────────────────────────────────────────────────────────
+  describe('upcomingPayments', () => {
+    it('debe retornar los próximos pagos envueltos en { data }', async () => {
+      const payments = [
+        { subscription_id: 1, next_payment_date: '2026-09-01', days_left: 15 },
+      ];
+      mockTransactionRecordService.getUpcomingPayments.mockResolvedValue(
+        payments,
+      );
+
+      const result = await controller.upcomingPayments(10, currentUser);
+
+      expect(
+        mockTransactionRecordService.getUpcomingPayments,
+      ).toHaveBeenCalledWith(10);
+      expect(result).toEqual({ data: payments });
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // removeMany
+  // ─────────────────────────────────────────────────────────────
+  describe('removeMany', () => {
+    it('debe eliminar en masa y retornar la cantidad', async () => {
+      mockTransactionRecordService.removeMany.mockResolvedValue(3);
+
+      const result = await controller.removeMany(
+        10,
+        { ids: [1, 2, 3] },
+        currentUser,
+      );
+
+      expect(mockTransactionRecordService.removeMany).toHaveBeenCalledWith(
+        [1, 2, 3],
+        10,
+      );
+      expect(result).toEqual({ deleted: 3 });
     });
   });
 

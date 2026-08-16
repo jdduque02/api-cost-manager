@@ -3,6 +3,7 @@ import { FinancialObjectiveController } from '@finance/controller/financial-obje
 import { FinancialObjectiveService } from '@finance/service/financial-objective.service';
 import { CreateFinancialObjectiveDto } from '@finance/dto/financial-objective/create-financial-objective.dto';
 import { UpdateFinancialObjectiveDto } from '@finance/dto/financial-objective/update-financial-objective.dto';
+import { CalculateQuotaDto } from '@finance/dto/financial-objective/calculate-quota.dto';
 import { FinancialObjectiveTypeEnum } from '@shared/enums';
 import { IntrospectResponse } from '@auth/interfaces/IntrospectResponse.dto';
 
@@ -12,6 +13,7 @@ const mockFinancialObjectiveService = {
   findOne: jest.fn(),
   update: jest.fn(),
   remove: jest.fn(),
+  calculateQuota: jest.fn(),
 };
 
 const buildObjective = (overrides = {}) => ({
@@ -33,6 +35,25 @@ describe('FinancialObjectiveController', () => {
       mockFinancialObjectiveService as unknown as FinancialObjectiveService,
     );
     jest.clearAllMocks();
+  });
+
+  describe('calculateQuota', () => {
+    it('debe calcular cuotas delegando al servicio', async () => {
+      const dto: CalculateQuotaDto = {
+        target_amount: 5000000,
+        start_date: '2026-08-01',
+      } as CalculateQuotaDto;
+      const quota = { monthly_quota: 500000, months: 10 };
+      mockFinancialObjectiveService.calculateQuota.mockResolvedValue(quota);
+
+      const result = await controller.calculateQuota(10, dto, currentUser);
+
+      expect(mockFinancialObjectiveService.calculateQuota).toHaveBeenCalledWith(
+        10,
+        dto,
+      );
+      expect(result).toEqual(quota);
+    });
   });
 
   describe('create', () => {
