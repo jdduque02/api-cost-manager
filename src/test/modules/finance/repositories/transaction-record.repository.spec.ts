@@ -74,10 +74,15 @@ const mockManager = {
   getRepository: jest.fn().mockReturnValue(mockTypeOrmRepo),
 };
 
+const mockEmpresaRepo = {
+  find: jest.fn(),
+};
+
 const mockDataSource = {
   transaction: jest.fn((cb: (manager: typeof mockManager) => unknown) =>
     cb(mockManager),
   ),
+  getRepository: jest.fn().mockReturnValue(mockEmpresaRepo),
 };
 
 const mockEncryptionService = {
@@ -151,6 +156,7 @@ describe('TransactionRecordRepository', () => {
     mockQb.update.mockReturnThis();
     mockQb.set.mockReturnThis();
     mockTypeOrmRepo.createQueryBuilder.mockReturnValue(mockQb);
+    mockDataSource.getRepository.mockReturnValue(mockEmpresaRepo);
     mockManager.getRepository.mockImplementation((entity: unknown) => {
       if (entity === TransactionRecord) return mockTypeOrmRepo;
       if (entity === TransactionCategoryRule) return mockCategoryRuleRepo;
@@ -437,7 +443,8 @@ describe('TransactionRecordRepository', () => {
         .mockResolvedValueOnce([
           { bucket: '2026-08-03', type: 'income', amount: '1000', count: '2' },
           { bucket: '2026-08-03', type: 'expense', amount: '400', count: '3' },
-        ]);
+        ])
+        .mockResolvedValueOnce([]);
 
       const result = await repo.getSummary(10, {
         date_from: '2026-08-01',
@@ -477,6 +484,7 @@ describe('TransactionRecordRepository', () => {
 
     it('debe aplicar el filtro de tipo y el grupo semanal cuando se proveen', async () => {
       mockQb.getRawMany
+        .mockResolvedValueOnce([])
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
@@ -1583,7 +1591,8 @@ describe('TransactionRecordRepository', () => {
             count: '1',
           },
           { bucket: '2026-08-03', type: 'transfer', amount: '999', count: '1' },
-        ]);
+        ])
+        .mockResolvedValueOnce([]);
 
       const result = await repo.getSummary(10, {
         date_from: '2026-08-01',
@@ -1606,6 +1615,7 @@ describe('TransactionRecordRepository', () => {
           { category_id: 2, type: 'expense', amount: '400', count: '1' },
           { category_id: 3, type: 'expense', amount: '100', count: '1' },
         ])
+        .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
 
       const result = await repo.getSummary(10, {
@@ -1630,7 +1640,8 @@ describe('TransactionRecordRepository', () => {
             amount: '10',
             count: '1',
           },
-        ]);
+        ])
+        .mockResolvedValueOnce([]);
 
       const result = await repo.getSummary(10, { group_by: 'week' });
 
@@ -1645,7 +1656,8 @@ describe('TransactionRecordRepository', () => {
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([
           { bucket: '2026-08-03', type: 'income', amount: '10', count: '1' },
-        ]);
+        ])
+        .mockResolvedValueOnce([]);
 
       const result = await repo.getSummary(10, { group_by: 'month' });
 
@@ -1659,7 +1671,8 @@ describe('TransactionRecordRepository', () => {
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([
           { bucket: 'sin-fecha', type: 'income', amount: '10', count: '1' },
-        ]);
+        ])
+        .mockResolvedValueOnce([]);
 
       const result = await repo.getSummary(10, {});
 
@@ -1776,7 +1789,8 @@ describe('TransactionRecordRepository', () => {
       mockQb.getRawMany
         .mockResolvedValueOnce([{ type: 'expense' }])
         .mockResolvedValueOnce([{ category_id: 1, type: 'expense' }])
-        .mockResolvedValueOnce([{ bucket: '2026-08-03', type: 'expense' }]);
+        .mockResolvedValueOnce([{ bucket: '2026-08-03', type: 'expense' }])
+        .mockResolvedValueOnce([]);
 
       const result = await repo.getSummary(10, {
         date_from: '2026-08-01',
@@ -1801,7 +1815,8 @@ describe('TransactionRecordRepository', () => {
         ])
         .mockResolvedValueOnce([
           { bucket: '2026-08-03', type: 'foo', amount: '5', count: '1' },
-        ]);
+        ])
+        .mockResolvedValueOnce([]);
 
       const result = await repo.getSummary(10, {
         date_from: '2026-08-01',
@@ -1824,6 +1839,7 @@ describe('TransactionRecordRepository', () => {
         .mockResolvedValueOnce([
           { category_id: 1, type: 'income', amount: '300', count: '1' },
         ])
+        .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
 
       const result = await repo.getSummary(10, {
@@ -1840,7 +1856,8 @@ describe('TransactionRecordRepository', () => {
         .mockResolvedValueOnce([])
         .mockResolvedValueOnce([
           { bucket: null, type: 'income', amount: '10', count: '1' },
-        ]);
+        ])
+        .mockResolvedValueOnce([]);
 
       const result = await repo.getSummary(10, {
         date_from: '2026-08-01',

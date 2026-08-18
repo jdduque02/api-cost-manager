@@ -25,7 +25,7 @@ import {
 } from '@shared/enums';
 
 @ValidatorConstraint({ name: 'singlePatrimony', async: false })
-export class SinglePatrimonyConstraint implements ValidatorConstraintInterface {
+class SinglePatrimonyConstraint implements ValidatorConstraintInterface {
   validate(_value: unknown, args: ValidationArguments): boolean {
     const obj = args.object as Record<string, unknown>;
     const count = [obj.account_id, obj.asset_id, obj.liability_id].filter(

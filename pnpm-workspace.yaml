@@ -3,4 +3,6 @@ allowBuilds:
   '@scarf/scarf': true
   bcrypt: true
   chromedriver: true
+  fsevents: true
   unrs-resolver: true
+enablePrePostScripts: false

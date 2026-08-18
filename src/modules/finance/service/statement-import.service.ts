@@ -50,7 +50,7 @@ export interface StatementImportJobOptions {
   default_company_id?: number;
 }
 
-export interface StatementImportProgressPayload extends Record<
+interface StatementImportProgressPayload extends Record<
   string,
   unknown
 > {

@@ -92,7 +92,7 @@ function contribution(
  * auto-categorización (minúsculas y espacios colapsados). Consistente con
  * TransactionRecordRepository.fingerprint.
  */
-export function normalizeDescription(description: string | null): string {
+function normalizeDescription(description: string | null): string {
   return String(description ?? '')
     .toLowerCase()
     .replace(/\s+/g, ' ')

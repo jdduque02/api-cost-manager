@@ -230,13 +230,3 @@ export class ResponseHelper {
   }
 }
 
-// Exportar tipos para uso en otros módulos
-export type {
-  ApiResponse,
-  BaseApiResponse,
-  ErrorApiResponse,
-  ErrorLike,
-  ErrorOptions,
-  SuccessApiResponse,
-  SuccessOptions,
-};

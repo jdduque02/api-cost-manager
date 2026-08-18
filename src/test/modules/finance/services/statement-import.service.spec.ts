@@ -5,6 +5,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { StatementImportService } from '@finance/service/statement-import.service';
 import { StatementImportRepository } from '@finance/repositories/statement-import.repository';
 import { TransactionRecordRepository } from '@finance/repositories/transaction-record.repository';
+import { EmpresaRepository } from '@finance/repositories/empresa.repository';
 import { NotificationService } from '@notification/service/notification.service';
 import { CategoryService } from '@catalog/service/category.service';
 import { BankingEntityService } from '@support/service/banking-entity.service';
@@ -73,6 +74,10 @@ const mockCategoryService = {
 
 const mockBankingEntityService = {
   getActiveDetections: jest.fn(),
+};
+
+const mockEmpresaRepository = {
+  findAll: jest.fn(),
 };
 
 const mockI18n = {
@@ -160,6 +165,7 @@ describe('StatementImportService', () => {
           useValue: mockTransactionRecordRepository,
         },
         { provide: NotificationService, useValue: mockNotificationService },
+        { provide: EmpresaRepository, useValue: mockEmpresaRepository },
         { provide: CategoryService, useValue: mockCategoryService },
         {
           provide: BankingEntityService,
@@ -178,6 +184,7 @@ describe('StatementImportService', () => {
     (rm as jest.Mock).mockResolvedValue(undefined);
     mockCategoryService.findAll.mockResolvedValue([{ id: 2, name: 'General' }]);
     mockBankingEntityService.getActiveDetections.mockResolvedValue([]);
+    mockEmpresaRepository.findAll.mockResolvedValue([]);
     mockStatementImportRepository.createJob.mockResolvedValue(buildJob());
     mockStatementImportRepository.findJobById.mockResolvedValue(buildJob());
     mockStatementImportRepository.findFilesByImport.mockResolvedValue([

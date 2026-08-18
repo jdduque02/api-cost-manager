@@ -33,6 +33,7 @@ const defaultConfigGet = (key: string): string | undefined => {
     KEYCLOAK_REALM: 'master',
     KEYCLOAK_CLIENT_ID: 'my-nestjs-app',
     KEYCLOAK_SECRET: 'test-secret',
+    OTP_SECRET: 'test-secret',
   };
   return config[key];
 };
@@ -704,25 +705,17 @@ describe('AuthService', () => {
       ).resolves.toBeUndefined();
     });
 
-    it('debe usar el secreto por defecto sin OTP_SECRET ni KEYCLOAK_SECRET', async () => {
+    it('debe lanzar Error si falta OTP_SECRET', async () => {
       mockConfigService.get.mockImplementation((key: string) =>
-        key === 'KEYCLOAK_SECRET' ? undefined : defaultConfigGet(key),
+        key === 'OTP_SECRET' ? undefined : defaultConfigGet(key),
       );
-      mockUserRepository.findById.mockResolvedValue({
-        id: '7',
-        external_id: 'kc-id',
-      });
-      const payload = `7.${future}`;
-      const sig = createHmac('sha256', 'cost-manager-reset-default-secret')
-        .update(payload)
-        .digest('hex');
       await expect(
         service.resetPassword(
           'user@test.com',
-          `${payload}.${sig}`,
+          `${7}.${future}.firma-falsa`,
           'Nueva.123',
         ),
-      ).resolves.toBeUndefined();
+      ).rejects.toThrow(Error);
     });
   });
 

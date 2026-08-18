@@ -119,6 +119,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @UseGuards(IpBlockGuard)
   @Throttle({ auth: { limit: 20, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Renovar sesión con refresh token' })
@@ -150,6 +151,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Cerrar sesión y revocar tokens' })
   @ApiNoContentResponse({
@@ -277,6 +279,7 @@ export class AuthController {
   }
 
   @Post('introspect')
+  @Throttle({ auth: { limit: 30, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verificar vigencia del access_token de sesión' })
   @ApiIntrospectGuardResponse()

@@ -9,10 +9,10 @@ import { TransactionTypeEnum } from '@shared/enums';
 // - Soporta PDF con contraseña vía `password`.
 // ============================================================
 
-export const MAX_TRANSACTIONS_PER_FILE = 5000;
+const MAX_TRANSACTIONS_PER_FILE = 5000;
 const MAX_LINES_PER_FILE = 20000;
 
-export interface TextToken {
+interface TextToken {
   x: number;
   y: number;
   text: string;

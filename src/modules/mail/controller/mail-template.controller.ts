@@ -36,6 +36,7 @@ export class MailTemplateController {
   ) {}
 
   @Get(':key')
+  @UseGuards(AdminGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
@@ -89,7 +90,7 @@ export class MailTemplateController {
     const existing = await this.templateRepo.findOne({ where: { key } });
     if (existing) {
       existing.subject = dto.subject;
-      existing.html_body = dto.html_body;
+      existing.html_body = UpdateEmailTemplateDto.sanitize(dto.html_body);
       existing.updated_at = new Date();
       await this.templateRepo.save(existing);
       return new EmailTemplateResponseDto({ ...existing, key });
@@ -99,7 +100,7 @@ export class MailTemplateController {
       this.templateRepo.create({
         key,
         subject: dto.subject,
-        html_body: dto.html_body,
+        html_body: UpdateEmailTemplateDto.sanitize(dto.html_body),
       }),
     );
     return new EmailTemplateResponseDto({

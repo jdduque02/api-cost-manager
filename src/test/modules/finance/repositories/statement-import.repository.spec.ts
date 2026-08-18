@@ -96,6 +96,8 @@ describe('StatementImportRepository', () => {
         skip_duplicates: false,
         default_type: undefined,
         assign_categories: false,
+        capture_companies: false,
+        default_company_id: undefined,
       });
     });
   });

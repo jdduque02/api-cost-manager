@@ -16,7 +16,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 @ValidatorConstraint({ name: 'distinctTransferAccounts', async: false })
-export class DistinctTransferAccountsConstraint implements ValidatorConstraintInterface {
+class DistinctTransferAccountsConstraint implements ValidatorConstraintInterface {
   validate(_value: unknown, args: ValidationArguments): boolean {
     const obj = args.object as {
       source_account_id?: number;

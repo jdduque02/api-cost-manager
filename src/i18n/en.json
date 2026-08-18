@@ -117,7 +117,7 @@
   },
   "shared": {
     "UNEXPECTED_ERROR": "Unexpected error.",
-    "INVALID_INPUT": "Invalid input data.",
+    "INVALID_INPUT": "Fields with validation errors: {fields}",
     "SUCCESS": "Operation successful",
     "CREATED": "Resource created successfully",
     "ACCEPTED": "Request accepted",
@@ -145,7 +145,7 @@
     "IS_NUMBER": "{property} must be a number.",
     "IS_ENUM": "{property} must be one of the following values: {constraints}.",
     "IS_IN": "{property} must be one of the following values: {constraints}.",
-    "IS_MATCH": "{property} must match {constraints} regular expression.",
+    "IS_MATCH": "{property} does not meet the required format.",
     "IS_URL": "{property} must be a URL address.",
     "IS_BOOLEAN": "{property} must be a boolean value.",
     "IS_OBJECT": "{property} must be an object.",
